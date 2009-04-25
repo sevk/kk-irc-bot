@@ -6,7 +6,7 @@
    * Date:  
    * License: GPLV3 
    * http://irc.ubuntu.org.cn
-   * svn checkout http://kk-irc-bot.googlecode.com/svn/trunk/ kk-irc-bot-read-only 代码下载
+   * 源代码: http://code.google.com/p/kk-irc-bot/ 或 http://github.com/sevk/kk-irc-bot/'
 =end
 
 require 'irc_user.rb'
@@ -31,13 +31,11 @@ Ver='v0.12' unless defined?(Ver)
 Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
 $old_feed_size = -1
-#UserAgent= 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.7) Gecko/2009030422 Ubuntu/8.04 (hardy) Firefox/3.0.7'
-UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)'
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
 
 Minsaytime= 10
-puts "最小说话时间=#{Minsaytime}"
+#puts "最小说话时间=#{Minsaytime}"
 Minsaytime_forUxxxxx=8000
 $last_say_U = Time.now
 $min_next_say = Time.now
@@ -50,7 +48,7 @@ puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
 NoTitle=/fire|oftc/i
 BotList=/bot|fity|badgirl|crazyghost|u_b|iphone/i
-UrlList=/ubuntu|linux|unix|windows|cnbeta|ruby|python|java|qq|solidot/i 
+UrlList=/ubuntu|linux|unix|windows|cnbeta|ruby|python|java|lua|qq|solidot|sdn/i 
 
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
@@ -339,7 +337,7 @@ class IRC
           if $u.saidAndCheckFlood(a1,a2,a3,sSay)
             $u.floodreset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            msg(a4,"#{a1}, ...超过4行或图片请贴到 paste.ubuntu.org.cn",4)
+            msg(a4,"#{a1}, ...超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
             return nil
           end
         end
@@ -454,7 +452,7 @@ class IRC
           if s.index($ti[$ti.size/2,6])#已经发了就不说了
             #puts '已经发了标题' + $ti[3,9]
           else
-            $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题\s./i,'')
+            $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
             $ti.gsub!(/\sUbuntu中文/i,'')
             msg(to,"⇪ 网址标题: #{$ti}",0) 
           end
@@ -466,12 +464,11 @@ class IRC
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       puts 'Ip ' + s
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
-    when /^`t\s(.+)$/i  #baidu_tran
-      puts 't ' + s
-      word = $1.to_s.untaint.strip
-      thread4 = Thread.new do
-        c = word;puts 'thread start'
-        re = getBaidu_tran(c)
+    when /^`t\s(.+)\s?(\d?)$/i  #baidu_tran
+      word = $1.to_s
+      en = $2 != '1'
+      Thread.new do
+        re = getBaidu_tran(word,en)
         msg to,"#{re}",0 if re.size > 3
         Thread.exit
       end
@@ -535,13 +532,13 @@ class IRC
       return nil if s.size < 10
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '机器人源代码 http://code.google.com/p/kk-irc-bot/ 或 svn checkout http://kk-irc-bot.googlecode.com/svn/trunk/ bot/'
+      s1= '源代码: http://code.google.com/p/kk-irc-bot/ 或 http://github.com/sevk/kk-irc-bot/'
       msg to,"#{s1}"
     when /^`rst(.+)$/i #restart      
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
-      $notitle = tmp[0] != 48
+      $notitle = tmp[0] == 48
       $need_say_feed = tmp[1] != 48
       $need_Check_code = tmp[2] != 48
       load 'Dic.rb'
@@ -681,12 +678,6 @@ class IRC
       end
     end #Thread
   end
-  def time_min()
-    "#{Time.now.strftime('[%H:%M]')}"
-  end
-  def chr_hour()
-    "\343\215"+ (Time.now.hour + 0230).chr
-  end
   def main_loop()
     while true
       ready = select([@irc, $stdin], nil, nil, nil)
@@ -703,6 +694,11 @@ class IRC
             who = $1;s=$2
             send "privmsg #{who} :#{s.strip}"
           when /^:q\s?(.*?)$/i
+            if $1              
+              tmp = $1
+            else
+              tmp='optimize'
+            end
             send 'quit ' + $1.to_s
           when /^[\/:]/
             send s.gsub(/^[\/:]/,"").to_s

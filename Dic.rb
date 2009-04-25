@@ -8,6 +8,9 @@ require 'uri'
 require 'net/http'
 require 'rss/1.0'
 require 'rss/2.0'
+begin; require 'rubygems'; rescue LoadError; end
+
+require 'htmlentities'#sudo gem install htmlentities
 begin
   require 'charguess'
   #可用这个替代gem install rchardet
@@ -16,25 +19,28 @@ rescue Exception => detail
   $need_Check_code = false
 end
 
+#UserAgent= 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.7) Gecko/2009030422 Ubuntu/8.04 (hardy) Firefox/3.0.7' unless defined?(UserAgent)
+UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
 #~ require 'google'
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 
 def unescapeHTML(string)
-  str = string.dup
-  str.gsub!(/&(.*?);/n) {
-    match = $1.dup
-    case match
-    when /\Aamp\z/ni           then '&'
-    when /\Aquot\z/ni          then '"'
-    when /\Agt\z/ni            then '>'
-    when /\Alt\z/ni            then '<'
-    when /\A#(\d+)\z/n         then Integer($1).chr
-    when /\A#x([0-9a-f]+)\z/ni then $1.hex.chr
-    else
-      ' '
-    end
-  }
+  #string.gsub!(/&(.*?);/n) {
+  #  match = $1.dup
+  #  case match
+  #  when /\Aamp\z/ni           then '&'
+  #  when /\Aquot\z/ni          then '"'
+  #  when /\Agt\z/ni            then '>'
+  #  when /\Alt\z/ni            then '<'
+  #  #when /\A#(\d+)\z/n         then Integer($1).chr
+  #  when /\A#x([0-9a-f]+)\z/ni then $1.hex.chr
+  #  else
+  #    ' '
+  #  end
+  #}
+  str = string.gsub(/&nbsp;/,' ')
+  str = HTMLEntities.new.decode(str)
   str
 end 
 
@@ -386,13 +392,13 @@ def getBaidu(word)
         $re = unescapeHTML($re)
         $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
         #~ re = html.match(/ScriptDiv(.*)#008000/).to_s
-        #~ $re =   Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",ss).to_s
+        #~ $re =   Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",ss).to_s
     }
     $re
 end
 
-def getBaidu_tran(word)
-    word= Iconv.conv("gb2312//IGNORE","UTF-8//IGNORE",word).to_s
+def getBaidu_tran(word,en=true)
+    word= Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",word).to_s
     c=  'http://www.baidu.com/s?cl=3&wd='+word+'&ct=1048576'
     puts URI.encode(c)
     open(URI.encode(c),
@@ -406,13 +412,30 @@ def getBaidu_tran(word)
     'Cookie'=>'BAIDUID=EBBDCF1D3F9B11071169B4971122829A:FG=1; BDSTAT=172f338baaeb951db319ebc4b74543a98226cffc1f178a82b9014a90f703d697'
     ) {|f|
         html=f.read()
-        #~ puts Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",html.to_s).to_s
-        re = nil
-        re = html.scan(/>\d+.*?</).to_s.gsub!(/(>)|</,' ').to_s
-        $re =   Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",re).to_s
+        html.gsub!(/\s+/,' ')
+        #html = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",html.to_s).to_s
+        re = html.match(/class="wd">(.+?)pronu/i)[1].to_s + ' '
+        #puts utf8(re)
+        re += html.match(/class="explain">(.+?)<script/i)[1]
+        re.gsub!(/<.*?>/,'')
+        re = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",re).to_s
+        re = unescapeHTML(re)
+        $re = re.gsub(/>pronu.+?中文翻译/i,' ')
+        $re.gsub!(/以下结果由.*?提供词典解释/,' ')
+        if en
+          $re.gsub!(/基本字义.*?英文翻译/," #{chr_hour} ")
+        end
     }
     $re
 end
+
+def time_min()
+  "#{Time.now.strftime('[%H:%M]')}"
+end
+def chr_hour()
+  "\343\215"+ (Time.now.hour + 0230).chr
+end
+
 def host(domain)#处理域名
   domain=domain.match(/^[\w\.\-\d]*/)[0]
   begin
@@ -439,13 +462,12 @@ def hostA(domain)#处理IP 或域名
   tmp
 end
 def utf8(s)
-  return Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",s).to_s
+  return Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",s).to_s
 end
 def googleFinance(word)
   #~ return nil # debuging
   #~ return nil if word == nil
   word='上证指数' if word.to_s==''
-    #~ word= Iconv.conv("gb2312//IGNORE","UTF-8//IGNORE",word).to_s
     c=  'http://finance.google.cn/finance?q=' + word + '&hl=zh-cn'
     c= URI.encode(c)  ; p c
     open( c,
