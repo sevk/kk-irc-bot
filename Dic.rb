@@ -21,6 +21,8 @@ end
 
 #UserAgent= 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.7) Gecko/2009030422 Ubuntu/8.04 (hardy) Firefox/3.0.7' unless defined?(UserAgent)
 UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
+Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
+Fi2="UBUNTU新手资料.txt"
 #~ require 'google'
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
@@ -166,8 +168,7 @@ def gettitle(url)
       end
     end
     return nil if title.index(/index of/i)
-    return nil if title !~ Re_cn  #没中文就忽略
-    #~ a=a[0,a.index(/\/head>/i).to_i + 10]
+    #return nil if title !~ Re_cn  #没中文就忽略
     charset=$charset
     a.match(/charset=(.+?)["']\s?/i)
     charset=$1 if $1 !=nil
@@ -291,14 +292,14 @@ def getGoogle(word,flg)
             #~ puts '天气过滤' + tmp.to_s
             tmp.gsub!(/alt="/,'>')
             tmp.gsub!(/"\stitle=/,'<')
-            #tmp.gsub!(/\%/," ")
+            tmp.gsub!(/\s\/\s/,"\/")
             tmp.gsub!(/级/, '级  ' )
             tmp.gsub!(/今日\s+/, ' 今日' )
             tmp.gsub!(/<\/b>/, '')
             tmp.gsub!(/(添加到)(.*?)当前：/,' ')
             #tmp.gsub!(/北京市专业气象台(.*)/, '' )
             tmp=tmp.match(/.+?°C.+?°C/)[0]
-            tmp.gsub!(/°C/, '℃ ' )
+            tmp.gsub!(/°C/, ' ℃ ' )
           end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
           tmp.gsub!(/<.*?>/i,'')
@@ -341,13 +342,20 @@ def getGoogle(word,flg)
 end
 
 def getGoogle_tran(word)
+    word.gsub!(/['&]/,'"')
+    word = URI.encode(word)
     if word =~/[\x7f-\xff]/#有中文
-      flg = '#auto|en|' + word ; puts '中文>英文'
+      flg = 'zh-CN%7Cen'
+      #flg = '#auto|en|' + word ; puts '中文>英文'
     else
-      flg = '#auto|zh-CN|' + word
+      flg = 'en%7Czh-CN'
+      #flg = '#auto|zh-CN|' + word
     end
-    c= "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
-    p c
+    #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
+    url = "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=#{word}&langpair=#{flg}"
+
+    return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"}/)[1].to_s
+
     open( URI.encode(c),
     'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
     'Referer'=> URI.encode(c),

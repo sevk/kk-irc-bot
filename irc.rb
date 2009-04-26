@@ -31,10 +31,8 @@ Ver='v0.12' unless defined?(Ver)
 Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
 $old_feed_size = -1
-Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
-Fi2="UBUNTU新手资料.txt"
 
-Minsaytime= 10
+Minsaytime= 16
 #puts "最小说话时间=#{Minsaytime}"
 Minsaytime_forUxxxxx=8000
 $last_say_U = Time.now
