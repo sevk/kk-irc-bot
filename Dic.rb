@@ -1,5 +1,4 @@
 #!/usr/bin/ruby -w
-#need ruby 1.8
 #Sevkme@gmail.com
 
 require 'open-uri'
@@ -8,9 +7,15 @@ require 'uri'
 require 'net/http'
 require 'rss/1.0'
 require 'rss/2.0'
-begin; require 'rubygems'; rescue LoadError; end
 
-require 'htmlentities'#sudo gem install htmlentities
+begin
+  require 'rubygems'
+rescue LoadError
+end
+
+#sudo gem install htmlentities
+require 'htmlentities'
+
 begin
   require 'charguess'
   #可用这个替代gem install rchardet
@@ -41,13 +46,11 @@ def unescapeHTML(string)
   #    ' '
   #  end
   #}
-  str = string.gsub(/&nbsp;/,' ')
-  str = HTMLEntities.new.decode(str)
-  str
+  HTMLEntities.new.decode(string)
 end 
 
 def Codes(s) #irssi: /RECODE ADD #sevk gbk
-  return CharGuess::guess(s).to_s.strip
+  return CharGuess::guess(s).to_s
 end
 
 def readDicA()
@@ -234,10 +237,10 @@ def getTQ(s)
 end
 
 def getGoogle(word,flg)
-    $re='';c=''
+    c=''
     re=''
     #~ uri = URI.parse(url.untaint.strip)
-    c='http://www.google.cn/search?hl=zh-CN&q=' + word + '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
+    c='http://www.google.cn/search?hl=zh-CN&q=' + word #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
     c=c.untaint.strip
     puts '  ----- url=' + URI.escape(c ) + '-----   '
     open(URI.escape(c ),
@@ -248,11 +251,10 @@ def getGoogle(word,flg)
     'User-Agent'=> UserAgent
     ){ |f|
       html=f.read().gsub(/\s/,' ')
-      #~ puts html + "\n\n\n"
       case flg
       when 1#拼音查询
         #~ html.match(/是不是要找：(.*?)<\/div>/)
-        html.match(/是不是要找：(.*?)<\/font><\/a>/i)#<!--a-->
+        html.match(/是不是要找：.*?<em>(.*?)<\/em>/i)#<!--a-->
         re=$1.to_s
         re.gsub!(/\s/i,' ')
         re = unescapeHTML(re)
@@ -260,36 +262,36 @@ def getGoogle(word,flg)
       when 0
         matched = true
         case html
-        when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
-          tmp ='<'+$1.to_s + ' Google 计算器详情' #(.*?)<li>
         when /相关词句：(.*?)<p>网络上查询<b>(.*?)(https?:\/\/\S+[^\s*])&usg=/i#define
           tmp = $2 + " > " + $3
           tmp += ' === SEE ALSO ' + $1 if rand(10)>5
+        when /专业气象台|比价仅作信息参考/
+          tmp = html.match(/>网页<.+?(搜索用时|>网页<\/b>)(.*?)(搜索结果|Google 主页)/)[2]
+        when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
+          tmp ='<'+$1.to_s + ' Google 计算器详情' #(.*?)<li>
         else
           matched = false
         end
         #p;puts html.match(/搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i)[0]
-        #p
-        if matched || html.match(/搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i)
-        #if matched || html =~ /搜索用时(.*?)搜索结果/i#广告段或你要找的是不是段
+        if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
-            tmp =$1 
+            tmp =$2
             #puts 'tmp=' + tmp.to_s
-            tmp1=$2
+            tmp1=$1
             #puts 'tmp1=' + tmp1.to_s
           end
           tmp.gsub!(/(.+?)此展示您的广告/i,'')
-          if tmp=~/赞助商链接/
-            puts '赞助商链接'
-            #tmp=tmp1 
-          end
+          #if tmp=~/赞助商链接/
+            #puts '赞助商链接'
+            ##tmp=tmp1 
+          #end
           tmp.gsub!(/赞助商链接(.+?)id=rhspad>/i,'')
           tmp.gsub!(/更多有关货币兑换的信息。/,"")
           tmp.gsub!(/<br>/i," ")
           #~ puts tmp + "\n"
           case word
           when /tq$|天气$|tianqi$/i
-            #~ puts '天气过滤' + tmp.to_s
+            #puts '天气过滤' + tmp.to_s
             tmp.gsub!(/alt="/,'>')
             tmp.gsub!(/"\stitle=/,'<')
             tmp.gsub!(/\s\/\s/,"\/")
@@ -299,10 +301,9 @@ def getGoogle(word,flg)
             tmp.gsub!(/(添加到)(.*?)当前：/,' ')
             #tmp.gsub!(/北京市专业气象台(.*)/, '' )
             tmp=tmp.match(/.+?°C.+?°C/)[0]
-            tmp.gsub!(/°C/, ' ℃ ' )
+            tmp.gsub!(/°C/, '度 ' )
           end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
-          tmp.gsub!(/<.*?>/i,'')
           #puts "tmp.size=#{tmp.size} , #{tmp}"
           #~ puts html
           if tmp.size > 30 && word.match(/^13.........$/i) == nil && tmp.match(/小提示/)==nil then
@@ -325,25 +326,20 @@ def getGoogle(word,flg)
             url=$2.to_s
           end
           re = url + ' ' + re
-          if re=~ /(.*?)(翻译此页|网页快照)/
-            re = $1
-          end
         end
       end
       return nil if re.size < 3
-      $re= re.gsub(/<.*?>/i,'')
-      $re = unescapeHTML($re)
-      $re.gsub!(/&(.*?);/i," ")
-      $re = $re.strip#.to_s[0,600]
-      #puts "-" * 10 + $re + "-" * 10
-      #puts '结果长度=' + $re.to_s.size.to_s
+      re.gsub!(/<.*?>/i,'')
+      re.gsub!(/\[\s翻译此页\s\]/,'')
+      re = unescapeHTML(re)
+      #puts "-" * 10 + re + "-" * 10
+      #puts '结果长度=' + re.to_s.size.to_s
     }
-    return $re
+    return re
 end
 
 def getGoogle_tran(word)
     word.gsub!(/['&]/,'"')
-    word = URI.encode(word)
     if word =~/[\x7f-\xff]/#有中文
       flg = 'zh-CN%7Cen'
       #flg = '#auto|en|' + word ; puts '中文>英文'
@@ -351,10 +347,11 @@ def getGoogle_tran(word)
       flg = 'en%7Czh-CN'
       #flg = '#auto|zh-CN|' + word
     end
+    word = URI.encode(word)
     #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
     url = "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=#{word}&langpair=#{flg}"
 
-    return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"}/)[1].to_s
+    return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
 
     open( URI.encode(c),
     'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
@@ -427,6 +424,7 @@ def getBaidu_tran(word,en=true)
         re += html.match(/class="explain">(.+?)<script/i)[1]
         re.gsub!(/<.*?>/,'')
         re = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",re).to_s
+        re.gsub!(/&nbsp/,' ')
         re = unescapeHTML(re)
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
         $re.gsub!(/以下结果由.*?提供词典解释/,' ')
@@ -445,9 +443,10 @@ def chr_hour()
 end
 
 def host(domain)#处理域名
+  return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
   domain=domain.match(/^[\w\.\-\d]*/)[0]
   begin
-    return `host #{domain} | grep has | head -n 1`.strip.match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/).to_s
+    return `host #{domain} | grep has | head -n 1`.strip.match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)[0]
   rescue Exception => detail
     puts detail.message()
     '火星'

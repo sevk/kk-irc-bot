@@ -1,10 +1,11 @@
 #!/usr/bin/ruby -w
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 77 #75
+Maxfloodme = 80 #75
 Maxflood = 37   #40
 Initflood = 88 #83
 Maxnamed = 130
+
 class ALL_USER
   #attr :nick, true
   def initialize
@@ -54,7 +55,7 @@ class ALL_USER
     @time_in[@pos_write]= t
     @timelastsay[@pos_write]= t
     @timelastsayme[@pos_write]= t
-    @timelast6me[@pos_write]= Initflood
+    @timelast6me[@pos_write]= Initflood * 2
     @timelast6say[@pos_write]= Initflood
     @tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=''
@@ -120,7 +121,7 @@ class ALL_USER
     end
     t=Time.now
     @timelast6me[index] = (@timelast6me[index] /6 ) * 5 +  (t - @timelastsayme[index])
-    @timelast6me[index] = Initflood if @timelast6me[index] > Initflood + 50
+    @timelast6me[index] = Initflood if @timelast6me[index] > Initflood * 2
     @timelastsayme[index] = Time.now
   end
   
@@ -177,6 +178,9 @@ class ALL_USER
   end
   def getname(nick)
     return @name[getindex(nick)]
+  end
+  def all_nick()
+    @index
   end
   def completename(s)
     return s if !s or s=='' or getindex(s)

@@ -6,13 +6,15 @@
    * Date:  
    * License: GPLV3 
    * http://irc.ubuntu.org.cn
-   * 源代码: http://code.google.com/p/kk-irc-bot/ 或 http://github.com/sevk/kk-irc-bot/'
+   * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
 =end
 
-require 'irc_user.rb'
+include Math
+load 'irc_user.rb'
 require "ipwry.rb"
 require 'date'
 load 'Dic.rb'
+#require "readline"
 
 require 'find'
 #载入plugin
@@ -32,7 +34,7 @@ Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
 $old_feed_size = -1
 
-Minsaytime= 16
+Minsaytime= 12
 #puts "最小说话时间=#{Minsaytime}"
 Minsaytime_forUxxxxx=8000
 $last_say_U = Time.now
@@ -46,7 +48,7 @@ puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
 NoTitle=/fire|oftc/i
 BotList=/bot|fity|badgirl|crazyghost|u_b|iphone/i
-UrlList=/ubuntu|linux|unix|windows|cnbeta|ruby|python|java|lua|qq|solidot|sdn/i 
+UrlList=/ubuntu|inux|unix|window|nbeta|ruby|py|java|lu|qq|dot|dn/i 
 
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
@@ -210,6 +212,7 @@ class IRC
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 : re = Help ;c=''
+      when 101 : re = getBaidu_tran(c);c=''
       end
       Thread.exit if re.size < 4
 
@@ -374,6 +377,8 @@ class IRC
         $otherbot_said=false
         do_after_sec(to,from + ",欢迎网页用户来IRC学习,有问题直接问.",11,25)
       end
+
+      new_Readline_complete($u.all_nick)
     when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)$/i #quit
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
       from=$1;name=$2;ip=$3;room=$5.to_s
@@ -391,6 +396,7 @@ class IRC
         $otherbot_said=true
       end
       $u.del(from,ip)
+      new_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
       puts s
@@ -462,9 +468,10 @@ class IRC
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       puts 'Ip ' + s
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
-    when /^`t\s(.+)\s?(\d?)$/i  #baidu_tran
+    when /^`?tr?\s(.+?)\s?(\d?)$/i  #baidu_tran
       word = $1.to_s
-      en = $2 != '1'
+      en = $2 == "0"
+      #sayDic(101,from,to,$1)
       Thread.new do
         re = getBaidu_tran(word,en)
         msg to,"#{re}",0 if re.size > 3
@@ -540,8 +547,9 @@ class IRC
       $need_say_feed = tmp[1] != 48
       $need_Check_code = tmp[2] != 48
       load 'Dic.rb'
+      load 'irc_user.rb'
       loadDic
-      msg(to,"restarted,取标题=#{not $notitle},读取ub.feed=#$need_say_feed,检测编码=#$need_Check_code",1)
+      msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",1)
     else
       print(from,' ',s,"\n") #if $SAFE == 1
       return 1#not match dic_event
@@ -676,8 +684,15 @@ class IRC
       end
     end #Thread
   end
+
+  def new_Readline_complete(w)
+    #Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
+  end
+
   def main_loop()
     while true
+      #ready = select([@irc, readline("> ", true)], nil, nil, nil)
+      #ready = select([@tcp, readline("> ", true)], nil, nil, nil)
       ready = select([@irc, $stdin], nil, nil, nil)
       next if !ready
       for s in ready[0]
@@ -686,20 +701,19 @@ class IRC
           handle_server_input(@irc.gets)
         elsif s == $stdin
           return if $stdin.eof
+
           s = $stdin.gets
           case s
           when /^\/msg\s(.+?)\s(.+)$/
             who = $1;s=$2
             send "privmsg #{who} :#{s.strip}"
           when /^:q\s?(.*?)$/i
-            if $1              
-              tmp = $1
-            else
-              tmp='optimize'
-            end
-            send 'quit ' + $1.to_s
+            tmp = $1 || 'optimize'
+            send 'quit ' + tmp
           when /^[\/:]/
-            send s.gsub(/^[\/:]/,"").to_s
+            send s.gsub(/^[\/:]/,"")
+          when /^`/
+            check_dic(s+'|','i',@channel)
           when /^\s/
             send "privmsg nickserv :#{s.strip}"
           else
@@ -717,5 +731,6 @@ load ARGV[0] if ARGV[0]
 irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
 irc.connect()
 irc.main_loop()
+
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
