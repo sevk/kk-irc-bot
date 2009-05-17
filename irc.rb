@@ -25,16 +25,15 @@ Find.find(File.expand_path(File.dirname(__FILE__))+'/plugin/') do |e|
   end
 end
 
-Help = '我是ikk-irc-bot 用法:`g 内容 [|@>] [某人] , `s=grep新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `gf `host=域名IP查询 `IP查询 >=ruby简单脚本 `x=乱聊 `deb=软件包查询 `i=源代码'
+Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `x=乱聊 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
 MATCH_title_RE = /<title>(.*)<\/title>/
 Delay_do_after = 4
-Ver='v0.12' unless defined?(Ver)
+Ver='v0.13' unless defined?(Ver)
 
 Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
-$old_feed_size = -1
 
-Minsaytime= 12
+Minsaytime= 9
 #puts "最小说话时间=#{Minsaytime}"
 Minsaytime_forUxxxxx=8000
 $last_say_U = Time.now
@@ -47,8 +46,9 @@ loadDic
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
 NoTitle=/fire|oftc/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone/i
-UrlList=/ubuntu|inux|unix|window|nbeta|ruby|py|java|lu|qq|dot|dn/i 
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|Psycho/i
+TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
+UrlList=TiList
 
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
@@ -72,14 +72,16 @@ class IRC
 
     timer1 = Thread.new do
       loop do
-        sleep(2000 + rand(1500))
+        sleep(2200 + rand(1900))
         if $need_say_feed
           begin
             tmp = get_feed 
+            if tmp.size > 6 
+              msg(@channel,tmp,5) if (8..24) === Time.now.hour 
+            end
+            #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
           rescue Exception => detail
           end
-          msg(@channel,tmp,4) if (9..24) === Time.now.hour 
-          #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
         end
         #p 'say get_feed'
       end
@@ -110,17 +112,17 @@ class IRC
   end
   def send(s)
     s.gsub!(/\s+/,' ')
-    s=s[0,450]#只发送450个byte
+    #s=s[0,450]#只发送450个byte
     if @charset == 'UTF-8'
       #local是UTF-8时,一个汉字是3个byte.
-      s=s[0,s.size - s.gsub(/[^\x7f-\xff]+/,'').size % 3]
+      s=s[0,450 - s[0,450].gsub(/[^\x7f-\xff]+/,'').size % 3] if s.size > 449
     else
       s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s)
-      s=s[0,s.size - s.gsub(/[^\x7f-\xff]+/,'').size % 2]
+      s=s[0,450 - s[0,450].gsub(/[^\x7f-\xff]+/,'').size % 2] if s.size > 449
     end
-    puts "---> #{s}"
-    $Lsay = Time.now
     @irc.send("#{s}\n", 0)
+    puts "----> #{s}"
+    $Lsay = Time.now
   end
   def connect()
     @irc = TCPSocket.open(@server, @port)
@@ -147,7 +149,8 @@ class IRC
   #发送字典结果
     tellSender = false
     pub =false
-    
+    pub =true if dic == 5
+
     if s=~/(.*?)\s?([#\@|>])\s?(.*?)$/i #消息重定向
       words=$1;b6=$2;b7=$3
       if b7
@@ -171,11 +174,6 @@ class IRC
       to=from if !pub
     end
 
-    case dic
-    when 5
-      pub =true
-    end
-
     Thread.new do
       c = words;re=''
       case dic
@@ -184,7 +182,7 @@ class IRC
       when 3 : re = googleFinance(c )
       when 4 : re = getGoogle_tran(c );c=''
       when 5#拼音
-        re = "#{getPY(c)}";c='';b7= from +'说 '
+        re = "#{getPY(c)}";c=''; b7= from +'说 ';
       when 6 : re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
       when 10 : re = hostA(c,rand(10))
       when 20 : re = $u.igetlastsay(c).to_s
@@ -251,7 +249,7 @@ class IRC
           puts detail.message()
         end
         #send "Notice #{b1} :请用 #{@charset}编码,不要用 #{tmp}"
-        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp}, but we say #{@charset} here."
+        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp}? But we say #{@charset} here!"
         return nil
       else
         return 4 #编码正常
@@ -270,14 +268,13 @@ class IRC
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       print(from,' ',s,"\n") #if $SAFE == 1
-      return if from =~ /freenode-connect/i
+      return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
       return if a3== '59.36.101.19'#不处理U用户
       return if a3=~ /^gateway\//i
 
       if $u.saidAndCheckFloodMe(a1,a2,a3)
-#        $u.floodmereset(a1)
-        send "PRIVMSG #{a1} :...玩Bot请去 #Sevk 频道" if rand(10) > 6
-        return nil
+        $u.floodmereset(a1)
+        #send "PRIVMSG #{a2} :...玩Bot请去 freenode/#Sevk 频道" if rand(10) > 7
       end
       tmp = check_dic(a5,a1,a1)
       if tmp.class == Fixnum
@@ -285,7 +282,7 @@ class IRC
           send "PRIVMSG #{from} :不懂什么是#{sSay},请输入`help" if rand(10) > 7
         end
         $otherbot_said=false
-        if rand(10) > 6
+        if rand(10) > 9
           do_after_sec(from, "不好意思,我不喜欢私聊",0,10)
         else
           do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
@@ -350,8 +347,8 @@ class IRC
           $otherbot_said=true
           #$u.floodmereset(a1)
           return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-          send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 5
-          send "PRIVMSG #{a1} :玩Bot请去 #Sevk 频道" if rand(10) > 7
+          send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 6
+          send "PRIVMSG #{a1} :玩Bot请去 #Sevk 频道" if rand(10) > 8
           msg to ,"#{from},玩Bot请去 #Sevk 或 #{to}-ot 频道",0 if rand(10) > 6
           return nil
         end
@@ -366,10 +363,10 @@ class IRC
           return
         when /badgirl/i
           $need_Check_code=false
-        when /crazyghost|u_b/i
+        when /crazyghost/i
           $need_say_feed=false
-          $notitle=true
           #msg(to,"每小时取一个论坛最新帖功能自动关闭.",0)
+          $notitle=true
       end
       
       if $u.add(from,name,ip) == 19
@@ -386,10 +383,10 @@ class IRC
       case from
         when /badgirl/i
           $need_Check_code=true
-        when /crazyghost|u_b/i
+        when /crazyghost/i
           $need_say_feed=true
-          $notitle=false
           #msg(to,"每小时取一个论坛最新帖功能自动打开.",0)
+          $notitle=false
       end
 
       if ip=='59.36.101.19'#U用户
@@ -413,7 +410,6 @@ class IRC
       from=$1;chan=$4;tag=$5;reason=$6
       puts 'Kick ' + tag.to_s + ' ' +  reason.to_s 
       if tag =~ /u_b/ 
-        $need_say_feed=true 
         $notitle=false
       end
     else
@@ -424,9 +420,9 @@ class IRC
   def check_dic(s,from,to)
   #检测消息是不是敏感或字典消息
     case s.strip
-    when /^(\?|>)\s?(.+)$/i #eval
-      puts "[4 EVAL #{$2} from #{from}]"
-      tmp=evaluate($2[0,200])
+    when /^\>\s?(.+)$/i #eval
+      puts "[4 EVAL #{$1} from #{from}]"
+      tmp=evaluate($1.to_s)
       p tmp
       msg to,"#{from}, #{tmp}",0 if tmp
     when /^`h(ost)?\s(.*?)$/i # host
@@ -434,13 +430,12 @@ class IRC
       sayDic(10,from,to,$2)
     when  /^(.*)(http:\/\/\S+[^\s*])/i #url_title查询
       url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
-      thread3 = Thread.new do
+      Thread.new do
         #priority = 1
+        puts "#{from} thread.new in matched url #{url} "  
         Thread.exit if $notitle
         Thread.exit if from =~ BotList
-        Thread.exit if url !~ UrlList
         Thread.exit if url =~ /past/i 
-        #puts 'thread.new in matched url ' + url
         $ti =  nil
         Timeout.timeout(5) {
           $ti = gettitle(url)
@@ -453,29 +448,28 @@ class IRC
 
         if $ti 
           #puts $ti + ' is title'
-          if s.index($ti[$ti.size/2,6])#已经发了就不说了
+          $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
+          #$ti.gsub!(/\sUbuntu中文/i,'')
+          Thread.exit if $ti !~ TiList and url !~ UrlList
+          if s =~ /#{Regexp::escape $ti[$ti.size/2,9]}/i#已经发了就不说了
             #puts '已经发了标题' + $ti[3,9]
           else
-            $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
-            $ti.gsub!(/\sUbuntu中文/i,'')
             msg(to,"⇪ 网址标题: #{$ti}",0) 
           end
         end
-        $ti=nil
         Thread.exit
       end
       return 2
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       puts 'Ip ' + s
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
-    when /^`?tr?\s(.+?)\s?(\d?)$/i  #baidu_tran
+    when /^`tr?\s(.+?)\s?(\d?)$/i  #baidu_tran
       word = $1.to_s
       en = $2 == "0"
       #sayDic(101,from,to,$1)
       Thread.new do
         re = getBaidu_tran(word,en)
         msg to,"#{re}",0 if re.size > 3
-        Thread.exit
       end
     when /^`deb\s(.*)$/i  #aptitude show
       sayDic(30,from,to,$1)
@@ -529,7 +523,7 @@ class IRC
     when /^(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',您 ◆◆◆ 好.',10,11) if rand(10) > 7
-    when /^((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试)$/i #有人吗?
+    when /^((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试中?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ',你好。',10,11)
     when /^(wo|ni|ta|shi|ru|zen|hai|neng|shen|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
@@ -537,7 +531,7 @@ class IRC
       return nil if s.size < 10
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '源代码: http://code.google.com/p/kk-irc-bot/ 或 http://github.com/sevk/kk-irc-bot/'
+      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ '
       msg to,"#{s1}"
     when /^`rst(.+)$/i #restart      
       tmp=$1
@@ -551,7 +545,7 @@ class IRC
       loadDic
       msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",1)
     else
-      print(from,' ',s,"\n") #if $SAFE == 1
+      puts("#{from} #{to} #{s}") #if $SAFE == 1
       return 1#not match dic_event
     end
   end
@@ -581,15 +575,15 @@ class IRC
       if !@Named
         if pos == 353
           $need_Check_code=false if tmp =~ /badgirl/i
-          $need_say_feed=false if tmp =~ /crazyghost|u_b/i
-          $notice=true if tmp =~ /u_b/i
+          $need_say_feed=false if tmp =~ /crazyghost/i
+          $notitle=true if tmp =~ /u_b/i
         end
       end
       if pos == 901
         @Named = true 
         puts "是否检测乱码= #{$need_Check_code}"
         puts 'feed功能= ' + $need_say_feed.to_s
-        puts 'notitle= ' + $notice.to_s 
+        puts 'notitle= ' + $notitle.to_s 
       end
 
       #自动 whois 返回
@@ -708,12 +702,12 @@ class IRC
             who = $1;s=$2
             send "privmsg #{who} :#{s.strip}"
           when /^:q\s?(.*?)$/i
-            tmp = $1 || 'optimize'
-            send 'quit ' + tmp
+            tmp = $1.to_s
+            send 'quit optimize ' + tmp
           when /^[\/:]/
             send s.gsub(/^[\/:]/,"")
           when /^`/
-            check_dic(s+'|','i',@channel)
+            check_dic(s,@nick,@channel)
           when /^\s/
             send "privmsg nickserv :#{s.strip}"
           else

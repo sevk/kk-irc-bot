@@ -7,12 +7,9 @@ require 'uri'
 require 'net/http'
 require 'rss/1.0'
 require 'rss/2.0'
+#require 'cgi'
 
-begin
-  require 'rubygems'
-rescue LoadError
-end
-
+begin require 'rubygems' ;rescue LoadError ;end
 #sudo gem install htmlentities
 require 'htmlentities'
 
@@ -31,22 +28,11 @@ Fi2="UBUNTU新手资料.txt"
 #~ require 'google'
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
+$old_feed_size = nil
 
-def unescapeHTML(string)
-  #string.gsub!(/&(.*?);/n) {
-  #  match = $1.dup
-  #  case match
-  #  when /\Aamp\z/ni           then '&'
-  #  when /\Aquot\z/ni          then '"'
-  #  when /\Agt\z/ni            then '>'
-  #  when /\Alt\z/ni            then '<'
-  #  #when /\A#(\d+)\z/n         then Integer($1).chr
-  #  when /\A#x([0-9a-f]+)\z/ni then $1.hex.chr
-  #  else
-  #    ' '
-  #  end
-  #}
-  HTMLEntities.new.decode(string)
+def unescapeHTML(str)
+  HTMLEntities.new.decode(str)
+  #CGI.unescapeHTML(str)
 end 
 
 def Codes(s) #irssi: /RECODE ADD #sevk gbk
@@ -56,16 +42,17 @@ end
 def readDicA()
   if (File.exist?Fi1 )
     IO.read(Fi1)
-  elsif  (File.exist?Fi2 )
+  elsif (File.exist?Fi2 )
     IO.read(Fi2)
   else
-    return 'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
+    'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
   end
 end
 def loadDic()
   $str1 = readDicA
   puts 'Dic load [ok]'
 end
+
 def safe(level)
   result = nil
   Thread.start {
@@ -102,7 +89,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
     #puts reader.title.to_s.size
     $ub = "新⇨ #{reader.title}\r#{reader.link}\r#{reader.description}"
     $ub = unescapeHTML($ub)
-    $ub.gsub!(/<.+>/,' ')
+    $ub.gsub!(/<.+?>/,' ')
     break
   end
   #puts re[0].title.to_s + " == "
@@ -115,6 +102,27 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
   end
   #puts $ub
   $ub
+end
+
+def getGoogle_tran(word)'google 翻译
+    word.gsub!(/['&]/,'"')
+    if word =~/[\x7f-\xff]/#有中文
+      flg = 'zh-CN%7Cen'
+      #flg = '#auto|en|' + word ; puts '中文>英文'
+    else
+      flg = 'en%7Czh-CN'
+      #flg = '#auto|zh-CN|' + word
+    end
+    word = URI.encode(word)
+    #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
+
+    Net::HTTP.start('translate.google.cn') {|http|
+      resp, data = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
+      return resp.body
+    }
+
+    #url = "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=#{word}&langpair=#{flg}"
+    #return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
 end
 
 def gettitle(url)
@@ -199,7 +207,6 @@ def getGoogle_api(word, start)
     result.each do |key|
       printf("%s = %s\n", key, result.send(key))
       $re = result.send('snippet') + ' ' + result.send('url')
-      #~ $re = $re + result.send(key).to_s + " "
     end
   end
   return $re.gsub(/<(.*?)>/,'')
@@ -336,37 +343,6 @@ def getGoogle(word,flg)
       #puts '结果长度=' + re.to_s.size.to_s
     }
     return re
-end
-
-def getGoogle_tran(word)
-    word.gsub!(/['&]/,'"')
-    if word =~/[\x7f-\xff]/#有中文
-      flg = 'zh-CN%7Cen'
-      #flg = '#auto|en|' + word ; puts '中文>英文'
-    else
-      flg = 'en%7Czh-CN'
-      #flg = '#auto|zh-CN|' + word
-    end
-    word = URI.encode(word)
-    #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
-    url = "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=#{word}&langpair=#{flg}"
-
-    return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
-
-    open( URI.encode(c),
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=> URI.encode(c),
-    'Accept-Language'=>'zh-cn',
-    'Accept-Encoding'=>'zip,deflate',
-    'User-Agent'=> UserAgent
-    ) {|f|
-        html=f.read().gsub!(/\s/,' ')
-        puts html.match(/result_box dir="ltr">(.*?)<\/div><\/td>/i)[0]
-        return nil if $1 == nil
-        $re =  $1[0,296].gsub(/＃|#/,'')
-        $re = unescapeHTML($re)
-    }
-    $re
 end
 
 def getBaidu(word)

@@ -1,8 +1,8 @@
 #!/usr/bin/ruby -w
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 80 #75
-Maxflood = 37   #40
+Maxfloodme = 81 #75
+Maxflood = 38   #40
 Initflood = 88 #83
 Maxnamed = 130
 
