@@ -104,7 +104,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
   $ub
 end
 
-def getGoogle_tran(word)'google 翻译
+def getGoogle_tran(word) #google 翻译
     word.gsub!(/['&]/,'"')
     if word =~/[\x7f-\xff]/#有中文
       flg = 'zh-CN%7Cen'

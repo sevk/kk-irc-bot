@@ -531,7 +531,7 @@ class IRC
       return nil if s.size < 10
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ '
+      s1= ' 我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ '
       msg to,"#{s1}"
     when /^`rst(.+)$/i #restart      
       tmp=$1
