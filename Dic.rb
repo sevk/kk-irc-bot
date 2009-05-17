@@ -10,16 +10,19 @@ require 'rss/2.0'
 #require 'cgi'
 
 begin require 'rubygems' ;rescue LoadError ;end
+
 #sudo gem install htmlentities
 require 'htmlentities'
 
-begin
-  require 'charguess'
+#begin #找不到库时,错误处理.
+  #require 'charguess'
+
   #可用这个替代gem install rchardet
+  require 'rchardet'
   #CharDet.detect("中文")["encoding"]
-rescue Exception => detail
-  $need_Check_code = false
-end
+#rescue Exception => detail
+  #$need_Check_code = false
+#end
 
 #UserAgent= 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.7) Gecko/2009030422 Ubuntu/8.04 (hardy) Firefox/3.0.7' unless defined?(UserAgent)
 UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
@@ -35,8 +38,15 @@ def unescapeHTML(str)
   #CGI.unescapeHTML(str)
 end 
 
-def Codes(s) #irssi: /RECODE ADD #sevk gbk
-  return CharGuess::guess(s).to_s
+#irssi: /RECODE ADD #sevk gbk
+if defined?CharGuess 
+  def Codes(s)
+    return CharGuess::guess(s).to_s
+  end
+else
+  def Codes(s)
+    CharDet.detect(s)["encoding"].to_s.upcase
+  end
 end
 
 def readDicA()
@@ -411,6 +421,13 @@ def getBaidu_tran(word,en=true)
     $re
 end
 
+last_time_min = Time.now
+def time_min_ai()
+  if Time.now - last_time_min > 60
+    last_time_min = Time.now
+    "#{Time.now.strftime('[%H:%M]')}"
+  end
+end
 def time_min()
   "#{Time.now.strftime('[%H:%M]')}"
 end

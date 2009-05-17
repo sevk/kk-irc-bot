@@ -64,7 +64,7 @@ class IRC
     @pass = pass
     @str_user= user
     @channel = channel
-    charset='UTF-8' if charset == 'utf-8' ||  charset == 'utf8'
+    charset='UTF-8' if charset == 'utf-8' ||  charset =~ /utf8/i
     @charset = charset
     $notitle = true if @server =~ NoTitle
     puts "$notitle = #{$notitle}" #不读取url title
@@ -231,25 +231,26 @@ class IRC
       from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;b5=$5.to_s.untaint
       return 11 if b3== '59.36.101.19'#不处理U用户
       str= b5.gsub(/[^\x7f-\xff]+/,'')#只取中文字符
-      return 3 if str.size < 6 #太短
+      return 3 if str.size < 4 #太短
       tmp=str
       while str.size < 23
-        str +=  tmp
+        str += tmp
       end
       tmp=Codes(str) #encode检测
       if tmp != @charset && tmp !~ /IBM855|windows-1252/ && tmp != '' 
         p b5
         begin
-          if tmp !~/gb(.*)/i
-            b5=''
+          if tmp =~/gb(.*)/i
+            #b5=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",b5).strip
+            b5=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",b5).strip
           else
-            b5=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",b5).strip
+            b5=''
           end
         rescue Exception => detail
           puts detail.message()
         end
         #send "Notice #{b1} :请用 #{@charset}编码,不要用 #{tmp}"
-        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp}? But we say #{@charset} here!"
+        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp} ? But we say #{@charset} here !"
         return nil
       else
         return 4 #编码正常
@@ -543,7 +544,7 @@ class IRC
       load 'Dic.rb'
       load 'irc_user.rb'
       loadDic
-      msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",1)
+      msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",0)
     else
       puts("#{from} #{to} #{s}") #if $SAFE == 1
       return 1#not match dic_event
