@@ -2,7 +2,7 @@
 #51070540@qq.com ; sevkme@gmail.com
 
 Maxfloodme = 81 #75
-Maxflood = 38   #40
+Maxflood = 39   #40
 Initflood = 88 #83
 Maxnamed = 130
 
@@ -184,10 +184,9 @@ class ALL_USER
   end
   def completename(s)
     return s if !s or s=='' or getindex(s)
-    tmp=''
+    tmp='没这个人'
     @index.each_key { |x| (tmp= x;break)if x.to_s =~ /#{Regexp::escape s}/i }
     p '----------completename----'
-    p tmp
     return tmp
   end
   def setip(nick,name,ip)

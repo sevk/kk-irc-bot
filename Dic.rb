@@ -127,7 +127,7 @@ def getGoogle_tran(word) #google 翻译
     #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
 
     Net::HTTP.start('translate.google.cn') {|http|
-      resp, data = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
+      resp = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
       return resp.body
     }
 
@@ -421,18 +421,21 @@ def getBaidu_tran(word,en=true)
     $re
 end
 
-last_time_min = Time.now
+$last_time_min = Time.now
 def time_min_ai()
-  if Time.now - last_time_min > 60
-    last_time_min = Time.now
-    "#{Time.now.strftime('[%H:%M]')}"
+  if Time.now - $last_time_min > 60
+    $last_time_min = Time.now
+    return "　#{Time.now.strftime('[%H:%M]')}"
   end
 end
 def time_min()
   "#{Time.now.strftime('[%H:%M]')}"
 end
 def chr_hour()
-  "\343\215"+ (Time.now.hour + 0230).chr
+  if Time.now - $last_time_min > 600
+    $last_time_min = Time.now
+    "\343\215"+ (Time.now.hour + 0230).chr
+  end
 end
 
 def host(domain)#处理域名

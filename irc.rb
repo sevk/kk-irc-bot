@@ -46,7 +46,7 @@ loadDic
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
 NoTitle=/fire|oftc/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|Psycho/i
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|^O_|Psycho/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 
@@ -72,7 +72,7 @@ class IRC
 
     timer1 = Thread.new do
       loop do
-        sleep(2200 + rand(1900))
+        sleep(1800 + rand(1900))
         if $need_say_feed
           begin
             tmp = get_feed 
@@ -164,11 +164,11 @@ class IRC
     when '|'#公共
       sto='PRIVMSG'
     when '>' #小窗
-      sto='PRIVMSG'
-      #sto='PRIVMSG' ;to=b7;tellSender=true
+      #sto='PRIVMSG'
+      sto='PRIVMSG' ;to=b7;tellSender=true
     when /[#\@]/ #notic
-      sto='PRIVMSG'
-      #sto='notice' ;to=b7;tellSender=true
+      #sto='PRIVMSG'
+      sto='notice' ;to=b7;tellSender=true
     else
       sto='PRIVMSG'
       to=from if !pub
@@ -188,6 +188,7 @@ class IRC
       when 20 : re = $u.igetlastsay(c).to_s
       when 21 : re = $u.ims(c).to_s
       when 22
+        c =$u.completename(c)
         ip = $u.getip(c)
         puts 'ip=' + ip.to_s
         if ip =~ /^gateway\/|mibbit\.com/i#自动whois mibbit 用户
@@ -240,7 +241,7 @@ class IRC
       if tmp != @charset && tmp !~ /IBM855|windows-1252/ && tmp != '' 
         p b5
         begin
-          if tmp =~/gb(.*)/i
+          if tmp =~/^gb.+/i
             #b5=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",b5).strip
             b5=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",b5).strip
           else
@@ -337,6 +338,7 @@ class IRC
             $u.floodreset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
             msg(a4,"#{a1}, ...超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
+            kick a1
             return nil
           end
         end
@@ -364,9 +366,8 @@ class IRC
           return
         when /badgirl/i
           $need_Check_code=false
-        when /crazyghost/i
+        when /crazyghost|u_b|^O_/i
           $need_say_feed=false
-          #msg(to,"每小时取一个论坛最新帖功能自动关闭.",0)
           $notitle=true
       end
       
@@ -384,9 +385,8 @@ class IRC
       case from
         when /badgirl/i
           $need_Check_code=true
-        when /crazyghost/i
+        when /crazyghost|^O_|u_b/i
           $need_say_feed=true
-          #msg(to,"每小时取一个论坛最新帖功能自动打开.",0)
           $notitle=false
       end
 
@@ -410,8 +410,9 @@ class IRC
       #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
       from=$1;chan=$4;tag=$5;reason=$6
       puts 'Kick ' + tag.to_s + ' ' +  reason.to_s 
-      if tag =~ /u_b/ 
+      if tag =~ /u_b|^O_/ 
         $notitle=false
+        $need_say_feed=true
       end
     else
       return 1 # not match
@@ -433,7 +434,7 @@ class IRC
       url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
       Thread.new do
         #priority = 1
-        puts "#{from} thread.new in matched url #{url} "  
+        #puts "#{from} thread.new in matched url #{url} "  
         Thread.exit if $notitle
         Thread.exit if from =~ BotList
         Thread.exit if url =~ /past/i 
@@ -451,14 +452,15 @@ class IRC
           #puts $ti + ' is title'
           $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
           #$ti.gsub!(/\sUbuntu中文/i,'')
-          Thread.exit if $ti !~ TiList and url !~ UrlList
-          if s =~ /#{Regexp::escape $ti[$ti.size/2,9]}/i#已经发了就不说了
-            #puts '已经发了标题' + $ti[3,9]
-          else
-            msg(to,"⇪ 网址标题: #{$ti}",0) 
+          if $ti =~ TiList || url =~ UrlList
+            if s =~ /#{Regexp::escape $ti[$ti.size/2,9]}/i#已经发了就不说了
+              #puts '已经发了标题' + $ti[3,9]
+            else
+              msg(to,"⇪ 网址标题: #{$ti}",0) 
+            end
           end
         end
-        Thread.exit
+        puts("#{to} #{from} #{s}") #if $SAFE == 1
       end
       return 2
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
@@ -486,6 +488,7 @@ class IRC
       sayDic(1,from,to,"define: #{w} |")
       puts '什么是 ' + s
     when /^(.*?)[\s:,](.+)是什么[\?？]?$/i #是什么
+      #if $u.completename($1) == $1 
       if $1 
         return
       else
@@ -546,7 +549,7 @@ class IRC
       loadDic
       msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",0)
     else
-      puts("#{from} #{to} #{s}") #if $SAFE == 1
+      puts("#{to} #{from} #{s}") #if $SAFE == 1
       return 1#not match dic_event
     end
   end
@@ -576,8 +579,10 @@ class IRC
       if !@Named
         if pos == 353
           $need_Check_code=false if tmp =~ /badgirl/i
-          $need_say_feed=false if tmp =~ /crazyghost/i
-          $notitle=true if tmp =~ /u_b/i
+          if tmp =~ /u_b|^O_/i
+            $need_say_feed=false
+            $notitle=true 
+          end
         end
       end
       if pos == 901
@@ -639,7 +644,7 @@ class IRC
 
       case flag
       when 0
-        send "PRIVMSG #{to} :#{sSay} #{chr_hour}"
+        send "PRIVMSG #{to} :#{sSay} #{time_min_ai}"
       when 5
         send "JOIN #{@channel}"
         send "PRIVMSG nickserv :id #{@pass}";sleep 0.1
