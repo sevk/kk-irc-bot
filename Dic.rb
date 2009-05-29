@@ -33,6 +33,14 @@ Fi2="UBUNTU新手资料.txt"
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = nil
 
+def URLDecode(str)
+   str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
+end
+   
+def URLEncode(str)
+   str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x[0]) }  
+end
+
 def unescapeHTML(str)
   HTMLEntities.new.decode(str)
   #CGI.unescapeHTML(str)
@@ -160,9 +168,9 @@ def gettitle(url)
     rescue Exception => detail
         puts detail.message()
     end
-  if url.index(/\.bbs\.net|autoer\.cn/i) != nil #某些网站防刷
-    sleep 2.1
-  end
+  #if url.index(/\.bbs\.net|autoer\.cn/i) != nil #某些网站防刷
+    #sleep 2.1
+  #end
   uri.open(
     'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*',
     'Referer'=> URI.escape(url) ,
@@ -180,7 +188,7 @@ def gettitle(url)
       #~ p f.last_modified    # Thu Dec 05 02:45:02 UTC 2002
   }
   if $istxthtml then
-    a=uri.read[0,16095].gsub(/\s+/,' ')#8095
+    a=uri.read[0,8095].gsub(/\s+/,' ')#8095
     a=~ /<title>(.*?)<\/title>/i
     title=$1.to_s
     if ''==title
@@ -423,7 +431,7 @@ end
 
 $last_time_min = Time.now
 def time_min_ai()
-  if Time.now - $last_time_min > 60
+  if Time.now - $last_time_min > 180
     $last_time_min = Time.now
     return "　#{Time.now.strftime('[%H:%M]')}"
   end

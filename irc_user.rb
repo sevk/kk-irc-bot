@@ -77,7 +77,7 @@ class ALL_USER
   def sayorder()
      
   end
-  def setLastSay=(nick,w)
+  def lastSay=(nick,w)
     $lastsay[getindex(nick)]=w
   end
   def setLastSay(nick,w)
