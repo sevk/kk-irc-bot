@@ -180,11 +180,11 @@ class ALL_USER
     return @name[getindex(nick)]
   end
   def all_nick()
-    @index
+    @index.keys
   end
   def completename(s)
     return s if !s or s=='' or getindex(s)
-    tmp='没这个人'
+    tmp='somebody'
     @index.each_key { |x| (tmp= x;break)if x.to_s =~ /#{Regexp::escape s}/i }
     p '----------completename----'
     return tmp

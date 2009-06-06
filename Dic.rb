@@ -8,6 +8,7 @@ require 'net/http'
 require 'rss/1.0'
 require 'rss/2.0'
 #require 'cgi'
+require 'base64'
 
 begin require 'rubygems' ;rescue LoadError ;end
 
@@ -16,7 +17,6 @@ require 'htmlentities'
 
 #begin #找不到库时,错误处理.
   #require 'charguess'
-
   #可用这个替代gem install rchardet
   require 'rchardet'
   #CharDet.detect("中文")["encoding"]
@@ -28,17 +28,18 @@ require 'htmlentities'
 UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
-#~ require 'google'
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = nil
 
 def URLDecode(str)
-   str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
+  #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
+  URI.unescape(str)
 end
    
 def URLEncode(str)
-   str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x[0]) }  
+  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x[0]) }  
+  URI.escape(str)
 end
 
 def unescapeHTML(str)
@@ -46,7 +47,7 @@ def unescapeHTML(str)
   #CGI.unescapeHTML(str)
 end 
 
-#irssi: /RECODE ADD #sevk gbk
+#如果引用了CharGuess库,就调用CharGuess.否则调用CharDet.detect
 if defined?CharGuess 
   def Codes(s)
     return CharGuess::guess(s).to_s
@@ -57,6 +58,7 @@ else
   end
 end
 
+#如果当前目录存在UBUNTU新手资料.txt,就读取.
 def readDicA()
   if (File.exist?Fi1 )
     IO.read(Fi1)
@@ -71,6 +73,7 @@ def loadDic()
   puts 'Dic load [ok]'
 end
 
+#使用安全进程进行eval操作
 def safe(level)
   result = nil
   Thread.start {
@@ -118,11 +121,11 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
   else
     $old_feed_size = $ub.size
   end
-  #puts $ub
-  $ub
+  return $ub
 end
 
-def getGoogle_tran(word) #google 翻译
+#google 翻译
+def getGoogle_tran(word) 
     word.gsub!(/['&]/,'"')
     if word =~/[\x7f-\xff]/#有中文
       flg = 'zh-CN%7Cen'
@@ -143,6 +146,7 @@ def getGoogle_tran(word) #google 翻译
     #return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
 end
 
+#取标题
 def gettitle(url)
     uri = URI.parse(url.untaint.strip)
     #puts uri.host.to_s + ' ' + uri.path.to_s
@@ -249,6 +253,7 @@ def getPY(c)
     return re
   end
 end
+
 def getTQFromName(nick)
   ip=$u.getip(nick).to_s
   p 'getip=' + ip
@@ -414,7 +419,6 @@ def getBaidu_tran(word,en=true)
         html.gsub!(/\s+/,' ')
         #html = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",html.to_s).to_s
         re = html.match(/class="wd">(.+?)pronu/i)[1].to_s + ' '
-        #puts utf8(re)
         re += html.match(/class="explain">(.+?)<script/i)[1]
         re.gsub!(/<.*?>/,'')
         re = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",re).to_s
@@ -431,7 +435,7 @@ end
 
 $last_time_min = Time.now
 def time_min_ai()
-  if Time.now - $last_time_min > 180
+  if Time.now - $last_time_min > 600
     $last_time_min = Time.now
     return "　#{Time.now.strftime('[%H:%M]')}"
   end
@@ -440,7 +444,7 @@ def time_min()
   "#{Time.now.strftime('[%H:%M]')}"
 end
 def chr_hour()
-  if Time.now - $last_time_min > 600
+  if Time.now - $last_time_min > 1200
     $last_time_min = Time.now
     "\343\215"+ (Time.now.hour + 0230).chr
   end
@@ -472,44 +476,16 @@ def hostA(domain)#处理IP 或域名
   tmp.gsub!(/IANA/i,'火星')
   tmp
 end
-def utf8(s)
-  return Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",s).to_s
+
+#为字符串添加2个方法,用于gb18030和utf8互转.
+class String
+  def gb_to_utf8
+    Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
+  end
+  def utf8_to_gb
+    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
+  end
 end
-def googleFinance(word)
-  #~ return nil # debuging
-  #~ return nil if word == nil
-  word='上证指数' if word.to_s==''
-    c=  'http://finance.google.cn/finance?q=' + word + '&hl=zh-cn'
-    c= URI.encode(c)  ; p c
-    open( c,
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=> c,
-    'Accept-Language'=>'zh-cn',
-    'Accept-Encoding'=>'deflate',
-    'User-Agent'=> UserAgent
-    ) {|f|
-        html=f.read()[3048,20202]
-        html.gsub!(/\s/,' ')
-        html = unescapeHTML(html)
-        re = '' ; a2 = '' ; p
-        #~ re = html.match(/(http:\/\/\S+[^\s*]?)(.*?)/i).to_s
-        html=~ /<h1>(.*?)<\/h1>/i
-        name = $1 + '：'
-        html.match(/MARKET\ DATA\ AND\ CHART(.*?)table(.*?)<tr>(.*?)<\/tr>(.*?)<\/tr>(.*?)<\/tr>(.*?)<\/tr>/i)
-        a1=$1;a2=$2;a3=$3;a4=$4;a5=$5;a6=$6
-        #~ puts a3.to_s.strip.gsub(/<.*?>/,'')   ; puts a4.to_s.strip.gsub(/<.*?>/,'')
-        #~ puts a5.to_s.strip.gsub(/<.*?>/,'')   ; puts a6.to_s.strip.gsub(/<.*?>/,'')
-        re = name + a3.to_s.strip.gsub(/<.*?>/,'')  +  a4.to_s.strip.gsub(/<.*?>/,'')  + \
-        a5.to_s.strip.gsub(/<.*?>/,'') + a6.to_s.strip.gsub(/<.*?>/,'')
-        re= re.gsub(/\s+/i,' ')
-        re.gsub!(/日(.*?)收盘/,'日收盘')
-        re.gsub!(/：\s/,':')
-        $re =  re[0,600]
-    }
-    if $re.size < 20
-      puts $re
-      puts $re.size
-      return nil
-    end
-    $re
-end
+
+
+

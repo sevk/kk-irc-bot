@@ -14,7 +14,8 @@ load 'irc_user.rb'
 require "ipwry.rb"
 require 'date'
 load 'Dic.rb'
-#require "readline"
+require "monitor"
+require "readline"
 
 require 'find'
 #载入plugin
@@ -32,7 +33,7 @@ Ver='v0.14' unless defined?(Ver)
 
 Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
-Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
+Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\37\41-\177]+?)\|(.+?)\|/
 
 Minsaytime= 9
 #puts "最小说话时间=#{Minsaytime}"
@@ -54,6 +55,8 @@ UrlList=TiList
 #irc类
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
+    @tmp = ''
+    @exit = false
     $otherbot_said = nil
     @Motded = false
     @Named = false
@@ -74,7 +77,7 @@ class IRC
 
     timer1 = Thread.new do#timer 1 , interval = 2600
       loop do
-        sleep(1800 + rand(1900))
+        sleep(1900 + rand(1900))
         p Time.now
         if $need_say_feed
           begin
@@ -89,6 +92,7 @@ class IRC
       end
     end
   end
+  
   #kick踢出
   def kick(s)
     send "kick #@channel #{s}"
@@ -103,6 +107,7 @@ class IRC
     $otherbot_said=false
     do_after_sec(who,sSay,20,delay)
   end
+
   #发送msg消息,随机 delay 秒数.
   def msg(who,sSay='',delay=4)
     return if sSay == ''
@@ -112,16 +117,21 @@ class IRC
   def say(s)
     send "PRIVMSG #{@channel} :#{s}"
   end
-  #发送tcp数据
+
+  #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    #s=s[0,450]#只发送450个byte
+    s=s[0,460]
     if @charset == 'UTF-8'
-      #local是UTF-8时,一个汉字是3个byte.
-      s=s[0,450 - s[0,450].gsub(/[^\x7f-\xff]+/,'').size % 3] if s.size > 449
+      #s.scan(/./u)[0,150].join # 也可以用/./u
+      if s.size > 450
+        while s[-3,1] !~ /[\xe0-\xea]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
+          s.chop!
+        end
+      end
     else
-      s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s)
-      s=s[0,450 - s[0,450].gsub(/[^\x7f-\xff]+/,'').size % 2] if s.size > 449
+      #非utf-8的聊天室就直接截断了
+      s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
     end
     @irc.send("#{s}\n", 0)
     puts "----> #{s}"
@@ -129,10 +139,12 @@ class IRC
   end
 
   def connect()
+    @irc.close if defined?(@irc)
     @irc = TCPSocket.open(@server, @port)
     send "NICK #{@nick}"
     send @str_user
   end
+
   #eval
   def evaluate(s)
     p s;
@@ -285,11 +297,11 @@ class IRC
       tmp = check_dic(a5,a1,a1)
       if tmp.class == Fixnum
         if a5.size < 6 and rand(10) > 6
-          send "PRIVMSG #{from} :不懂什么是#{sSay},请输入`help" if rand(10) > 7
+          send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10) > 7
         end
         $otherbot_said=false
         if rand(10) > 9
-          do_after_sec(from, "不好意思,我不喜欢私聊",0,10)
+          do_after_sec(from, "sleeping...",0,10)
         else
           do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
         end
@@ -305,13 +317,13 @@ class IRC
       #以我的名字开头
       if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i 
         s=$1.to_s
-        if s =~ /help|帮助|有什么功能|叫什么|几岁|\?\?/i
-          sSay = '`help '
+        if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
+          sSay = '`help |'
         end
 
         case a3
         when '59.36.101.19' #不处理U用户
-          msg(to ,"你用的是网页版本的IRC,建议你换个IRC客户端.",12) if rand(10) > 6
+          #msg(to ,"你用的是网页版本的IRC,建议你换个IRC客户端.",12) if rand(10) > 6
           return
         when /^gateway\//i
           #msg(to ,"你用的是代理或mibbit版本的IRC,建议你换个IRC客户端.",12) if rand(10) > 6
@@ -329,7 +341,7 @@ class IRC
         if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i
           sSay=$1.to_s
           if sSay.size < 6
-            send "PRIVMSG #{from} :不懂什么是#{sSay},请输入`help" if rand(10)>7 
+            send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10)>7 
           end
           #puts '消息以我名字开头'
           #$otherbot_said=false
@@ -341,7 +353,7 @@ class IRC
           if $u.saidAndCheckFlood(a1,a2,a3,sSay)
             $u.floodreset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            msg(a4,"#{a1}: ...超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
+            msg(a4,"#{a1}: ...flood ? 超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
             kick a1
             return nil
           end
@@ -354,9 +366,9 @@ class IRC
           $otherbot_said=true
           #$u.floodmereset(a1)
           return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-          send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 6
-          send "PRIVMSG #{a1} :玩Bot请去 #Sevk 频道" if rand(10) > 8
-          msg to ,"#{from},玩Bot请去 #Sevk 或 #{to}-ot 频道",0 if rand(10) > 6
+          #send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 6
+          #send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 8
+          msg to ,"#{from},sleeping ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 6
           return nil
         end
       end
@@ -381,7 +393,7 @@ class IRC
         do_after_sec(to,from + ",欢迎网页用户来IRC学习,有问题直接问.",11,25)
       end
 
-      new_Readline_complete($u.all_nick)
+      renew_Readline_complete($u.all_nick)
     when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)$/i #quit
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
       from=$1;name=$2;ip=$3;room=$5.to_s
@@ -398,7 +410,7 @@ class IRC
         $otherbot_said=true
       end
       $u.del(from,ip)
-      new_Readline_complete($u.all_nick)
+      renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
       puts s
@@ -410,6 +422,7 @@ class IRC
       if $u.chg_nick(nick,new) ==1
         $u.add(nick,name,ip)
       end
+      renew_Readline_complete($u.all_nick)
     when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i #KICK 
       #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
       from=$1;chan=$4;tag=$5;reason=$6
@@ -418,6 +431,7 @@ class IRC
         $notitle=false
         $need_say_feed=true
       end
+      renew_Readline_complete($u.all_nick)
     else
       return 1 # not match
     end
@@ -465,7 +479,7 @@ class IRC
               if s =~ /#{Regexp::escape $ti[$ti.size/2,9]}/i#已经发了就不说了
                 #puts '已经发了标题' + $ti[3,9]
               else
-                msg(to,"⇪ 网址标题: #{$ti}",0) 
+                msg(to,"⇪ title: #{$ti}",0) 
               end
             #end
           end
@@ -480,7 +494,7 @@ class IRC
         msg(to,"⇪ #{$ti}",0)
       end
       return 2
-    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
+    when /^`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       puts 'Ip ' + s
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
     when /^`tr?\s(.+?)\s?(\d?)$/i  #baidu_tran
@@ -561,7 +575,7 @@ class IRC
       load 'Dic.rb'
       load 'irc_user.rb'
       loadDic
-      msg(to,"restarted,取标题=#{not $notitle} ,读取ubfeed=#$need_say_feed ,检测编码=#$need_Check_code",0)
+      msg(to,"restarted, read_title=#{not $notitle} ,read_ub_feed=#$need_say_feed ,check_charset=#$need_Check_code",0)
     else
       puts("#{to} #{from} #{s}") #if $SAFE == 1
       return 1#not match dic_event
@@ -592,13 +606,19 @@ class IRC
         end
       end
       if !@Named
-        if pos == 353
+        case pos
+        when 353
+          @tmp += tmp + ' '
           $need_Check_code=false if tmp =~ /badgirl/i
           if tmp =~ /u_b|^O_/i
             $need_say_feed=false
             $notitle=true 
           end
-        end
+        when 366#End of /NAMES list.
+          Readline.completion_case_fold = true
+          Readline.completion_append_character = ": "
+          renew_Readline_complete(@tmp.gsub('@','').split(' '))
+        end 
       end
       if pos == 901
         @Named = true 
@@ -633,9 +653,14 @@ class IRC
     end #end case
   end #end irc_event
 
+  def save_log(s)
+
+  end
+
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     return if check_irc_event(s).class != Fixnum #服务器消息
+    save_log(s)#写入日志
     return if check_code(s).class != Fixnum #乱码
     return if check_msg(s).class != Fixnum #字典消息
   end
@@ -701,44 +726,74 @@ class IRC
     end #Thread
   end
 
-  def new_Readline_complete(w)
-    #Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
+  def renew_Readline_complete(w)
+    Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
+  end
+
+  #检测用户输入,实现IRC客户端功能.
+  def iSend(lock)
+    while true
+      Thread.pass
+      s = Readline.readline('', true)
+      next if !s
+      #s = Readline.readline('[' + @channel + '] ', true)
+      #lock.synchronize do
+        case s
+        when  /^say /
+          send "PRIVMSG #{@channel} :"+s.gsub(/^say /,"")
+        when /^:q\s?(.*?)$/i
+          tmp = $1.to_s
+          send 'quit optimize ' + tmp
+          sleep 2
+          @tServer.exit
+          @input.exit
+        when /^\/msg\s(.+?)\s(.+)$/
+          who = $1;s=$2
+          send "privmsg #{who} :#{s.strip}"
+        when /^:q\s?(.*?)$/i
+          tmp = $1.to_s
+          send 'quit optimize ' + tmp
+        when /^[\/:]/
+          send s.gsub(/^[\/:]/,"")
+        when /^`/
+          check_dic(s,@nick,@channel)
+        when /^\s/
+          send "privmsg nickserv :#{s.strip}"
+        else
+          say s# + ' ' + chr_hour
+        end
+      #end
+    end
   end
 
   #主循环
   def main_loop()
-    while true
-      #ready = select([@irc, readline("> ", true)], nil, nil, nil)
-      #ready = select([@tcp, readline("> ", true)], nil, nil, nil)
-      ready = select([@irc, $stdin], nil, nil, nil)
-      next if !ready
-      for s in ready[0]
-        if s == @irc 
-          return if @irc.eof
-          handle_server_input(@irc.gets)
-        elsif s == $stdin
-          return if $stdin.eof
+    @lock = Monitor.new
+    @input = Thread.new {
+      Thread.pass
+      iSend(@lock)
+    }
 
-          s = $stdin.gets
-          case s
-          when /^\/msg\s(.+?)\s(.+)$/
-            who = $1;s=$2
-            send "privmsg #{who} :#{s.strip}"
-          when /^:q\s?(.*?)$/i
-            tmp = $1.to_s
-            send 'quit optimize ' + tmp
-          when /^[\/:]/
-            send s.gsub(/^[\/:]/,"")
-          when /^`/
-            check_dic(s,@nick,@channel)
-          when /^\s/
-            send "privmsg nickserv :#{s.strip}"
-          else
-            say s# + ' ' + chr_hour
+    @tServer = Thread.new {
+      while true
+        #ready = select([@irc, $stdin], nil, nil, nil)
+        ready = select([@irc], nil, nil, nil)
+        exit if @exit
+        next if !ready
+        for s in ready[0]
+          if s == @irc 
+            next if @irc.eof
+            #@lock.synchronize do
+              handle_server_input(@irc.gets)
+            #end
           end
         end
       end
-    end
+    }
+    @tServer.priority = 10
+    @tServer.join
+    @input.priority = -100000
+    @input.join
   end
 end
 
@@ -746,8 +801,12 @@ load 'default.conf'
 load ARGV[0] if ARGV[0]
 
 irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
-irc.connect()
-irc.main_loop()
+#while true
+  irc.connect()
+  irc.main_loop()
+  #p 'sleep ..'
+  #sleep 3600 * 6
+#end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 

@@ -42,10 +42,10 @@ class IpLocationSeeker
         Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",[get_country_string,get_area_string].to_s)
     rescue Interrupt
         return 'error'
-    rescue Exception => detail
-        return 'error' + detail.message().to_s
-        puts detail.message()
-        print detail.backtrace.join("\n")
+    #rescue Exception => detail
+    #    return 'error' + detail.message().to_s
+    #    puts detail.message()
+    #    print detail.backtrace.join("\n")
     #~ retry
     end
   end
