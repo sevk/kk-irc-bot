@@ -9,28 +9,47 @@ require 'rss/1.0'
 require 'rss/2.0'
 #require 'cgi'
 require 'base64'
+require 'md5'
 
-begin require 'rubygems' ;rescue LoadError ;end
+begin require 'rubygems'; rescue LoadError; end
 
 #sudo gem install htmlentities
 require 'htmlentities'
 
-#begin #找不到库时,错误处理.
-  #require 'charguess'
-  #可用这个替代gem install rchardet
-  require 'rchardet'
-  #CharDet.detect("中文")["encoding"]
-#rescue Exception => detail
-  #$need_Check_code = false
-#end
+#require 'charguess.so'
+#可用这个替代gem install rchardet
+#CharDet.detect("中文")["encoding"]
+require 'rchardet'
 
-#UserAgent= 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.7) Gecko/2009030422 Ubuntu/8.04 (hardy) Firefox/3.0.7' unless defined?(UserAgent)
 UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = nil
+
+Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
+MATCH_title_RE = /<title>(.*)<\/title>/
+Delay_do_after = 4
+Ver='v0.14' unless defined?(Ver)
+
+Re_cn=/[\x7f-\xff]/
+Http_re= /http:\/\/\S+[^\s*]/
+Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\37\41-\177]+?)\|(.+?)\|/
+
+Minsaytime= 20
+#puts "最小说话时间=#{Minsaytime}"
+$min_next_say = Time.now
+$Lsay=Time.now; $Lping=Time.now
+$lag=1
+
+#$SAFE=1 if `hostname` =~ /NoteBook/
+puts "$SAFE= #$SAFE"
+NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
+NoTitle=/fire|oftc/i
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|^O_|Psycho/i
+TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
+UrlList=TiList
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
@@ -49,10 +68,12 @@ end
 
 #如果引用了CharGuess库,就调用CharGuess.否则调用CharDet.detect
 if defined?CharGuess 
+  #当定义了CharGuess时,Codes使用CharGuess库.
   def Codes(s)
     return CharGuess::guess(s).to_s
   end
 else
+  #当定义了CharDet时,Codes使用CharDet库.
   def Codes(s)
     CharDet.detect(s)["encoding"].to_s.upcase
   end
@@ -73,7 +94,7 @@ def loadDic()
   puts 'Dic load [ok]'
 end
 
-#使用安全进程进行eval操作
+#使用安全进程进行eval操作,参数level是安全级别.
 def safe(level)
   result = nil
   Thread.start {
@@ -91,6 +112,7 @@ end
 class Rss_reader
   attr_accessor :title, :pub_date, :description, :link
 end
+#取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
   @rss_str = Net::HTTP.get(URI.parse(url))
   @rss_str = @rss_str.gsub(/\s/,' ')
@@ -124,7 +146,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
   return $ub
 end
 
-#google 翻译
+#google 全文翻译,参数可以是中文,也可以是英文.
 def getGoogle_tran(word) 
     word.gsub!(/['&]/,'"')
     if word =~/[\x7f-\xff]/#有中文
@@ -146,7 +168,7 @@ def getGoogle_tran(word)
     #return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
 end
 
-#取标题
+#取标题,参数是url.
 def gettitle(url)
     uri = URI.parse(url.untaint.strip)
     #puts uri.host.to_s + ' ' + uri.path.to_s

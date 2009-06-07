@@ -26,35 +26,10 @@ Find.find(File.expand_path(File.dirname(__FILE__))+'/plugin/') do |e|
   end
 end
 
-Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
-MATCH_title_RE = /<title>(.*)<\/title>/
-Delay_do_after = 4
-Ver='v0.14' unless defined?(Ver)
-
-Re_cn=/[\x7f-\xff]/
-Http_re= /http:\/\/\S+[^\s*]/
-Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\37\41-\177]+?)\|(.+?)\|/
-
-Minsaytime= 9
-#puts "最小说话时间=#{Minsaytime}"
-Minsaytime_forUxxxxx=8000
-$last_say_U = Time.now
-$min_next_say = Time.now
-$Lsay=Time.now; $Lping=Time.now
-$lag=1
-loadDic
-
-#$SAFE=1 if `hostname` =~ /NoteBook/
-puts "$SAFE= #$SAFE"
-NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
-NoTitle=/fire|oftc/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|^O_|Psycho/i
-TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
-UrlList=TiList
-
 #irc类
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
+    loadDic
     @tmp = ''
     @exit = false
     $otherbot_said = nil
@@ -116,6 +91,7 @@ class IRC
   end
   def say(s)
     send "PRIVMSG #{@channel} :#{s}"
+    isaid()
   end
 
   #发送tcp数据,如果长度大于460 就自动截断.
@@ -163,20 +139,21 @@ class IRC
 
   #发送字典结果 ,取字典,可以用>之类的重定向,向某人提供字典数据
   def sayDic(dic,from,to,s='')
+    direction = ''
     tellSender = false
     pub =false
     pub =true if dic == 5
 
     if s=~/(.*?)\s?([#\@|>])\s?(.*?)$/i #消息重定向
-      words=$1;b6=$2;b7=$3
+      words=$1;direction=$2.to_s;b7=$3
       if b7
         b7 =$u.completename(b7) if b7 !~ /^U\d{5}$/
       end
     else
       words=s
     end
-    puts "words=#{words},flag=#{b6},to=#{to},s=#{words}"
-    case b6
+
+    case direction
     when '|'#公共
       sto='PRIVMSG'
     when '>' #小窗
@@ -200,7 +177,7 @@ class IRC
       when 5#拼音
         re = "#{getPY(c)}";c=''; b7= from +'说 ';
       when 6 : re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
-      when 10 : re = hostA(c,rand(10))
+      when 10 : re = hostA(c)
       when 20 : re = $u.igetlastsay(c).to_s
       when 21 : re = $u.ims(c).to_s
       when 22
@@ -340,7 +317,7 @@ class IRC
         #非字典消息
         if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i
           sSay=$1.to_s
-          if sSay.size < 6
+          if sSay.size < 3
             send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10)>7 
           end
           #puts '消息以我名字开头'
@@ -368,7 +345,7 @@ class IRC
           return if to =~ NoFloodAndPlay # 不检测flood和玩bot
           #send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 6
           #send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 8
-          msg to ,"#{from},sleeping ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 6
+          msg to ,"#{from},sleeping ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 5
           return nil
         end
       end
@@ -390,7 +367,7 @@ class IRC
       if $u.add(from,name,ip) == 19
         return if rand(10) > 2
         $otherbot_said=false
-        do_after_sec(to,from + ",欢迎网页用户来IRC学习,有问题直接问.",11,25)
+        #do_after_sec(to,from + ",欢迎网页用户来IRC学习,有问题直接问.",11,25)
       end
 
       renew_Readline_complete($u.all_nick)
@@ -462,13 +439,9 @@ class IRC
           Thread.exit if from =~ BotList
           Thread.exit if url =~ /past/i 
           $ti = nil
-          Timeout.timeout(5) {
-            $ti = gettitle(url)
-          }
+          Timeout.timeout(5) { $ti = gettitle(url) }
           if $ti[0] == 61 #'='
-            Timeout.timeout(5) {
-              $ti = gettitle($ti[1,$ti.size])
-            }
+            Timeout.timeout(5) { $ti = gettitle($ti[1,$ti.size]) }
           end
 
           if $ti 
@@ -554,17 +527,17 @@ class IRC
       sayDic(22,from,to,$1)
     when /^(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ',您 ◆◆◆ 好.',10,11) if rand(10) > 7
+      do_after_sec(to,from + ', hi .',10,11) if rand(10) > 7
     when /^((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ',你好。',10,11)
+      do_after_sec(to,from + ', hello .',10,11)
     when /^(wo|ni|ta|shi|ru|zen|hai|neng|shen|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.size < 12
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= ' 我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ '
-      msg to,"#{s1}"
+      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
+      msg to,"#{s1}",0
     when /^`rst(.+)$/i #restart      
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
@@ -615,13 +588,13 @@ class IRC
             $notitle=true 
           end
         when 366#End of /NAMES list.
-          Readline.completion_case_fold = true
+          @Named = true 
+          #Readline.completion_case_fold = true
           Readline.completion_append_character = ": "
           renew_Readline_complete(@tmp.gsub('@','').split(' '))
         end 
       end
-      if pos == 901
-        @Named = true 
+      if pos == 901 #901 是 nick 验证完成.
         puts "是否检测乱码= #{$need_Check_code}"
         puts 'feed功能= ' + $need_say_feed.to_s
         puts 'notitle= ' + $notitle.to_s 
@@ -665,16 +638,20 @@ class IRC
     return if check_msg(s).class != Fixnum #字典消息
   end
 
+  def isaid(second=3)
+    $min_next_say=Time.now + Minsaytime + second
+  end
+
   #延时发送
   def do_after_sec(to,sSay,flg,second)
-    puts "need_do #{flg} #{second}"
+    #puts "need_do #{flg} #{second}"
     Thread.new do
       flag=flg
       if Time.now < $min_next_say
         puts '还没到下次说话的时间'
         Thread.exit
       else
-        $min_next_say=Time.now + Minsaytime + second
+        isaid(second)
       end
       if second < Delay_do_after
         sleep second
@@ -685,7 +662,8 @@ class IRC
 
       case flag
       when 0
-        send "PRIVMSG #{to} :#{sSay} #{time_min_ai}"
+        #send "PRIVMSG #{to} :#{sSay} #{time_min_ai}"
+        send "PRIVMSG #{to} :#{sSay}"
       when 5
         send "JOIN #{@channel}"
         send "PRIVMSG nickserv :id #{@pass}";sleep 0.1
@@ -711,15 +689,6 @@ class IRC
           tmp="还有#{tmp/60/60/24}天"
         end
         send "privmsg #{to} :#{sSay} #{chr_hour} #{Time.now.strftime('[%H:%M]')} \0039新年快乐，离除夕0点#{tmp}\017"
-      when 11
-        if Time.now < $last_say_U + Minsaytime_forUxxxxx + rand(4600) + 900
-          #~ puts '还没到下次新手打招呼时间'
-          Thread.exit
-        end
-        $last_say_U = Time.now
-        sSay += '快速配置指南 http://wiki.ubuntu.org.cn/Qref :)' if rand(10) > 5
-
-        send "privmsg #{to} :#{sSay} #{chr_hour}  #{Time.now.strftime('[%H:%M]')}"
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
       end
@@ -744,8 +713,9 @@ class IRC
         when /^:q\s?(.*?)$/i
           tmp = $1.to_s
           send 'quit optimize ' + tmp
+          @exit = true
+          p 'exiting...'
           sleep 2
-          @tServer.exit
           @input.exit
         when /^\/msg\s(.+?)\s(.+)$/
           who = $1;s=$2
@@ -774,11 +744,13 @@ class IRC
       iSend(@lock)
     }
 
-    @tServer = Thread.new {
+    @tServer = Thread.new do
       while true
         #ready = select([@irc, $stdin], nil, nil, nil)
         ready = select([@irc], nil, nil, nil)
-        exit if @exit
+        if @exit
+          Thread.exit 
+        end
         next if !ready
         for s in ready[0]
           if s == @irc 
@@ -789,8 +761,8 @@ class IRC
           end
         end
       end
-    }
-    @tServer.priority = 10
+    end
+    #@tServer.priority = 10
     @tServer.join
     @input.priority = -100000
     @input.join
