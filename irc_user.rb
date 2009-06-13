@@ -1,9 +1,9 @@
-#!/usr/bin/ruby
+#!/usr/bin/ruby -w
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 75 #75
+Maxfloodme = 81 #75
 Maxflood = 39   #40
-Initflood = 83 #83
+Initflood = 88 #83
 Maxnamed = 130
 
 class ALL_USER
@@ -22,7 +22,7 @@ class ALL_USER
     @tWarned=Array.new
     $lastsay=Array.new
 
-    puts 'users class start' if $debug
+    puts 'users class start'
   end
   def havenick(nick)
     @index.include?(nick)
@@ -41,7 +41,7 @@ class ALL_USER
       #不记录U用户
       return 19
     end
-    #puts '6 add ' +  nick if $debug
+    #~ puts '6 add ' +  nick
     return if nick == nil
     if @index.include?(nick)
       #~ puts nick + '已经存在'
@@ -55,7 +55,7 @@ class ALL_USER
     @time_in[@pos_write]= t
     @timelastsay[@pos_write]= t
     @timelastsayme[@pos_write]= t
-    @timelast6me[@pos_write]= Initflood
+    @timelast6me[@pos_write]= Initflood * 2
     @timelast6say[@pos_write]= Initflood
     @tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=''
@@ -100,13 +100,13 @@ class ALL_USER
   def check_flood_me(nick)#更严格
     index = getindex(nick)
     return false if index ==nil
-    p "~me #{nick} #{@timelast6me[index]}" if $debug
+    #~ p '5 ' + nick + @timelast6me[index].to_s
     return @timelast6me[index] < Maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
     return false if index ==nil
-    p "~ #{nick} #{@timelast6say[index]}" if $debug
+    #~ p '4 ' + @timelast6say[index].to_s
     return @timelast6say[index] < Maxflood
   end
 
@@ -172,7 +172,7 @@ class ALL_USER
   end
   def del(nick,ip)
     return #if ip != '59.36.101.19'
-    #return floodreset(nick)
+ #   return floodreset(nick)
     #index = getindex(nick)
     #@index.delete(nick)
   end
@@ -191,12 +191,12 @@ class ALL_USER
   end
   def setip(nick,name,ip)
     index = getindex(nick)
-    return add(nick,name,ip) unless index
+    return add(nick,name,ip) if !index
     @addr[index]=ip
   end
   def getip(nick)#记忆的IP
     index = getindex(nick)
-    return unless index
+    return if !index
     return @addr[index].to_s
   end
   def ims(nick)
