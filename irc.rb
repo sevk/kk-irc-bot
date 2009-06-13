@@ -16,15 +16,7 @@ require 'date'
 load 'Dic.rb'
 require "monitor"
 require "readline"
-
-require 'find'
-#载入plugin
-Find.find(File.expand_path(File.dirname(__FILE__))+'/plugin/') do |e|
-  if File.extname(e) == '.rb'
-    p ' load:'+ e
-    load e
-  end
-end
+#load 'plugin.rb'
 
 #irc类
 class IRC
@@ -52,7 +44,7 @@ class IRC
 
     timer1 = Thread.new do#timer 1 , interval = 2600
       loop do
-        sleep(1900 + rand(1900))
+        sleep(1800 + rand(1900))
         p Time.now
         if $need_say_feed
           begin
@@ -96,14 +88,14 @@ class IRC
 
   #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
-    s.gsub!(/\s+/,' ')
-    s=s[0,460]
+    s=s[0,460].gsub!(/\s+/,' ')
     if @charset == 'UTF-8'
       #s.scan(/./u)[0,150].join # 也可以用/./u
       if s.size > 450
         while s[-3,1] !~ /[\xe0-\xea]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
           s.chop!
         end
+        s+=' ...'
       end
     else
       #非utf-8的聊天室就直接截断了
@@ -123,11 +115,10 @@ class IRC
 
   #eval
   def evaluate(s)
-    p s;
     return '操作不安全' if s=~/pass|serv/i
     result = nil
       begin
-        p 'begin eval eval='+ s
+        p 'begin eval: '+ s
         Timeout.timeout(6) {
           result = safe(4) {eval(s).to_s[0,460]}
         }
@@ -154,7 +145,7 @@ class IRC
     end
 
     case direction
-    when '|'#公共
+    when /[\|\/\\]/#公共
       sto='PRIVMSG'
     when '>' #小窗
       #sto='PRIVMSG'
@@ -220,17 +211,12 @@ class IRC
 
   #utf8等乱码检测
   def check_code(s)
-    return 2 if !$need_Check_code #not match
+    return nil if !$need_Check_code #not match
     if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要检测
       from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;b5=$5.to_s.untaint
-      return 11 if b3== '59.36.101.19'#不处理U用户
-      str= b5.gsub(/[^\x7f-\xff]+/,'')#只取中文字符
-      return 3 if str.size < 5 #太短
-      tmp=str
-      while str.size < 23
-        str += tmp
-      end
-      tmp=Codes(str) #encode检测
+      return nil if b3== '59.36.101.19'#不处理U用户
+      tmp = guess_charset(b5).to_s
+
       if tmp != @charset && tmp !~ /IBM855|windows-1252/ && tmp != '' 
         p b5
         begin
@@ -243,44 +229,47 @@ class IRC
         rescue Exception => detail
           puts detail.message()
         end
-        #send "Notice #{b1} :请用 #{@charset}编码,不要用 #{tmp}"
-        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp} ? But we say #{@charset} here !"
-        return nil
-      else
-        return 4 #编码正常
+        send "Notice #{b1} :请用 #{@charset}编码,不要用 #{tmp}".utf8_to_gb
+        send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp} ? But we use #{@charset} !"
+        return 'matched err charset'
       end
-    else
-      return 5#不是Priv_msg
     end
+    return nil
   end
 
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
-    s.gsub!(/(deb\s|deb-src\s)http(.*)/i,'')#过滤 /deb(?:-src)?/
+    s.gsub!(/deb(-src)?\shttp(.*)/i,'')
     s.gsub!(/http(.*)\/download/,'')
-    s= Iconv.conv("UTF-8//IGNORE","#{@charset}//IGNORE",s) if @charset != 'UTF-8'
+
+    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     case s.strip
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
-      print(from,' ',s,"\n") #if $SAFE == 1
+      print("msg to me: #{from} #{s}\n".yellow) #if $SAFE == 1
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
       return if a3== '59.36.101.19'#不处理U用户
       return if a3=~ /^gateway\//i
 
       if $u.saidAndCheckFloodMe(a1,a2,a3)
-        $u.floodmereset(a1)
-        #send "PRIVMSG #{a2} :...玩Bot请去 freenode/#Sevk 频道" if rand(10) > 7
+        #$u.floodmereset(a1)
+        send "PRIVMSG #{a2} :...go to #Sevk for playing... " if rand(10) > 7
       end
+
+      if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
+        sSay = '`help |'
+      end
+
       tmp = check_dic(a5,a1,a1)
       if tmp.class == Fixnum
         if a5.size < 6 and rand(10) > 6
           send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10) > 7
         end
         $otherbot_said=false
-        if rand(10) > 9
+        if rand(10) == 9
           do_after_sec(from, "sleeping...",0,10)
         else
-          do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
+          do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if defined?$me
         end
       end
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -292,20 +281,47 @@ class IRC
       #~ $u.setip(from,name,ip)
 
       #以我的名字开头
-      if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i 
-        s=$1.to_s
-        if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
-          sSay = '`help |'
-        end
+      if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
+        s=$1.to_s.strip
+        puts "#{to} #{from} #{s}".red #if $SAFE == 1
 
         case a3
-        when '59.36.101.19' #不处理U用户
-          #msg(to ,"你用的是网页版本的IRC,建议你换个IRC客户端.",12) if rand(10) > 6
+        when '59.36.101.19' #黑名单用户
+          msg(to ,"您已经被加入黑名单",12) if rand(10) > 5
           return
         when /^gateway\//i
-          #msg(to ,"你用的是代理或mibbit版本的IRC,建议你换个IRC客户端.",12) if rand(10) > 6
+          msg(to ,"/^gateway/ 或代理已经被加入黑名单.",12) if rand(10) > 4
           return
         end 
+
+          s = '`' + s if s[0,1] != '`'
+          tmp = check_dic(s,from,to)
+          case tmp
+          when 1
+            #非字典消息
+              #$u.said(from,name,ip)
+              #$u.setLastSay(from,sSay)
+              #if $u.saidAndCheckFlood(a1,a2,a3,sSay)
+              #  $u.floodreset(a1)
+              #  return if to =~ NoFloodAndPlay # 不检测flood和玩bot
+              #  msg(a4,"#{a1}: ...flood ? 超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
+              #  kick a1
+              #  return nil
+              #end
+          when 2
+            #是title
+          else
+            puts '是字典消息' if $debug
+            if $u.saidAndCheckFloodMe(a1,a2,a3)
+              #$u.floodmereset(a1)
+              return if to =~ NoFloodAndPlay # 不检测flood和玩bot
+              $otherbot_said=true
+              send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
+              msg to ,"#{from}, play ? ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 5
+              return nil
+            end
+          end
+          return 'msg with my name:.+'
       else
         return if a3== '59.36.101.19'#不处理U用户
         return if a3=~ /^gateway\//i
@@ -316,7 +332,7 @@ class IRC
       when 1
         #非字典消息
         if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i
-          sSay=$1.to_s
+          sSay=$1.to_s.strip
           if sSay.size < 3
             send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10)>7 
           end
@@ -340,15 +356,15 @@ class IRC
       else
         #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
-          $otherbot_said=true
           #$u.floodmereset(a1)
           return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-          #send "NOTICE #{from} :玩Bot请去 #Sevk 频道" if rand(10) > 6
-          #send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 8
-          msg to ,"#{from},sleeping ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 5
+          $otherbot_said=true
+          send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
+          msg to ,"#{from}, play ? ... in channel #Sevk or #{to}-ot ",0 if rand(10) > 5
           return nil
         end
       end
+
     when /^:(.+?)!(.+?)@(.+?)\s(JOIN)\s:(.*)$/i #join
       #:U55555!i=3cbe89d2@gateway/web/ajax/mibbit.com/x-d50dbdfe784bbbd2 JOIN :#sevk
       #@gateway/tor/x-2f4b59a0d5adf051
@@ -417,7 +433,7 @@ class IRC
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     case s.strip
-    when /^\>\s?(.+)$/i #eval
+    when /^\`?>\s?(.+)$/i #eval
       puts "[4 EVAL #{$1} from #{from}]"
       tmp=evaluate($1.to_s)
       p tmp
@@ -434,14 +450,14 @@ class IRC
         url = "http#{url}"
         Thread.new do
           #priority = 1
-          puts "#{from} thread.new in matched url #{url} "  
+          puts "#{from} title for #{url} "  
           Thread.exit if $notitle
           Thread.exit if from =~ BotList
           Thread.exit if url =~ /past/i 
-          $ti = nil
-          Timeout.timeout(5) { $ti = gettitle(url) }
+
+          $ti = gettitle(url.untaint)
           if $ti[0] == 61 #'='
-            Timeout.timeout(5) { $ti = gettitle($ti[1,$ti.size]) }
+           $ti = gettitle($ti[1,$ti.size])
           end
 
           if $ti 
@@ -486,11 +502,10 @@ class IRC
     when /^[`']help\s?(.*?)$/i #help
       puts 'help ' + s
       sayDic(99,from,to,$1)
-    when /^(what is|什么是)(.+)[\?？]?$/i #什么是
+    when /^`?(什么是)(.+)[\?？]?$/i #什么是
       w=$2.to_s
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define: #{w} |")
-      puts '什么是 ' + s
     when /^(.*?)[\s:,](.+)是什么[\?？]?$/i #是什么
       #if $u.completename($1) == $1 
       if $1 
@@ -525,18 +540,18 @@ class IRC
       sayDic(2,from,to,$1)
     when /^`?a\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
-    when /^(大家...(...)?|hi( all)?.?|hello)$/i
+    when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ', hi .',10,11) if rand(10) > 7
-    when /^((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', hello .',10,11)
-    when /^(wo|ni|ta|shi|ru|zen|hai|neng|shen|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
+    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.size < 12
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
+      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/'
       msg to,"#{s1}",0
     when /^`rst(.+)$/i #restart      
       tmp=$1
@@ -547,10 +562,15 @@ class IRC
       $need_Check_code = tmp[2] != 48
       load 'Dic.rb'
       load 'irc_user.rb'
+      #load 'plugin.rb'
       loadDic
       msg(to,"restarted, read_title=#{not $notitle} ,read_ub_feed=#$need_say_feed ,check_charset=#$need_Check_code",0)
     else
-      puts("#{to} #{from} #{s}") #if $SAFE == 1
+      if $local_charset !~ /UTF-8/i then
+        puts("#{to} #{from} #{s}".utf8_to_gb)
+      else
+        puts("#{to} #{from} #{s}")
+      end
       return 1#not match dic_event
     end
   end
@@ -575,7 +595,7 @@ class IRC
       if !@Motded
         if pos == 376
           @Motded = true
-          do_after_sec(@channel,nil,5, 1.6)
+          do_after_sec(@channel,nil,5, 2)
         end
       end
       if !@Named
@@ -590,8 +610,8 @@ class IRC
         when 366#End of /NAMES list.
           @Named = true 
           #Readline.completion_case_fold = true
-          Readline.completion_append_character = ": "
           renew_Readline_complete(@tmp.gsub('@','').split(' '))
+          Readline.completion_append_character = ": "
         end 
       end
       if pos == 901 #901 是 nick 验证完成.
@@ -622,8 +642,9 @@ class IRC
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       puts s
     else
-      return 1#not match 
+      return nil#not match 
     end #end case
+    return 'matched'
   end #end irc_event
 
   def save_log(s)
@@ -632,9 +653,10 @@ class IRC
 
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
-    return if check_irc_event(s).class != Fixnum #服务器消息
+    return if check_irc_event(s) #服务器消息
     save_log(s)#写入日志
-    return if check_code(s).class != Fixnum #乱码
+    return unless $bot_on #bot 功能
+    return if check_code(s) #乱码
     return if check_msg(s).class != Fixnum #字典消息
   end
 

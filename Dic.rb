@@ -10,34 +10,41 @@ require 'rss/2.0'
 #require 'cgi'
 require 'base64'
 require 'md5'
+load 'color.rb'
 
-begin require 'rubygems'; rescue LoadError; end
+begin
+  #sudo apt-get install rubygems
+  require 'rubygems'
 
-#sudo gem install htmlentities
-require 'htmlentities'
+  #gem install htmlentities
+  require 'htmlentities'
 
-#require 'charguess.so'
-#可用这个替代gem install rchardet
-#CharDet.detect("中文")["encoding"]
-require 'rchardet'
+  #require 'charguess.so'
+  #可用这个替代gem install rchardet
+  #CharDet.detect("中文")["encoding"]
+  require 'rchardet'
+rescue LoadError
+  puts "载入相关的库时错误,你应该执行以下命令:\nsudo apt-get install ruby rubygems; sudo gem install htmlentities rchardet"
+  exit
+end
 
-UserAgent= 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; zh-CN; Maxthon 2.0)' unless defined?(UserAgent)
+UserAgent= 'Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
-$old_feed_size = nil
+$old_feed_size = 0
 
-Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
+Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `deb=软件包查询 `i=源代码 末尾加入/是公共消息,如 g ubuntu / nick.'
 MATCH_title_RE = /<title>(.*)<\/title>/
 Delay_do_after = 4
-Ver='v0.14' unless defined?(Ver)
+Ver='v0.15' unless defined?(Ver)
 
 Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
 Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\37\41-\177]+?)\|(.+?)\|/
 
-Minsaytime= 20
+Minsaytime= 10
 #puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -72,11 +79,23 @@ if defined?CharGuess
   def Codes(s)
     return CharGuess::guess(s).to_s
   end
-else
+elsif defined?CharDet
   #当定义了CharDet时,Codes使用CharDet库.
   def Codes(s)
     CharDet.detect(s)["encoding"].to_s.upcase
   end
+end
+
+#字符串编码集猜测,只取参数的中文部分
+def guess_charset(s)
+  #str= s.gsub(/[^\x7f-\xff]+/,'')#只取中文字符
+  str= s.gsub(/[\0-\177]/,'')#只取中文字符
+  return nil if str.size < 5 #太短
+  tmp=str
+  while str.size < 23
+    str += tmp
+  end
+  return Codes(str)
 end
 
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
@@ -98,12 +117,11 @@ end
 def safe(level)
   result = nil
   Thread.start {
-    p 'safe thread start'
     $SAFE = level
     begin
       result = yield
     rescue Exception => detail
-      puts detail.message()
+      result = detail.message()
     end
   }.join
   result
@@ -113,7 +131,7 @@ class Rss_reader
   attr_accessor :title, :pub_date, :description, :link
 end
 #取ubuntu.org.cn的 feed.
-def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
+def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   @rss_str = Net::HTTP.get(URI.parse(url))
   @rss_str = @rss_str.gsub(/\s/,' ')
   xml_doc = REXML::Document.new(@rss_str)
@@ -127,7 +145,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php')
     reader.link = ele.elements["link"].get_text
     re << reader
 
-    next if reader.title.to_s =~ /^Re:/i
+    next if reader.title.to_s =~ /^Re:/i && not_re 
     #puts reader.title.to_s
     #puts reader.title.to_s.size
     $ub = "新⇨ #{reader.title}\r#{reader.link}\r#{reader.description}"
@@ -157,84 +175,90 @@ def getGoogle_tran(word)
       #flg = '#auto|zh-CN|' + word
     end
     word = URI.encode(word)
-    #url = "http://translate.google.cn/translate_t?hl=zh-CN#{flg}"
+    #url = "http://translate.google.com/translate_t?hl=zh-CN#{flg}"
 
-    Net::HTTP.start('translate.google.cn') {|http|
+    Net::HTTP.start('translate.google.com') {|http|
       resp = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
       return resp.body
     }
-
-    #url = "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=#{word}&langpair=#{flg}"
-    #return `curl -e http://www.my-ajax-site.com '#{url}' 2>/dev/null`.match(/"translatedText":"(.+?)"\}/)[1].to_s
 end
 
 #取标题,参数是url.
 def gettitle(url)
-    uri = URI.parse(url.untaint.strip)
-    #puts uri.host.to_s + ' ' + uri.path.to_s
+    #puts "\n" + url
+    tmp = ''
+    uri = URI.parse(url)
     begin #加入错误处理
-        if url =~ /taobao\.com\//i
-          flag=1
-        else
-          flag=0
-        end
-        response = nil
-        Net::HTTP.start(uri.host.untaint, uri.port.untaint) { |http|
-            response = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
-        }
-        case response['content-type'].to_s
+      if url =~ /taobao\.com\//i
+        flag=1
+      else
+        flag=0
+      end
+      resp = nil
+      Net::HTTP.start(uri.host.untaint, uri.port.untaint){ |http| 
+        resp = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
+              
+        case resp['content-type'].to_s
         when /text\/html/i
-          #~ puts "response['content-type']=" + response['content-type'].to_s
+          p resp['content-type']
         when /(text\/plain)/i
           return nil if flag ==0
         else
-          p response['content-type']
+          p resp['content-type']
           return nil
         end
+      }
+
+      res = nil
+      Timeout.timeout(9){
+        uri.open(
+        'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg , */*',
+        'Referer'=> URI.escape(url),
+        'Accept-Language'=>'zh-cn',
+        'Accept-Encoding'=>'zip,deflate',
+        'User-Agent'=> UserAgent
+        ){ |f|
+          $istxthtml= f.content_type.index(/text\/html/i) != nil
+          $charset= f.charset          # "iso-8859-1"
+
+          #tmp=f.read[0,8059].gsub(/\s+/,' ')
+        }
+
+        #res = Net::HTTP.start(uri.host, uri.port) {|http|
+          #http.get(url.untaint)
+        #}
+      }
     rescue Exception => detail
-        puts detail.message()
+      puts detail.message()
     end
-  #if url.index(/\.bbs\.net|autoer\.cn/i) != nil #某些网站防刷
-    #sleep 2.1
-  #end
-  uri.open(
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*',
-    'Referer'=> URI.escape(url) ,
-    'Accept-Language'=>'zh-cn',
-    'Accept-Encoding'=>'zip,deflate',
-    'User-Agent'=> UserAgent
-  ) {|f|
-      #~ p f.base_uri         # <URI::HTTP:0x40e6ef2 URL:http://www.ruby-lang.org/en/>
-      $istxthtml= f.content_type.index(/text\/html/i) != nil
-      #~ cc= f.content_type
-      $charset= f.charset          # "iso-8859-1"
-      #~ puts "1=#{$charset}"
-      #~ $charset='gb2312' if $charset=="iso-8859-1"
-      #~ p f.content_encoding # []
-      #~ p f.last_modified    # Thu Dec 05 02:45:02 UTC 2002
-  }
-  if $istxthtml then
-    a=uri.read[0,8095].gsub(/\s+/,' ')#8095
-    a=~ /<title>(.*?)<\/title>/i
-    title=$1.to_s
-    if ''==title
-      if a.match(/meta http-equiv="refresh(.*?)url=(.*?)">/i)
+    tmp=uri.read[0,8095].to_s #8095
+
+    tmp.match(/<title.*>(.*?)<\/title>/ixm)
+    title = $1.to_s.gsub(/\s+/,' ')
+    if title.size < 2
+      if tmp.match(/meta http-equiv="refresh(.*?)url=(.*?)">/ix)
         return "=http://#{uri.host}/#{$2}"
       end
     end
+    return nil unless $istxthtml
     return nil if title.index(/index of/i)
-    #return nil if title !~ Re_cn  #没中文就忽略
-    charset=$charset
-    a.match(/charset=(.+?)["']\s?/i)
-    charset=$1 if $1 !=nil
-    #~ puts '2=' + charset.to_s
 
-    title.gsub!(/<\/?title(.*?)>/i,'')
+    charset=$charset
+    #puts "1=" + charset.to_s
+    tmp.match(/charset=(.+?)["']\s?/ix)
+    charset=$1 if $1 !=nil
+    #puts '2=' + charset.to_s
+
     title = unescapeHTML(title)
     title.gsub!(/&(.*?);/i," ")
     title.gsub!(/\s\W?\s/,' ')
-    return Iconv.conv("UTF-8//IGNORE","#{charset}//IGNORE",title).to_s
-  end
+
+    #tmp = guess_charset(title * 2).to_s
+    #charset = 'gb18030' if tmp == 'TIS-620'
+    #charset = tmp if tmp != ''
+
+    title = Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title).to_s if charset !~ Regexp.new($local_charset,1)
+    return title
 end
 
 def getGoogle_api(word, start)
@@ -292,7 +316,7 @@ def getGoogle(word,flg)
     c=''
     re=''
     #~ uri = URI.parse(url.untaint.strip)
-    c='http://www.google.cn/search?hl=zh-CN&q=' + word #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
+    c='http://www.google.com/search?hl=zh-CN&q=' + word #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
     c=c.untaint.strip
     puts '  ----- url=' + URI.escape(c ) + '-----   '
     open(URI.escape(c ),
@@ -506,6 +530,12 @@ class String
   end
   def utf8_to_gb
     Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
+  end
+  def decode64
+    Base64.decode64 self
+  end
+  def encode64
+    Base64.encode64 self
   end
 end
 
