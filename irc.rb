@@ -36,7 +36,7 @@ class IRC
     @pass = pass
     @str_user= user
     @channel = channel
-    charset='UTF-8' if charset == 'utf-8' ||  charset =~ /utf8/i
+    charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     $notitle = true if @server =~ NoTitle
     puts "$notitle = #{$notitle}" #不读取url title

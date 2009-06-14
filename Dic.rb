@@ -317,17 +317,17 @@ def getGoogle(word,flg)
     c=''
     re=''
     #~ uri = URI.parse(url.untaint.strip)
-    c='http://www.google.com/search?hl=zh-CN&q=' + word #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
+    c='http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
     c=c.untaint.strip
     puts '  ----- url=' + URI.escape(c ) + '-----   '
     open(URI.escape(c ),
-    #~ 'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
     'Referer'=> URI.escape(c),
-    #~ 'Accept-Language'=>'zh-cn',
-    #~ 'Accept-Encoding'=>'zip,deflate',
+    'Accept-Language'=>'zh-cn',
+    'Accept-Encoding'=>'zip,deflate',
     'User-Agent'=> UserAgent
     ){ |f|
-      html=f.read().gsub(/\s/,' ')
+      html=f.read().gsub(/\s/,' ')#.gb_to_utf8
       case flg
       when 1#拼音查询
         #~ html.match(/是不是要找：(.*?)<\/div>/)
@@ -338,6 +338,7 @@ def getGoogle(word,flg)
         #puts re + "\n\n\n"
       when 0
         matched = true
+        #puts html
         case html
         when /相关词句：(.*?)<p>网络上查询<b>(.*?)(https?:\/\/\S+[^\s*])&usg=/i#define
           tmp = $2 + " > " + $3
@@ -365,7 +366,7 @@ def getGoogle(word,flg)
           tmp.gsub!(/赞助商链接(.+?)id=rhspad>/i,'')
           tmp.gsub!(/更多有关货币兑换的信息。/,"")
           tmp.gsub!(/<br>/i," ")
-          #~ puts tmp + "\n"
+          #puts tmp + "\n"
           case word
           when /tq$|天气$|tianqi$/i
             #puts '天气过滤' + tmp.to_s
@@ -537,6 +538,9 @@ class String
   end
   def encode64
     Base64.encode64 self
+  end
+  def ee(s=['☘',"\322\211"][rand(2)])
+    self.split(//u).join(s)
   end
 end
 
