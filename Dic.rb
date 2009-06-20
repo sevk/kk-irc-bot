@@ -136,6 +136,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   @rss_str = Net::HTTP.get(URI.parse(url))
   @rss_str = @rss_str.gsub(/\s/,' ')
   xml_doc = REXML::Document.new(@rss_str)
+  return nil unless xml_doc
   re = Array.new
   $ub = ''
   xml_doc.elements["rss/channel"].each_element("//item") do |ele|
@@ -149,7 +150,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     next if reader.title.to_s =~ /^Re:/i && not_re 
     #puts reader.title.to_s
     #puts reader.title.to_s.size
-    $ub = "新⇨ #{reader.title}\r#{reader.link}\r#{reader.description}"
+    $ub = "新⇨ #{reader.title} #{reader.link} #{reader.description}"
     $ub = unescapeHTML($ub)
     $ub.gsub!(/<.+?>/,' ')
     break

@@ -5,13 +5,12 @@
    * Author: Sevkme@gmail.com
    * Date:  
    * License: GPLV3 
-   * http://irc.ubuntu.org.cn
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
 =end
 
 include Math
-load 'irc_user.rb'
 require "ipwry.rb"
+load 'irc_user.rb'
 require 'date'
 load 'Dic.rb'
 require "monitor"
@@ -44,16 +43,17 @@ class IRC
 
     timer1 = Thread.new do#timer 1 , interval = 2600
       loop do
-        sleep(1800 + rand(1900))
+        sleep(1700 + rand(1800))
         p Time.now
         if $need_say_feed
           begin
-            tmp = get_feed
+            tmp = get_feed.to_s
             if tmp.size > 6 
               msg(@channel,tmp,5) if (8..24) === Time.now.hour 
             end
             #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
           rescue Exception => detail
+            puts "#{detail.message()} in timer1"
           end
         end
       end
@@ -88,18 +88,19 @@ class IRC
 
   #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
-    s=s[0,460].gsub!(/\s+/,' ')
-    if @charset == 'UTF-8'
-      #s.scan(/./u)[0,150].join # 也可以用/./u
-      if s.size > 450
-        while s[-3,1] !~ /[\xe0-\xea]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
+    s.gsub!(/\s+/,' ')
+    if s.size > 450
+      s=s[0,450]
+      if @charset == 'UTF-8'
+        #s.scan(/./u)[0,150].join # 也可以用//u
+        while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
           s.chop!
         end
-        s+=' ...'
+      else
+        #非utf-8的聊天室就直接截断了
+        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
       end
-    else
-      #非utf-8的聊天室就直接截断了
-      s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
+      s+=' ...'
     end
     @irc.send("#{s}\n", 0)
     puts "----> #{s}"
@@ -200,11 +201,11 @@ class IRC
       Thread.exit if re.size < 4
 
       if sto =~ /notice/i 
-        notice(to, "#{b7}\0039 #{c}\017\0037 #{re}",0)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",0)
       else
-        msg(to, "#{b7}\0039 #{c}\017\0037 #{re}",0)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",0)
       end
-      msg(from,"#{b7}\0039 #{c}\017\0037 #{re}",0) if tellSender
+      msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",0) if tellSender
 
     end #Thread
   end
@@ -283,7 +284,7 @@ class IRC
       #以我的名字开头
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
         s=$1.to_s.strip
-        puts "#{to} #{from} #{s}".red #if $SAFE == 1
+        puts "#{to.red} #{from} #{s.red}" #if $SAFE == 1
 
         case a3
         when '59.36.101.19' #黑名单用户
@@ -410,7 +411,7 @@ class IRC
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       a1=$1;a2=$2;a3=$3;a4=$4;a5=$5
-      puts 'NICK ' + s.to_s
+      puts s.blueb
       nick=$1;name=$2;ip=$3;new=$4
       if $u.chg_nick(nick,new) ==1
         $u.add(nick,name,ip)
@@ -472,7 +473,7 @@ class IRC
               end
             #end
           end
-          puts("#{to} #{from} #{s}") #if $SAFE == 1
+          #puts("#{to} #{from} #{s}") #if $SAFE == 1
         end
       when /ed2k/i
         #Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
@@ -546,7 +547,7 @@ class IRC
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', hello .',10,11)
-    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
+    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.size < 12
       sayDic(5,from,to,s)
@@ -569,7 +570,7 @@ class IRC
       if $local_charset !~ /UTF-8/i then
         puts("#{to} #{from} #{s}".utf8_to_gb)
       else
-        puts("#{to} #{from} #{s}")
+        puts("#{to.yellow} #{from.green} #{s}")
       end
       return 1#not match dic_event
     end
@@ -609,7 +610,7 @@ class IRC
           end
         when 366#End of /NAMES list.
           @Named = true 
-          #Readline.completion_case_fold = true
+          Readline.completion_case_fold = false
           renew_Readline_complete(@tmp.gsub('@','').split(' '))
           Readline.completion_append_character = ": "
         end 
@@ -732,7 +733,7 @@ class IRC
         case s
         when  /^say /
           send "PRIVMSG #{@channel} :"+s.gsub(/^say /,"")
-        when /^:q\s?(.*?)$/i
+        when /^:q\s?(.*?)$/i #:q退出
           tmp = $1.to_s
           send 'quit optimize ' + tmp
           @exit = true
@@ -742,15 +743,12 @@ class IRC
         when /^\/msg\s(.+?)\s(.+)$/
           who = $1;s=$2
           send "privmsg #{who} :#{s.strip}"
-        when /^:q\s?(.*?)$/i
-          tmp = $1.to_s
-          send 'quit optimize ' + tmp
-        when /^[\/:]/
+        when /^[\/]/ # 发送 RAW命令
           send s.gsub(/^[\/:]/,"")
         when /^`/
           check_dic(s,@nick,@channel)
-        when /^\s/
-          send "privmsg nickserv :#{s.strip}"
+        when /^\/ns\s+(.*)$/ #发送到nick serv
+          send "privmsg nickserv :#{$1.strip}"
         else
           say s# + ' ' + chr_hour
         end
