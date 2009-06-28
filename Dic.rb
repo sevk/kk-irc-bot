@@ -191,35 +191,32 @@ end
 
 #取标题,参数是url.
 def gettitle(url)
-    #puts "\n" + url
     tmp = ''
+    flag = 0
+    $istxthtml = false
+    #cookie = ''
     uri = URI.parse(url)
     begin #加入错误处理
-      if url =~ /taobao\.com\//i
-        flag=1
-      else
-        flag=0
-      end
-      resp = nil
-      Timeout.timeout(7) do
-        Net::HTTP.start(uri.host.untaint, uri.port.untaint){ |http| 
-          resp = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
+      #resp = nil
+      #Timeout.timeout(6) do
+        #Net::HTTP.start(uri.host.untaint, uri.port.untaint){ |http| 
+          #resp = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
 
-          p resp['content-type']
-          case resp['content-type']
-          when /text\/html/i
-          when /(text\/plain)/i
-            return nil if flag ==0
-          else
-            return nil
-          end
-        }
-      end
-      cookie = resp.response['set-cookie'] || ''#如果没有 set-cookie的值,就取''
-      cookie = resp.response['set-cookie'].split('; ')[0] if cookie != ''
+          #p resp['content-type']
+          #case resp['content-type']
+          #when /text\/html/i
+          #when /(text\/plain)/i
+            #return nil if url !~ /taobao/
+          #else
+            #return nil
+          #end
+          ##cookie = resp.response['set-cookie'] || ''#如果没有 set-cookie的值,就取''
+          ##cookie = resp.response['set-cookie'].split('; ')[0] if cookie != ''
+        #}
+      #end
 
       res = nil
-      Timeout.timeout(7){
+      Timeout.timeout(6){
         #1
         #open(URI.escape(url)) { |http|
           #tmp = http.read[0,8059].gsub(/\s+/,' ')
@@ -231,12 +228,12 @@ def gettitle(url)
         'Referer'=> URI.escape(url),
         'Accept-Language'=>'zh-cn',
         #'Accept-Encoding'=>'zip,deflate',
-        'Cookie' => cookie,
+        #'Cookie' => cookie,
         'User-Agent'=> UserAgent
         ){ |f|
           $istxthtml= f.content_type =~ /text\/html/i
           $charset= f.charset          # "iso-8859-1"
-          tmp=f.read[0,8059].gsub(/\s+/,' ')
+          tmp=f.read[0,5059].gsub(/\s+/,' ')
         }
 
         #3
@@ -246,19 +243,20 @@ def gettitle(url)
 
       }
     rescue Exception => detail
-      puts detail.message()
+      return detail.message().to_s
     end
     #tmp=uri.read[0,8095].to_s #8095
-    #p tmp
+    #puts tmp
 
-    tmp.match(/<title.*>(.*?)<\/title>/i)
+    return nil unless $istxthtml
+
+    tmp.match(/<title.*?>(.*?)<\/title>/i)
     title = $1.to_s.gsub(/\s+/,' ')
     if title.size < 2
       if tmp.match(/meta http-equiv="refresh(.*?)url=(.*?)">/i)
-        return "=http://#{uri.host}/#{$2}"
+        return gettitle("http://#{uri.host}/#{$2}")
       end
     end
-    return nil unless $istxthtml
     return nil if title =~ /index of/i
 
     charset=$charset
@@ -266,9 +264,11 @@ def gettitle(url)
     #puts "1=" + charset.to_s
     tmp.match(/charset=(.+?)["']\s?/i)
     charset=$1 if $1 !=nil
+    charset='gb18030' if charset =~ /^gb/i
     #puts '2=' + charset.to_s
 
     title = unescapeHTML(title)
+    #puts title
     #title.gsub!(/&(.*?);/i," ")
     #title.gsub!(/\s\W?\s/,' ')
 
@@ -276,7 +276,7 @@ def gettitle(url)
     #charset = 'gb18030' if tmp == 'TIS-620'
     #charset = tmp if tmp != ''
 
-    title = Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title).to_s if charset !~ Regexp.new($local_charset,1) rescue ''
+    title = Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title).to_s if charset !~ Regexp.new($local_charset,1) rescue 'title iconv err'
     return title
 end
 

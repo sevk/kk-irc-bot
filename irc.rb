@@ -443,40 +443,32 @@ class IRC
       puts 'host ' + s
       sayDic(10,from,to,$2)
     when /(....)(:\/\/\S+[^\s*])/#类似 http://
-      return nil if s =~ /deb(-src)?\shttp(.*)/i
-      return nil if s =~ /http(.*)\/download/i
       url = $2
       case $1
       when /http/i
         #when  /^(.*)(http:\/\/\S+[^\s*])/i #url_title查询
         #url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
         url = "http#{url}"
-        Thread.new do
-          #priority = 1
-          puts "#{from} title for #{url} "  
+        @gt = Thread.start do
           Thread.exit if $notitle
           Thread.exit if from =~ BotList
           Thread.exit if url =~ /past/i 
 
-          $ti = gettitle(url.untaint)
-          if $ti[0] == 61 #'='
-           $ti = gettitle($ti[1,$ti.size])
-          end
+          Timeout.timeout(12){ $ti = gettitle(url.untaint) }
 
           if $ti 
             #puts $ti + ' is title'
-            $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
-            #$ti.gsub!(/\sUbuntu中文/i,'')
+            #$ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
             #if $ti =~ TiList || url =~ UrlList
-              if s =~ /#{Regexp::escape $ti[0,6]}/i#已经发了就不说了
-                #puts '已经发了标题' + $ti[3,9]
+              if s =~ /#{Regexp::escape $ti[0,11]}/i#已经发了就不说了
+                puts '已经发了标题' + $ti[0,11]
               else
                 msg(to,"⇪ title: #{$ti}",0) 
               end
             #end
           end
-          #puts("#{to} #{from} #{s}") #if $SAFE == 1
         end
+        #@gt.priority = 10
       when /ed2k/i
         #Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
         #when Ed2k_re #ed2k title 查询
@@ -644,7 +636,7 @@ class IRC
     end #end case
     return 'matched'
   end #end irc_event
-
+  #写入日志
   def save_log(s)
 
   end
@@ -652,7 +644,7 @@ class IRC
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     return if check_irc_event(s) #服务器消息
-    puts highlighted(s)
+    puts highlighted(s) #高亮显示消息
     save_log(s)#写入日志
     return if not $bot_on #bot 功能
     return if check_code(s) #乱码
@@ -780,7 +772,7 @@ class IRC
       iSend(@lock)
     }
 
-    @tServer = Thread.new do
+    @tServer = Thread.start do
       while true
         #ready = select([@irc, $stdin], nil, nil, nil)
         ready = select([@irc], nil, nil, nil)
@@ -799,7 +791,7 @@ class IRC
       end
     end
     #@tServer.priority = 10
-    @tServer.join
+    #@tServer.join
     @input.priority = -100000
     @input.join
   end
