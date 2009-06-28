@@ -42,9 +42,11 @@ class IRC
     $u = ALL_USER.new
 
     timer1 = Thread.new do#timer 1 , interval = 2600
+      n = 0
       loop do
-        sleep(1700 + rand(1800))
+        sleep(850 + rand(900))
         p Time.now
+        n+=1;next if n%2 ==0
         if $need_say_feed
           begin
             tmp = get_feed.to_s
@@ -72,7 +74,7 @@ class IRC
   #发送notice消息
   def notice(who,sSay,delay=4)
     $otherbot_said=false
-    do_after_sec(who,sSay,20,delay)
+    do_after_sec(who,sSay,15,delay)
   end
 
   #发送msg消息,随机 delay 秒数.
@@ -103,7 +105,7 @@ class IRC
       s+=' ...'
     end
     @irc.send("#{s}\n", 0)
-    puts "----> #{s}"
+    puts "----> #{s}".black
     $Lsay = Time.now
   end
 
@@ -240,14 +242,11 @@ class IRC
 
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
-    s.gsub!(/deb(-src)?\shttp(.*)/i,'')
-    s.gsub!(/http(.*)\/download/,'')
-
     s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     case s.strip
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
-      print("msg to me: #{from} #{s}\n".yellow) #if $SAFE == 1
+
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
       return if a3== '59.36.101.19'#不处理U用户
       return if a3=~ /^gateway\//i
@@ -284,7 +283,7 @@ class IRC
       #以我的名字开头
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
         s=$1.to_s.strip
-        puts "#{to.red} #{from} #{s.red}" #if $SAFE == 1
+        #puts "#{to.red} #{from} #{s.red}" #if $SAFE == 1
 
         case a3
         when '59.36.101.19' #黑名单用户
@@ -408,6 +407,7 @@ class IRC
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
       puts s
+
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       a1=$1;a2=$2;a3=$3;a4=$4;a5=$5
@@ -443,6 +443,8 @@ class IRC
       puts 'host ' + s
       sayDic(10,from,to,$2)
     when /(....)(:\/\/\S+[^\s*])/#类似 http://
+      return nil if s =~ /deb(-src)?\shttp(.*)/i
+      return nil if s =~ /http(.*)\/download/i
       url = $2
       case $1
       when /http/i
@@ -466,7 +468,7 @@ class IRC
             $ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
             #$ti.gsub!(/\sUbuntu中文/i,'')
             #if $ti =~ TiList || url =~ UrlList
-              if s =~ /#{Regexp::escape $ti[$ti.size/2,9]}/i#已经发了就不说了
+              if s =~ /#{Regexp::escape $ti[0,6]}/i#已经发了就不说了
                 #puts '已经发了标题' + $ti[3,9]
               else
                 msg(to,"⇪ title: #{$ti}",0) 
@@ -478,9 +480,9 @@ class IRC
       when /ed2k/i
         #Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
         #when Ed2k_re #ed2k title 查询
-        url.match(/:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/)
+        url.match(/:\/\/\|(\w+?)\|([\000-\37\41-\377]+?)\|(.+?)\|/)
         $ti = "#{URLDecode($2.to_s)} ㎇ #{($3.to_i / 1024 / 1024 / 10.24).round / 100.0}GB"
-        $ti.gsub(/.*\]\./,'')
+        $ti.gsub!(/.*\]\./,'')
         msg(to,"⇪ #{$ti}",0)
       end
       return 2
@@ -567,11 +569,6 @@ class IRC
       loadDic
       msg(to,"restarted, read_title=#{not $notitle} ,read_ub_feed=#$need_say_feed ,check_charset=#$need_Check_code",0)
     else
-      if $local_charset !~ /UTF-8/i then
-        puts("#{to} #{from} #{s}".utf8_to_gb)
-      else
-        puts("#{to.yellow} #{from.green} #{s}")
-      end
       return 1#not match dic_event
     end
   end
@@ -610,9 +607,9 @@ class IRC
           end
         when 366#End of /NAMES list.
           @Named = true 
-          Readline.completion_case_fold = false
+          Readline.completion_case_fold = true
           renew_Readline_complete(@tmp.gsub('@','').split(' '))
-          Readline.completion_append_character = ": "
+          Readline.completion_append_character = ': '
         end 
       end
       if pos == 901 #901 是 nick 验证完成.
@@ -655,10 +652,29 @@ class IRC
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     return if check_irc_event(s) #服务器消息
+    puts highlighted(s)
     save_log(s)#写入日志
-    return unless $bot_on #bot 功能
+    return if not $bot_on #bot 功能
     return if check_code(s) #乱码
     return if check_msg(s).class != Fixnum #字典消息
+  end
+
+  #显示高亮
+  def highlighted(s)
+    s=s.strip.clone
+    case s
+    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s(.+?)\s:(.+)$/i
+      from=a1=$1;name=a2=$2;ip=a3=$3;mt=msgtype=$4;to=a4=$5;sy=a5=$6
+      if mt =~ /priv/i
+        mt= ''
+      else
+        mt= mt.green 
+      end
+      s=s.yellow if to =~ /#{Regexp::escape @nick}/i
+    end
+    re= "#{to} #{from} #{mt} #{sy}"
+    re = re.utf8_to_gb if $local_charset !~ /UTF-8/i 
+    return re
   end
 
   def isaid(second=3)
