@@ -16,21 +16,33 @@ $b_white="\e[47m";
 
 #windows 下面可以安装 msys
 class String
-  def red
-    "\e[31m#{self}#$normal"
+  def black
+    "\e[30m#{self}#$normal"
+  end
+  def blue
+    "\e[34m#{self}#$normal"
+  end
+  def cyan
+    "\e[36m#{self}#$normal"
   end
   def green
     "\e[32m#{self}#$normal"
+  end
+  def pink
+    "\e[35m#{self}#$normal"
+  end
+  def red
+    "\e[31m#{self}#$normal"
   end
   def yellow
     "\e[33m#{self}#$normal"
   end
 
-  def redb
-    "\e[41m#{self}#$normal"
-  end
   def blueb
     "\e[44m#{self}#$normal"
+  end
+  def redb
+    "\e[41m#{self}#$normal"
   end
     
 end
