@@ -13,6 +13,10 @@ require 'md5'
 load 'color.rb'
 
 begin
+  #sudo gem install mechanize
+  #安装 mechanize
+  #require 'mechanize'
+
   #sudo apt-get install rubygems
   require 'rubygems'
 
@@ -28,8 +32,8 @@ rescue LoadError
   exit
 end
 
-#UserAgent= 'Mozilla/4.0 (X11; U; Linux i686; en-US; rv:1.9.0.10) Gecko/2009042513 Ubuntu/8.04 (hardy) Firefox/3.0.0' unless defined?(UserAgent)
-UserAgent='Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
+UserAgent='Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
+#UserAgent='Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
@@ -45,7 +49,7 @@ Re_cn=/[\x7f-\xff]/
 Http_re= /http:\/\/\S+[^\s*]/
 Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\37\41-\177]+?)\|(.+?)\|/
 
-Minsaytime= 10
+Minsaytime= 8
 #puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -197,69 +201,82 @@ def gettitle(url)
         flag=0
       end
       resp = nil
-      Net::HTTP.start(uri.host.untaint, uri.port.untaint){ |http| 
-        resp = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
-              
-        case resp['content-type'].to_s
-        when /text\/html/i
+      Timeout.timeout(7) do
+        Net::HTTP.start(uri.host.untaint, uri.port.untaint){ |http| 
+          resp = http.head(uri.path.size > 0 ? uri.path.untaint : "/")
+
           p resp['content-type']
-        when /(text\/plain)/i
-          return nil if flag ==0
-        else
-          p resp['content-type']
-          return nil
-        end
-      }
+          case resp['content-type']
+          when /text\/html/i
+          when /(text\/plain)/i
+            return nil if flag ==0
+          else
+            return nil
+          end
+        }
+      end
+      cookie = resp.response['set-cookie'] || ''#如果没有 set-cookie的值,就取''
+      cookie = resp.response['set-cookie'].split('; ')[0] if cookie != ''
 
       res = nil
-      Timeout.timeout(9){
+      Timeout.timeout(7){
+        #1
+        #open(URI.escape(url)) { |http|
+          #tmp = http.read[0,8059].gsub(/\s+/,' ')
+        #}
+        
+        #2
         uri.open(
-        'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg , */*',
+        #'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg , */*',
         'Referer'=> URI.escape(url),
         'Accept-Language'=>'zh-cn',
-        'Accept-Encoding'=>'zip,deflate',
+        #'Accept-Encoding'=>'zip,deflate',
+        'Cookie' => cookie,
         'User-Agent'=> UserAgent
         ){ |f|
-          $istxthtml= f.content_type.index(/text\/html/i) != nil
+          $istxthtml= f.content_type =~ /text\/html/i
           $charset= f.charset          # "iso-8859-1"
-
-          #tmp=f.read[0,8059].gsub(/\s+/,' ')
+          tmp=f.read[0,8059].gsub(/\s+/,' ')
         }
 
+        #3
         #res = Net::HTTP.start(uri.host, uri.port) {|http|
           #http.get(url.untaint)
         #}
+
       }
     rescue Exception => detail
       puts detail.message()
     end
-    tmp=uri.read[0,8095].to_s #8095
+    #tmp=uri.read[0,8095].to_s #8095
+    #p tmp
 
-    tmp.match(/<title.*>(.*?)<\/title>/ixm)
+    tmp.match(/<title.*>(.*?)<\/title>/i)
     title = $1.to_s.gsub(/\s+/,' ')
     if title.size < 2
-      if tmp.match(/meta http-equiv="refresh(.*?)url=(.*?)">/ix)
+      if tmp.match(/meta http-equiv="refresh(.*?)url=(.*?)">/i)
         return "=http://#{uri.host}/#{$2}"
       end
     end
     return nil unless $istxthtml
-    return nil if title.index(/index of/i)
+    return nil if title =~ /index of/i
 
     charset=$charset
+    #puts url
     #puts "1=" + charset.to_s
-    tmp.match(/charset=(.+?)["']\s?/ix)
+    tmp.match(/charset=(.+?)["']\s?/i)
     charset=$1 if $1 !=nil
     #puts '2=' + charset.to_s
 
     title = unescapeHTML(title)
-    title.gsub!(/&(.*?);/i," ")
-    title.gsub!(/\s\W?\s/,' ')
+    #title.gsub!(/&(.*?);/i," ")
+    #title.gsub!(/\s\W?\s/,' ')
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
     #charset = tmp if tmp != ''
 
-    title = Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title).to_s if charset !~ Regexp.new($local_charset,1)
+    title = Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title).to_s if charset !~ Regexp.new($local_charset,1) rescue ''
     return title
 end
 
