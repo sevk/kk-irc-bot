@@ -1,7 +1,8 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby1.9
+# coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 77 #75
+Maxfloodme = 80 #75
 Maxflood = 37   #39
 Initflood = 83 #83
 Maxnamed = 130
@@ -36,7 +37,7 @@ class ALL_USER
     end
   end
   def add(nick,name,ip)
-    name.gsub!(/n=/i,'')
+    name.gsub!(/[in]=/i,'')
     if name =~ /^U\d{5}$/ && ip == '59.36.101.19'
       #不记录U用户
       return 19
@@ -47,24 +48,25 @@ class ALL_USER
       #~ puts nick + '已经存在'
       return false
     end
-    @index.delete(@index.index(@pos_write))#删除原位置
-    @index[nick] =@pos_write
+    @index.delete(@index.key(@pos_write))#删除原位置
+    @index[nick] = @pos_write
     @name[@pos_write]= name
     @addr[@pos_write]= ip
     t = Time.now
     @time_in[@pos_write]= t
     @timelastsay[@pos_write]= t
     @timelastsayme[@pos_write]= t
-    @timelast6me[@pos_write]= Initflood
-    @timelast6say[@pos_write]= Initflood
+    @timelast6me[@pos_write]= Initflood * 2
+    @timelast6say[@pos_write]= Initflood * 2
     @tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=''
 
     if @pos_write == Maxnamed
-      @pos_write =0
+      @pos_write = 0
+      p @index.size
       p t
     else
-      @pos_write +=1
+      @pos_write += 1
     end
     return nil
   end
@@ -77,6 +79,7 @@ class ALL_USER
   def sayorder()
      
   end
+
   def lastSay=(nick,w)
     $lastsay[getindex(nick)]=w
   end
@@ -119,10 +122,10 @@ class ALL_USER
     else
       return add(nick,name,ip)
     end
-    t=Time.now
+    t = Time.now
     @timelast6me[index] = (@timelast6me[index] /6 ) * 5 +  (t - @timelastsayme[index])
     @timelast6me[index] = Initflood if @timelast6me[index] > Initflood * 2
-    @timelastsayme[index] = Time.now
+    @timelastsayme[index] = t
   end
   
   def said(nick,name,ip)
@@ -136,22 +139,20 @@ class ALL_USER
       #puts '#无此用户'
       return add(nick,name,ip)
     end
-    t=Time.now
     #~ puts '21 @timelast6say[index]:  index: ' + index.to_s
+    t = Time.now
     @timelast6say[index] = (@timelast6say[index] /6 ) * 5 +  (t - @timelastsay[index])
     @timelast6say[index] = Initflood if @timelast6say[index] > Initflood + 90
-    @timelastsay[index] = Time.now
+    @timelastsay[index] = t
   end
 
   def saidAndCheckFlood(nick,name,ip,w)
     said(nick,name,ip)
     setLastSay(nick,w)
-    return false if name.gsub(/n=/i,'') =~ /^U\d{5}$/#U用户
     return check_flood(nick)
   end
   def saidAndCheckFloodMe(nick,name,ip)
     said_me(nick,name,ip)
-    return false if ip=='59.36.101.19'#U用户
     return check_flood_me(nick)
   end
   def chg_ip(nick,ip)

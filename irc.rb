@@ -1,4 +1,7 @@
-#!/usr/bin/ruby -w
+#!/usr/bin/env ruby1.9
+# coding: utf-8
+# 升级到 ruby 1.9 , 只要在bin目录做个 ruby1.9 的可执行文件就行. ubuntu只要执行
+# apt-get install ruby1.9 就有
 =begin
    * Name: irc.rb
    * Description:     
@@ -9,12 +12,12 @@
 =end
 
 include Math
-require "ipwry.rb"
-load 'irc_user.rb'
 require 'date'
-load 'Dic.rb'
 require "monitor"
 require "readline"
+load "ipwry.rb"
+load 'irc_user.rb'
+load 'Dic.rb'
 #load 'plugin.rb'
 
 #irc类
@@ -44,14 +47,14 @@ class IRC
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep(850 + rand(900))
+        sleep(800 + rand(900))
         p Time.now
         n+=1;next if n%2 ==0
         if $need_say_feed
           begin
             tmp = get_feed.to_s
             if tmp.size > 6 
-              msg(@channel,tmp,5) if (8..24) === Time.now.hour 
+              msg(@channel,tmp,0) if (8..24) === Time.now.hour 
             end
             #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
           rescue Exception => detail
@@ -91,21 +94,25 @@ class IRC
   #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    if s.size > 450
-      s=s[0,450]
+    if s.bytesize > 440 # ruby 1.9
+    #if s.size > 450 # ruby 1.8
+      s.chop!.chop! while s.bytesize > 440
       if @charset == 'UTF-8'
+        #str.bytes.each_slice(100).map {|s| s.map(&:chr).join }
         #s.scan(/./u)[0,150].join # 也可以用//u
-        while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
+        #while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
+        while not s[-3,1].between?("\xe0","\xef") and s[-1] > 127.chr 
           s.chop!
         end
       else
         #非utf-8的聊天室就直接截断了
         s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
+        #s=s.force_encoding(@charset)
       end
       s+=' ...'
     end
     @irc.send("#{s}\n", 0)
-    puts "----> #{s}".black
+    puts "----> #{s}".pink
     $Lsay = Time.now
   end
 
@@ -118,12 +125,12 @@ class IRC
 
   #eval
   def evaluate(s)
-    return '操作不安全' if s=~/pass|serv/i
+    #return '操作不安全' if s=~/pass|serv/i
     result = nil
       begin
-        p 'begin eval: '+ s
+        p s
         Timeout.timeout(6) {
-          result = safe(4) {eval(s).to_s[0,460]}
+          result = safe(4) {eval(s).to_s[0,420]}
         }
       rescue Exception => detail
         puts detail.message()
@@ -164,16 +171,16 @@ class IRC
     Thread.new do
       c = words;re=''
       case dic
-      when 1 : re = getGoogle(c ,0)
-      when 2 : re = getBaidu(c )
-      when 3 : re = googleFinance(c )
-      when 4 : re = getGoogle_tran(c );c=''
+      when 1 then re = getGoogle(c ,0)
+      when 2 then re = getBaidu(c )
+      when 3 then re = googleFinance(c )
+      when 4 then re = getGoogle_tran(c );c=''
       when 5#拼音
-        re = "#{getPY(c)}";c=''; b7= from +'说 ';
-      when 6 : re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
-      when 10 : re = hostA(c)
-      when 20 : re = $u.igetlastsay(c).to_s
-      when 21 : re = $u.ims(c).to_s
+        re = "#{getPY(c)}";c=''; b7= from +':'
+      when 6 then re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
+      when 10 then re = hostA(c)
+      when 20 then re = $u.igetlastsay(c).to_s
+      when 21 then re = $u.ims(c).to_s
       when 22
         c =$u.completename(c)
         ip = $u.getip(c)
@@ -197,8 +204,8 @@ class IRC
         #~ re='未找到软件包' if re.to_s.size<3
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
-      when 99 : re = Help ;c=''
-      when 101 : re = getBaidu_tran(c);c=''
+      when 99 then re = Help ;c=''
+      when 101 then re = getBaidu_tran(c);c=''
       end
       Thread.exit if re.size < 4
 
@@ -217,22 +224,22 @@ class IRC
     return nil if !$need_Check_code #not match
     if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要检测
       from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;b5=$5.to_s.untaint
-      return nil if b3== '59.36.101.19'#不处理U用户
       tmp = guess_charset(b5).to_s
 
       if tmp != @charset && tmp !~ /IBM855|windows-1252/ && tmp != '' 
         p b5
+        p tmp
         begin
-          if tmp =~/^gb.+/i
+          if tmp =~/^gb./i
             #b5=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",b5).strip
             b5=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",b5).strip
           else
             b5=''
           end
-        rescue Exception => detail
-          puts detail.message()
+        rescue 
+          puts $!
         end
-        send "Notice #{b1} :请用 #{@charset}编码,不要用 #{tmp}".utf8_to_gb
+        send "Notice #{b1} :use #{@charset} charset, not #{tmp}"
         send "PRIVMSG #{((b4==@nick)? b1: b4)} :#{b1}:said #{b5} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
       end
@@ -248,7 +255,6 @@ class IRC
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
 
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
-      return if a3== '59.36.101.19'#不处理U用户
       return if a3=~ /^gateway\//i
 
       if $u.saidAndCheckFloodMe(a1,a2,a3)
@@ -323,7 +329,6 @@ class IRC
           end
           return 'msg with my name:.+'
       else
-        return if a3== '59.36.101.19'#不处理U用户
         return if a3=~ /^gateway\//i
       end
 
@@ -399,19 +404,14 @@ class IRC
           $notitle=false
       end
 
-      if ip=='59.36.101.19'#U用户
-        $otherbot_said=true
-      end
       $u.del(from,ip)
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
-      puts s
 
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       a1=$1;a2=$2;a3=$3;a4=$4;a5=$5
-      puts s.blueb
       nick=$1;name=$2;ip=$3;new=$4
       if $u.chg_nick(nick,new) ==1
         $u.add(nick,name,ip)
@@ -437,7 +437,6 @@ class IRC
     when /^\`?>\s?(.+)$/i #eval
       puts "[4 EVAL #{$1} from #{from}]"
       tmp=evaluate($1.to_s)
-      p tmp
       msg to,"#{from}, #{tmp}",0 if tmp
     when /^`h(ost)?\s(.*?)$/i # host
       puts 'host ' + s
@@ -449,33 +448,28 @@ class IRC
         #when  /^(.*)(http:\/\/\S+[^\s*])/i #url_title查询
         #url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
         url = "http#{url}"
-        @gt = Thread.start do
-          Thread.exit if $notitle
-          Thread.exit if from =~ BotList
-          Thread.exit if url =~ /past/i 
+        #puts url
+        return if $notitle
+        return if from =~ BotList
+        return if url =~ /past/i 
 
-          Timeout.timeout(12){ $ti = gettitle(url.untaint) }
-
+        @ti=Thread.start {
+          $ti = nil
+          $ti = gettitle(url)
           if $ti 
-            #puts $ti + ' is title'
-            #$ti.gsub!(/Ubuntu中文论坛.{1,6}查看主题/i,'')
             #if $ti =~ TiList || url =~ UrlList
               if s =~ /#{Regexp::escape $ti[0,11]}/i#已经发了就不说了
-                puts '已经发了标题' + $ti[0,11]
+                puts '已经发了标题 ' + $ti[0,11]
               else
                 msg(to,"⇪ title: #{$ti}",0) 
               end
             #end
           end
-        end
-        #@gt.priority = 10
+        }
+        @ti.priority = 4
+        @ti.join(9)
       when /ed2k/i
-        #Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
-        #when Ed2k_re #ed2k title 查询
-        url.match(/:\/\/\|(\w+?)\|([\000-\37\41-\377]+?)\|(.+?)\|/)
-        $ti = "#{URLDecode($2.to_s)} ㎇ #{($3.to_i / 1024 / 1024 / 10.24).round / 100.0}GB"
-        $ti.gsub!(/.*\]\./,'')
-        msg(to,"⇪ #{$ti}",0)
+        msg(to,geted2kinfo(url),0)
       end
       return 2
     when /^`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
@@ -541,7 +535,7 @@ class IRC
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', hello .',10,11)
-    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng)\s(.+)$/i  #拼音
+    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.size < 12
       sayDic(5,from,to,s)
@@ -552,11 +546,12 @@ class IRC
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
-      $notitle = tmp[0] == 48
-      $need_say_feed = tmp[1] != 48
-      $need_Check_code = tmp[2] != 48
+      $notitle = tmp[0] == '0'
+      $need_say_feed = tmp[1] != '0'
+      $need_Check_code = tmp[2] != '0'
       load 'Dic.rb'
       load 'irc_user.rb'
+      load "ipwry.rb"
       #load 'plugin.rb'
       loadDic
       msg(to,"restarted, read_title=#{not $notitle} ,read_ub_feed=#$need_say_feed ,check_charset=#$need_Check_code",0)
@@ -585,7 +580,7 @@ class IRC
       if !@Motded
         if pos == 376
           @Motded = true
-          do_after_sec(@channel,nil,5, 2)
+          do_after_sec(@channel,nil,5, 1)
         end
       end
       if !@Named
@@ -608,6 +603,8 @@ class IRC
         puts "是否检测乱码= #{$need_Check_code}"
         puts 'feed功能= ' + $need_say_feed.to_s
         puts 'notitle= ' + $notitle.to_s 
+        $min_next_say=Time.now 
+        do_after_sec(@channel,nil,7,1)
       end
 
       #自动 whois 返回
@@ -643,6 +640,7 @@ class IRC
 
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
+    s=s.force_encoding("utf-8")
     return if check_irc_event(s) #服务器消息
     puts highlighted(s) #高亮显示消息
     save_log(s)#写入日志
@@ -653,18 +651,17 @@ class IRC
 
   #显示高亮
   def highlighted(s)
-    s=s.strip.clone
     case s
-    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s(.+?)\s:(.+)$/i
-      from=a1=$1;name=a2=$2;ip=a3=$3;mt=msgtype=$4;to=a4=$5;sy=a5=$6
-      if mt =~ /priv/i
+    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s:(.+)$/i
+      from=$1;name=$2;ip=$3;mt=msgto=$4;sy=$5
+      if mt =~ /^priv/i
         mt= ''
       else
         mt= mt.green 
       end
-      s=s.yellow if to =~ /#{Regexp::escape @nick}/i
+      sy=sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
     end
-    re= "#{to} #{from} #{mt} #{sy}"
+    re= "#{from} #{mt} #{sy}"
     re = re.utf8_to_gb if $local_charset !~ /UTF-8/i 
     return re
   end
@@ -693,15 +690,16 @@ class IRC
 
       case flag
       when 0
-        #send "PRIVMSG #{to} :#{sSay} #{time_min_ai}"
         send "PRIVMSG #{to} :#{sSay}"
       when 5
-        send "JOIN #{@channel}"
-        send "PRIVMSG nickserv :id #{@pass}";sleep 0.1
-        send "JOIN #sevk"
+        send "PRIVMSG nickserv :id #{@pass}"
         $pass=@pass=rand(100)
+        $min_next_say = Time.now
+        do_after_sec(@channel,nil,7,11)
       when 7
-        send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
+        send "JOIN #sevk"
+        send "JOIN #{@channel}"
+        #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
         tmp = ((DateTime.parse('2009-01-26 00:00:00+08:00')-DateTime.now)*24*60*60).round
         if tmp < 0 #不用显示倒计时
@@ -733,16 +731,15 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   def iSend(lock)
     while true
-      Thread.pass
       s = Readline.readline('', true)
+      Thread.pass
       next if !s
       #s = Readline.readline('[' + @channel + '] ', true)
       #lock.synchronize do
         case s
-        when  /^say /
-          send "PRIVMSG #{@channel} :"+s.gsub(/^say /,"")
         when /^:q\s?(.*?)$/i #:q退出
           tmp = $1.to_s
+          p 'quit...'
           send 'quit optimize ' + tmp
           @exit = true
           p 'exiting...'
@@ -751,14 +748,14 @@ class IRC
         when /^\/msg\s(.+?)\s(.+)$/
           who = $1;s=$2
           send "privmsg #{who} :#{s.strip}"
+        when /^\/ns\s+(.*)$/ #发送到nick serv
+          send "privmsg nickserv :#{$1.strip}"
         when /^[\/]/ # 发送 RAW命令
           send s.gsub(/^[\/:]/,"")
         when /^`/
           check_dic(s,@nick,@channel)
-        when /^\/ns\s+(.*)$/ #发送到nick serv
-          send "privmsg nickserv :#{$1.strip}"
         else
-          say s# + ' ' + chr_hour
+          say s
         end
       #end
     end
@@ -767,32 +764,30 @@ class IRC
   #主循环
   def main_loop()
     @lock = Monitor.new
-    @input = Thread.new {
-      Thread.pass
+    @input=Thread.start {
       iSend(@lock)
     }
 
-    @tServer = Thread.start do
+    @server=Thread.start {
       while true
         #ready = select([@irc, $stdin], nil, nil, nil)
+        Thread.exit if @exit
         ready = select([@irc], nil, nil, nil)
-        if @exit
-          Thread.exit 
-        end
         next if !ready
+        Thread.pass
         for s in ready[0]
           if s == @irc 
             next if @irc.eof
             #@lock.synchronize do
-              handle_server_input(@irc.gets)
+              handle_server_input(@irc.gets.strip)
             #end
           end
         end
       end
-    end
-    #@tServer.priority = 10
-    #@tServer.join
-    @input.priority = -100000
+    }.join
+    #@server.priority = 0
+    @server.join
+    @input.priority = -100000000
     @input.join
   end
 end

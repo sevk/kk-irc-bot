@@ -1,4 +1,5 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
+# coding: utf-8
 # jianglibo(jianglibo@gmail.com)
 # website: http://www.g0574.com
 # =KK=修改
@@ -9,7 +10,7 @@ require 'iconv'
 class IpLocationSeeker
   def initialize(data_filename = QQwrydat)
     data_filename = File.join(File.dirname(__FILE__),QQwrydat) if FileTest::exist?(QQwrydat)
-    @datafile = File.open(QQwrydat,"r")
+    @datafile = File.open(QQwrydat,"r:utf-8")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
     @index_num = (@last_index_pos - @first_index_pos)/7 + 1
   end
@@ -39,13 +40,13 @@ class IpLocationSeeker
     @ip_str = ip_str
     @ip_record_pos = get_ip_record_pos
     begin #错误处理
-        Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",[get_country_string,get_area_string].to_s)
+        [get_country_string,get_area_string].join('')
     rescue Interrupt
         return 'error'
-    #rescue Exception => detail
-    #    return 'error' + detail.message().to_s
-    #    puts detail.message()
-    #    print detail.backtrace.join("\n")
+    rescue Exception => detail
+       return 'error' + detail.message().to_s
+       puts detail.message()
+       print detail.backtrace.join("\n")
     #~ retry
     end
   end
@@ -82,24 +83,27 @@ class IpLocationSeeker
   end
 
   def read_zero_end_string(file_pos)
+    #puts 'xx'.red
     @datafile.seek(file_pos)
     str = ""
     count = 0
     while c = @datafile.getc
       break if count>100
-      break if c == 0
+      break if c == 0.chr
       str << c
       count += 1
     end
+    str = Iconv.conv("UTF-8","GB18030//IGNORE",str).to_s rescue ''
     if count > 60
-      str = "unknown string."
+      puts 'count:' + count.to_s
+      str = "2 unknown string."
       @get_country_string_error = true
     end
     @after_read_country_pos = @datafile.pos
-    str
+    return str
   end
 
-  private
+  #private
 
   def get_country_string()
     @get_country_string_error = false
@@ -126,8 +130,9 @@ class IpLocationSeeker
         read_zero_end_string(@ip_record_pos + 4)
       end
     rescue
+      p $!
       @get_country_string_error = true
-      "unknown country!"
+      "3 unknown country!"
     end
   end
 
@@ -135,13 +140,14 @@ class IpLocationSeeker
     @get_area_string_error = false
     if @get_country_string_error
       @get_area_string_error = true
-      return "unknown area!"
+      return "4 unknown area!"
     end
     begin
       if @mode_flag == 0
         read_zero_end_string(@after_read_country_pos)
       elsif @mode_flag == 1
         if @level_two_mode_flag == 2
+          p @level_three_mode_flag
           if @level_three_mode_flag == 1 || @level_three_mode_flag == 2
             @datafile.seek(@ip_record_level_two_pos + 5)
             @ip_record_area_string_pos = three_bytes_long_int(@datafile.read(3).unpack('C3'))
@@ -156,8 +162,9 @@ class IpLocationSeeker
         read_zero_end_string(@ip_record_pos+8)
       end
     rescue
+      p $!
       @get_area_string_error = true
-      "unknown area!"
+      "1 unknown area!"
     end
   end
 

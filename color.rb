@@ -1,4 +1,5 @@
 #this file is from EE
+# coding: utf-8
 #
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 
 $yellow="\e[33m";
