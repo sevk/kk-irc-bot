@@ -14,6 +14,7 @@ begin
   $LOAD_PATH << '/usr/lib/ruby/gems/1.8/gems/htmlentities-4.0.0/lib'
   require 'htmlentities'
 
+  #require 'rchardet'
   require 'charguess'
 rescue
   puts "载入相关的库时错误,你应该执行以下命令:\nsudo apt-get install ruby rubygems; sudo gem install htmlentities"
@@ -29,9 +30,12 @@ require 'rss/2.0'
 #require 'cgi'
 require 'base64'
 #require 'md5'
+require 'resolv'
+#require 'pp'
 load 'color.rb'
+require 'yaml'
 
-UserAgent='Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
+UserAgent='Mozilla/4.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
 #UserAgent='Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
@@ -39,14 +43,12 @@ Fi2="UBUNTU新手资料.txt"
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s=新手资料 g=google d=define b=baidu tt=google翻译 `t=百度词典 a=查某人地址 `host=域名IP >1+1=简单脚本 `deb=软件包查询 `i=源代码 末尾加入/是公共消息,如 g ubuntu / nick.'
-MATCH_title_RE = /<title>(.*)<\/title>/
+Help = '我是ikk-irc-bot s=新手资料 g=google d=define `b=baidu tt=google翻译 `t=百度词典 `a=查某人地址 `f=查老乡 `host=查域名 >1+1 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
 Delay_do_after = 4
-Ver='v0.17' unless defined?(Ver)
+Ver='v0.22' unless defined?(Ver)
 
 CN_re=/[\u4E00-\u9FA5]+/
 Http_re= /http:\/\/\S+[^\s*]/
-Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|/
 
 Minsaytime= 4
 #puts "最小说话时间=#{Minsaytime}"
@@ -58,7 +60,10 @@ $lag=1
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
 NoTitle=/oftc/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_O|^O_|Psycho/i
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|Psycho/i
+BotList_Code=/badgirl|O_0|\^O_/i
+BotList_ub_feed=/crazyghost|O_0|\^O_/i
+BotList_title=/GiGi|u_b|O_0|\^O_/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 
@@ -68,7 +73,7 @@ def URLDecode(str)
 end
    
 def URLEncode(str)
-  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x[0]) }  
+  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }  
   URI.escape(str)
 end
 
@@ -78,14 +83,14 @@ def unescapeHTML(str)
 end 
 
 #字符串编码集猜测,只取参数的中文部分
-def guess_charset(s)
-  str= s.gsub(/[\x0-\x7F]/,'')#只取中文字符
-  return nil if str.bytesize < 5 #太短
-  tmp = str
-  while str.bytesize < 23
-    str += tmp
+def guess_charset(str)
+ #s = str.gsub(/./) {|s| s.ord < 128 ? '':s}
+  s = str.gsub(/[\x0-\x7f]/,'')
+  return nil if s.bytesize < 4
+  while s.bytesize < 25
+    s = s + s
   end
-  return CharGuess::guess(str)
+  return CharGuess::guess(s)
 end
 
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
@@ -102,6 +107,15 @@ end
 def loadDic()
   $str1 = readDicA
   puts 'Dic load [ok]'
+  saveu
+end
+def saveu
+  person_list = []
+  person_list << $u
+  File.open("person.yaml","w") do|io|
+    YAML.dump(person_list,io)
+  end
+  p 'save u ok'
 end
 
 #使用安全进程进行eval操作,参数level是安全级别.
@@ -232,11 +246,13 @@ end
 def gettitle(url)
     title = $tmp = ''
     flag = 0
-    $istxthtml = false
+    istxthtml = false
+    if url =~ /[\u4E00-\u9FA5]/
+      url = URI.encode(url)
+    end
+    #puts url.red
     uri = URI.parse(url)
-    puts url.red
     begin #加入错误处理
-      res = nil
         uri.open(
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
         #'Accept'=>'text/html',
@@ -246,25 +262,23 @@ def gettitle(url)
         #'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
-          p f.content_type
-          $istxthtml= f.content_type =~ /text\/html/i
+          #p f.content_type
+          istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
           $charset= f.charset          # "iso-8859-1"
-          #tmp=f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ')
-          $tmp = f.read[0,9999].gsub(/\r|\n/,'').gsub(/\s+/,' ')
+          $tmp = f.read[0,9999].gsub(/\s+/,' ')
         }
     rescue 
       return $!
     end
-    #return nil unless $istxthtml
+    return nil unless istxthtml
 
-    tmp=$tmp#.force_encoding('utf-8')
-    #p $tmp
+    tmp = $tmp
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
     #puts title.green
 
-    if title.bytesize < 2
-      puts title.bytesize
+    if title.size < 1
+      puts title.size
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
         return gettitle("http://#{uri.host}/#{$2}")
@@ -274,9 +288,9 @@ def gettitle(url)
     return nil if title =~ /index of/i
 
     charset=$charset
-    puts "1=" + charset.to_s
+    #puts "1=" + charset.to_s
     tmp.match(/<meta.*?charset=(.+?)["']/i)
-    charset=$1 if $1 !=nil
+    charset=$1 if $1
     if charset =~ /^gb/i
       charset='gb18030' 
     end
@@ -287,9 +301,9 @@ def gettitle(url)
     #charset = tmp if tmp != ''
     #return title.force_encoding(charset)
     
+    title = Iconv.conv("UTF-8","#{charset}//IGNORE",title).to_s rescue title
     title = unescapeHTML(title) rescue title
-    title = Iconv.conv("UTF-8//IGNORE","#{charset}//IGNORE",title).to_s
-    puts title.blue
+    #puts title.blue
     title
 end
 
@@ -387,7 +401,7 @@ def getGoogle(word,flg)
             tmp.gsub!(/<\/b>/, ' ')
             tmp.gsub!(/添加到(.*?)当前：/,' ')
             #tmp.gsub!(/北京市专业气象台(.*)/, '' )
-            tmp=tmp.match(/.+?°C.+?°C/)[0]
+            tmp=tmp.match(/.+?°C.+?°C.+?°C/)[0]
             tmp.gsub!(/°C/,'°C ')
           end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
@@ -423,12 +437,12 @@ def getGoogle(word,flg)
       #puts "-" * 10 + re + "-" * 10
       #puts '结果长度=' + re.to_s.size.to_s
     }
+
+    re = nil if re.strip == url.strip
     return re
 end
 
 def geted2kinfo(url)
-  #Ed2k_re=/(.*?)ed2k:\/\/\|(\w+?)\|([\000-\39\41-\177]+?)\|(.+?)\|/
-  #when Ed2k_re #ed2k title 查询
   url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
   $ti = "#{URLDecode($2.to_s)} , #{ '%.1f' % ($3.to_f / 1024**3)} GB"
   $ti.gsub!(/.*\]\./,'')
@@ -436,12 +450,16 @@ def geted2kinfo(url)
 end
 
 def getBaidu(word)
-    word= Iconv.conv("gb2312//IGNORE","UTF-8//IGNORE",word).to_s
-    c=  'http://www.baidu.com/s?cl=3&wd='+word
-    puts URI.escape(c)
-    open(URI.escape(c),
+  p 'getBaidu'
+  p word
+    url=  'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word
+    if url =~ /[\u4E00-\u9FA5]/
+      url = URI.encode(url)
+    end
+    p url
+    open(url,
     'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=>'http://www.baidu.com/s?cl=3&wd='+word ,
+    'Referer'=> url,
     'Accept-Language'=>'zh-cn',
     'Accept-Encoding'=>'deflate',
     'User-Agent'=> UserAgent,
@@ -456,25 +474,22 @@ def getBaidu(word)
         re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
         re = $4 ; a2=$2[0,120]
         re= re.gsub(/<.*?>/i,'')[0,330]
-        #~ if re.match(/<font\scolor=#C60A00>(.*?)<\/font>/i) != nil
-          #~ re.gsub!(/<font\scolor=#C60A00>(.*?)<\/font>/i,$1)[0,270]
-        #~ end
         $re =  a2 + ' ' +  re
         $re = unescapeHTML($re)
         $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
-        #~ re = html.match(/ScriptDiv(.*)#008000/).to_s
-        #~ $re =   Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",ss).to_s
     }
     $re
 end
 
 def getBaidu_tran(word,en=true)
-    word= Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",word).to_s
-    c=  'http://www.baidu.com/s?cl=3&wd='+word+'&ct=1048576'
-    puts URI.encode(c)
-    open(URI.encode(c),
+    #word= Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",word).to_s
+    url= 'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word+'&ct=1048576'
+    if url =~ /[\u4E00-\u9FA5]/
+      url = URI.encode(url)
+    end
+    open(url,
     'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=> URI.encode(c) ,
+    'Referer'=> url,
     'Accept-Language'=>'zh-cn',
     'Accept-Encoding'=>'deflate',
     'User-Agent'=> UserAgent,
@@ -482,13 +497,13 @@ def getBaidu_tran(word,en=true)
     'Connection'=>'close',
     'Cookie'=>'BAIDUID=EBBDCF1D3F9B11071169B4971122829A:FG=1; BDSTAT=172f338baaeb951db319ebc4b74543a98226cffc1f178a82b9014a90f703d697'
     ) {|f|
-        html=f.read()
-        html.gsub!(/\s+/,' ')
-        #html = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",html.to_s).to_s
-        re = html.match(/class="wd">(.+?)pronu/i)[1].to_s + ' '
+        html = f.read()
+        html = html.gb_to_utf8.gsub(/\s+/,' ')
+        re = ' <' + html.match(/class="wd"(.+?)<script>pronu/i)[1].to_s + ' '
         re += html.match(/class="explain">(.+?)<script/i)[1]
+        re.gsub!(/<script\s?.+?>.+?<\/script>/i,'')
         re.gsub!(/<.*?>/,'')
-        re = Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",re).to_s
+        re = re[0,500]
         re.gsub!(/&nbsp/,' ')
         re = unescapeHTML(re)
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
@@ -505,35 +520,45 @@ class Time
   def hm()
     "#{Time.now.strftime('[%H:%M]')}"
   end
+  def ch()
+    ' ' + chr_hour.to_s
+  end
 end
 
 $last_time_min = Time.now
 def time_min_ai()
-  if Time.now - $last_time_min > 600
+  if Time.now - $last_time_min > 900
     $last_time_min = Time.now
-    return "　#{Time.hm}"
+    return " #{Time.hm}"
   end
 end
 
 def time_min()
-  "#{Time.now.strftime('[%H:%M]')}"
+  " #{Time.now.strftime('[%H:%M]')}"
 end
 
+#ch,小时字符. '㍘' = 0x3358
 def chr_hour()
-  if Time.now - $last_time_min > 1200
+  if Time.now - $last_time_min > 1800
     $last_time_min = Time.now
-    "\343\215"+ (Time.now.hour + 0230).chr
+    return (Time.now.hour + 0x3358).chr("UTF-8")
+    #"\xE3\x8D"+ (Time.now.hour + 0x98).chr
   end
+end
+
+#取IP地址的具体位置,参数是IP
+def getaddr_fromip(ip)
+  hostA(ip)
 end
 
 def host(domain)#处理域名
   return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
   domain=domain.match(/^[\w\.\-\d]*/)[0]
   begin
-    return `host #{domain} | grep has | head -n 1`.strip.match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)[0]
+    return Resolv.getaddress(domain)
   rescue Exception => detail
     puts detail.message()
-    '火星'
+    '水星'
   end
 end
 def getProvince(domain)#取省
@@ -546,11 +571,10 @@ def hostA(domain)#处理IP 或域名
     else
         tmp = host(domain)
     end
-  return '网页版irc' if tmp == '59.36.101.19'
-  tmp = tmp + ' ' + IpLocationSeeker.new.seek(tmp)
-  tmp.gsub!(/CZ88\.NET/i,'不在地球上')
-  tmp.gsub!(/IANA/i,'火星')
-  tmp
+  tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp)
+  tmp.gsub!(/CZ88\.NET/i,'某处')
+  tmp.gsub!(/IANA/i,'不在宇宙')
+  tmp.gsub(/\s+/,'')
 end
 
 #为字符串添加2个方法,用于gb18030和utf8互转.
