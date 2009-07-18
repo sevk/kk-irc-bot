@@ -59,11 +59,11 @@ $lag=1
 #$SAFE=1 if `hostname` =~ /NoteBook/
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
-NoTitle=/oftc/i
 BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|Psycho/i
 BotList_Code=/badgirl|O_0|\^O_/i
 BotList_ub_feed=/crazyghost|O_0|\^O_/i
-BotList_title=/GiGi|u_b|O_0|\^O_/i
+BotList_title=/GiGi/i
+#BotList_title=/GiGi|u_b|O_0|\^O_/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 
@@ -107,15 +107,14 @@ end
 def loadDic()
   $str1 = readDicA
   puts 'Dic load [ok]'
-  saveu
 end
 def saveu
-  person_list = []
-  person_list << $u
-  File.open("person.yaml","w") do|io|
-    YAML.dump(person_list,io)
+  return if Time.now - $last_save < 60 rescue nil
+  $last_save = Time.now
+  File.open("person_#{ARGV[0]}.yaml","w") do|io|
+    YAML.dump($u,io)
   end
-  p 'save u ok'
+  puts 'save u ok'.red
 end
 
 #使用安全进程进行eval操作,参数level是安全级别.
@@ -438,7 +437,7 @@ def getGoogle(word,flg)
       #puts '结果长度=' + re.to_s.size.to_s
     }
 
-    re = nil if re.strip == url.strip
+    re = nil if re.strip.size == url.strip.size
     return re
 end
 
@@ -451,34 +450,31 @@ end
 
 def getBaidu(word)
   p 'getBaidu'
-  p word
-    url=  'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word
-    if url =~ /[\u4E00-\u9FA5]/
-      url = URI.encode(url)
-    end
-    p url
-    open(url,
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=> url,
-    'Accept-Language'=>'zh-cn',
-    'Accept-Encoding'=>'deflate',
-    'User-Agent'=> UserAgent,
-    'Host'=>'www.baidu.com',
-    'Connection'=>'close',
-    'Cookie'=>'BAIDUID=EBBDCF1D3F9B11071169B4971122829A:FG=1; BDSTAT=172f338baaeb951db319ebc4b74543a98226cffc1f178a82b9014a90f703d697'
-    ) {|f|
-        html=f.read().gsub!(/\s/,' ')
-        re = nil
-        #scan(/>\d+.*?</).to_s.gsub!(/(>)|</,' ').to_s
-        #~ <a href="http://cache.baidu" target=
-        re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
-        re = $4 ; a2=$2[0,120]
-        re= re.gsub(/<.*?>/i,'')[0,330]
-        $re =  a2 + ' ' +  re
-        $re = unescapeHTML($re)
-        $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
-    }
-    $re
+  url=  'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word
+  if url =~ /[\u4E00-\u9FA5]/
+    url = URI.encode(url)
+  end
+  p url
+  open(url,
+  'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+  'Referer'=> url,
+  'Accept-Language'=>'zh-cn',
+  'Accept-Encoding'=>'deflate',
+  'User-Agent'=> UserAgent,
+  'Host'=>'www.baidu.com',
+  'Connection'=>'close',
+  'Cookie'=>'BAIDUID=EBBDCF1D3F9B11071169B4971122829A:FG=1; BDSTAT=172f338baaeb951db319ebc4b74543a98226cffc1f178a82b9014a90f703d697'
+  ) {|f|
+      html=f.read().gsub!(/\s/,' ')
+      re = nil
+      re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
+      re = $4 ; a2=$2[0,120]
+      re= re.gsub(/<.*?>/i,'')[0,330]
+      $re =  a2 + ' ' +  re
+      $re = unescapeHTML($re)
+      $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
+  }
+  $re
 end
 
 def getBaidu_tran(word,en=true)
@@ -503,13 +499,14 @@ def getBaidu_tran(word,en=true)
         re += html.match(/class="explain">(.+?)<script/i)[1]
         re.gsub!(/<script\s?.+?>.+?<\/script>/i,'')
         re.gsub!(/<.*?>/,'')
-        re = re[0,500]
+        re = re[0,600]
         re.gsub!(/&nbsp/,' ')
         re = unescapeHTML(re)
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
         $re.gsub!(/以下结果由.*?提供词典解释/,' ')
+        $re.gsub!(/部首笔画部首.+?基本字义/,' 基本字义: ')
         if en
-          $re.gsub!(/基本字义.*?英文翻译/," #{chr_hour} ")
+          $re.gsub!(/基本字义.*?英文翻译/,': ')
         end
     }
     $re
@@ -548,33 +545,41 @@ end
 
 #取IP地址的具体位置,参数是IP
 def getaddr_fromip(ip)
-  hostA(ip)
+  hostA(ip,true)
 end
 
 def host(domain)#处理域名
   return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
-  domain=domain.match(/^[\w\.\-\d]*/)[0]
+  return domain unless domain.include?('.')
+  domain=domain.match(/^[\w\.\/\-\d]*/)[0]
   begin
     return Resolv.getaddress(domain)
   rescue Exception => detail
     puts detail.message()
-    '水星'
+    domain
   end
 end
 def getProvince(domain)#取省
   hostA(domain).gsub(/^.*(\s|省)/,'').match(/\s?(.*?)市/)[1]
 end
-def hostA(domain)#处理IP 或域名
+
+#取IP或域名的地理位置
+#hostA('www.g.cn',true)
+def hostA(domain,hideip=false)#处理IP 或域名
   return nil if !domain
-    if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
-        tmp = $1
-    else
-        tmp = host(domain)
-    end
-  tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp)
-  tmp.gsub!(/CZ88\.NET/i,'某处')
+  if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
+      tmp = $1
+  else
+      tmp = host(domain)
+  end
+  if hideip 
+    tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
+  else
+    tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
+  end
+  tmp.gsub!(/CZ88\.NET/i,'')
   tmp.gsub!(/IANA/i,'不在宇宙')
-  tmp.gsub(/\s+/,'')
+  tmp.gsub(/\s+/,'').to_s + ' '
 end
 
 #为字符串添加2个方法,用于gb18030和utf8互转.
