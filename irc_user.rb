@@ -2,7 +2,7 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 83 #75
+Maxfloodme = 85 #75
 Maxflood = 37   #39
 Initflood = 83 #83
 Maxnamed = 150
@@ -12,10 +12,15 @@ class ALL_USER
   def initialize
     @pos_write = 0
     @index=Hash.new
-    $lastsay=Array.new
     @name=Array.new
     @ip=Array.new
     @addr=Hash.new
+
+    init_pp
+
+    puts 'users class start' if $debug
+  end
+  def init_pp
     $time_in=Array.new
     $timelastsay=Array.new
     $timelastsayme=Array.new
@@ -23,13 +28,11 @@ class ALL_USER
     $timelast6me=Array.new
     $tWarned=Array.new
     $lastsay=Array.new
-
-    puts 'users class start' if $debug
   end
   def addr
     return @addr
   end
-  def havenick(nick)
+  def havenick?(nick)
     @index.include?(nick)
   end
   def getindex(nick)
@@ -40,8 +43,13 @@ class ALL_USER
       return nil
     end
   end
+  def ip_from_webname(name)
+    #name.gsub(/../){$&.hex.to_s+'.'}.chop   
+    name.scan(/../).map{|x| x.hex}.join('.')
+  end
   def add(nick,name,ip)
     name.gsub!(/[in]=/i,'')
+    ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     if name =~ /^U\d{5}$/ && ip == '59.36.101.19'
       #不记录黑名单用户
       return 19
@@ -110,6 +118,7 @@ class ALL_USER
     index = getindex(nick)
     return false if index ==nil
     p "~me #{nick} #{$timelast6me[index]}" if $debug
+    $timelast6me[index] = Initflood * 1.5 if ! $timelast6me[index]
     return $timelast6me[index] < Maxfloodme
   end
   def check_flood(nick)
@@ -120,7 +129,7 @@ class ALL_USER
   end
 
   def said_me(nick,name,ip)
-    if @index == nil
+    if ! @index
       return add(nick,name,ip)
     end
     if @index.include?(nick)
@@ -129,26 +138,30 @@ class ALL_USER
       return add(nick,name,ip)
     end
     t = Time.now
+    $timelastsayme[index] = t if ! $timelastsayme[index]
+    $timelast6me[index] = Initflood * 1.5 if ! $timelast6me[index]
+    $timelast6me[index] = Initflood * 1.5 if $timelast6me[index] > Initflood * 2
     $timelast6me[index] = ($timelast6me[index] /6 ) * 5 +  (t - $timelastsayme[index])
-    $timelast6me[index] = Initflood if $timelast6me[index] > Initflood * 2
     $timelastsayme[index] = t
   end
   
   def said(nick,name,ip)
     if @index == nil
-      #~ puts '#无任何用户'
+      puts '#无任何用户'
       return add(nick,name,ip)
     end
     if @index.include?(nick)
       index = getindex(nick)
     else
-      #puts '#无此用户'
+      puts '#无此用户'
       return add(nick,name,ip)
     end
     #~ puts '21 $timelast6say[index]:  index: ' + index.to_s
     t = Time.now
+    $timelastsay[index] = t if ! $timelastsay[index]
+    $timelast6say[index] = Initflood * 1.5 if ! $timelast6say[index]
+    $timelast6say[index] = Initflood * 1.5 if $timelast6say[index] > Initflood * 2
     $timelast6say[index] = ($timelast6say[index] /6 ) * 5 +  (t - $timelastsay[index])
-    $timelast6say[index] = Initflood if $timelast6say[index] > Initflood + 90
     $timelastsay[index] = t
   end
 
@@ -166,6 +179,7 @@ class ALL_USER
     if index == nil #未记录的用户名
       return 1
     end
+
     @ip[index]=ip
     @addr[nick]=getaddr_fromip(ip)
   end
@@ -190,15 +204,14 @@ class ALL_USER
   def all_nick()
     @index.keys
   end
+
   def completename(s)
-    return s if !s or s=='' or getindex(s)
-    tmp='somebody'
-    @index.each_key { |x| (tmp= x;break)if x.to_s =~ /#{Regexp::escape s}/i }
-    p '----------completename----'
-    return tmp
+    return s if !s or s=='' or @index.include?(s)
+    return @index.select{|x,y| x =~ /#{Regexp::escape s}/i}.keys[0]
   end
+
   def addrgrep(s)
-    @addr.select{|x,y| y =~ /#{s}/}.to_a.join(' ').gsub(/\s(\d)/i){":#{$1}"}
+    @addr.select{|x,y| y =~ /#{s}/i}.to_a.join(' ')
   end
   def setip(nick,name,ip)
     index = getindex(nick)
