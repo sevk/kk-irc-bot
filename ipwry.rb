@@ -42,11 +42,11 @@ class IpLocationSeeker
     begin #错误处理
         [get_country_string,get_area_string].join('')
     rescue Interrupt
-        return 'error'
+      return ip_str
     rescue Exception => detail
-       return 'error' + detail.message().to_s
-       puts detail.message()
-       print detail.backtrace.join("\n")
+      puts detail.message()
+      print detail.backtrace.join("\n")
+      return ip_str
     #~ retry
     end
   end
@@ -82,19 +82,19 @@ class IpLocationSeeker
     three_bytes_long_int(three_byte)
   end
 
+  #读取直到字符串结尾
   def read_zero_end_string(file_pos)
-    #puts 'xx'.red
     @datafile.seek(file_pos)
     str = ""
     count = 0
     while c = @datafile.getc
       break if count>100
-      break if c == 0.chr
+      break if c.ord < 0x32
       str << c
       count += 1
     end
     str = Iconv.conv("UTF-8","GB18030//IGNORE",str).to_s rescue ''
-    if count > 60
+    if count > 70
       puts 'count:' + count.to_s
       str = "2 unknown string."
       @get_country_string_error = true
