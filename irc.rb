@@ -731,7 +731,7 @@ class IRC
 
   def myexit
     saveu
-    p 'exiting...'.yellow
+    puts 'exiting...'.yellow
     @exit = true
   end
   

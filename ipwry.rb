@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#!/usr/bin/env ruby1.9
 # coding: utf-8
 # jianglibo(jianglibo@gmail.com)
 # website: http://www.g0574.com
@@ -44,8 +44,9 @@ class IpLocationSeeker
     rescue Interrupt
       return ip_str
     rescue Exception => detail
-      puts detail.message()
-      print detail.backtrace.join("\n")
+      #puts detail.message()
+      p $!
+      p $@
       return ip_str
     #~ retry
     end
@@ -89,7 +90,7 @@ class IpLocationSeeker
     count = 0
     while c = @datafile.getc
       break if count>100
-      break if c.ord < 0x32
+      break if c < 0x32.chr
       str << c
       count += 1
     end
@@ -131,6 +132,7 @@ class IpLocationSeeker
       end
     rescue
       p $!
+      p $@
       @get_country_string_error = true
       "3 unknown country!"
     end

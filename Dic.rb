@@ -556,6 +556,7 @@ def host(domain)#处理域名
     return Resolv.getaddress(domain)
   rescue Exception => detail
     puts detail.message()
+    p $@
     domain
   end
 end

@@ -47,6 +47,7 @@ class ALL_USER
     #name.gsub(/../){$&.hex.to_s+'.'}.chop   
     name.scan(/../).map{|x| x.hex}.join('.')
   end
+
   def add(nick,name,ip)
     name.gsub!(/[in]=/i,'')
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
