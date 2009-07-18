@@ -19,7 +19,7 @@ require 'yaml'
 load "ipwry.rb"
 load 'irc_user.rb'
 load 'Dic.rb'
-#load 'plugin.rb'
+load 'plugin.rb'
 
 #irc类
 class IRC
@@ -41,10 +41,9 @@ class IRC
     @channel = channel
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
-    $notitle = true if @server =~ NoTitle
     p BotList_title
     puts "$notitle = #{$notitle}" #不读取url title
-    $u = ALL_USER.new
+    mystart
 
   end
   
@@ -77,26 +76,25 @@ class IRC
   #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    if s.bytesize > 440 # ruby 1.9
+    if s.bytesize > 455 # ruby 1.9
     #if s.size > 450 # ruby 1.8
-      s.chop!.chop! while s.bytesize > 440
+      s.chop!.chop! while s.bytesize > 455
       if @charset == 'UTF-8'
         #str.bytes.each_slice(100).map {|s| s.map(&:chr).join }
         #s.scan(/./u)[0,150].join # 也可以用//u
         #while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
-        while not s[-3,1].between?("\xe0","\xef") and s[-1] > 127.chr 
+        while not s[-3,1].between?("\xe0","\xef") and s[-1].ord > 127
           s.chop!
         end
       else
         #非utf-8的聊天室就直接截断了
-        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
-        #s=s.force_encoding(@charset)
+        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,460])
       end
       s+=' ...'
     else
       s+= Time.now.ch
     end
-    @irc.send("#{s}\n", 0)
+    @irc.send("#{s.strip}\n", 0)
     $Lsay = Time.now
     puts "----> #{s}".pink
   end
@@ -176,15 +174,13 @@ class IRC
           $to_whois = to
           $s_whois = s
           send('whois ' + c)
-          
           return
         end
 
         re = "#{$u.getname(c)} #{hostA(ip)}"
       when 23
-        #return "#{$u.addr.select do |x| x =~ /#{c}/ end }"
-        p 'addrgrep ' + c
         re = "#{$u.addrgrep(c)}"
+        p 'addrgrep ' + c
       when 30
         return if c !~/^[\w\-\.]+$/#只能是字母,数字,-. "#{$`}<<#{$&}>>#{$'}"
         `apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
@@ -264,11 +260,11 @@ class IRC
         end
       end
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
-      from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
+      nick=from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       return if a1==@nick
 
       #有BOT说话
-      $otherbot_said=true if name =~ BotList
+      $otherbot_said=true if name =~ BotList || nick =~ BotList
       #~ $u.setip(from,name,ip)
 
       #以我的名字开头
@@ -338,13 +334,16 @@ class IRC
     when /^:(.+?)!(.+?)@(.+?)\s(JOIN)\s:(.*)$/i #join
       #:U55555!i=3cbe89d2@gateway/web/ajax/mibbit.com/x-d50dbdfe784bbbd2 JOIN :#sevk
       #@gateway/tor/x-2f4b59a0d5adf051
-      from=$1.to_s;name=$2;ip=$3;to=$5
-      #print(from,' JOIN ',to, "\n")
+      nick=from=$1;name=$2;ip=$3;to=$5
       return if from =~ /#{Regexp::escape @nick}/i
       $need_Check_code=false if from =~ BotList_Code
       $need_say_feed=false if from =~ BotList_ub_feed
       $notitle=true if from =~ BotList_title
 
+      $u.add(nick,name,ip)
+      #if $u.chg_ip(nick,ip) ==1
+        #$u.add(nick,name,ip)
+      #end
       renew_Readline_complete($u.all_nick)
     when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)$/i #quit
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
@@ -361,10 +360,9 @@ class IRC
 
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
-      a1=$1;a2=$2;a3=$3;a4=$4;a5=$5
       nick=$1;name=$2;ip=$3;new=$4
       if $u.chg_nick(nick,new) ==1
-        $u.add(nick,name,ip)
+        $u.add(new,name,ip)
       end
       renew_Readline_complete($u.all_nick)
     when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i #KICK 
@@ -537,6 +535,7 @@ class IRC
         #376 End of /MOTD
         if pos == 376
           @Motded = true
+          $min_next_say=Time.now 
           do_after_sec(@channel,nil,5, 1)
         end
       end
@@ -561,11 +560,10 @@ class IRC
           puts 'notitle= ' + $notitle.to_s 
         end 
       end
-      if pos == 376 #901 是 nick 验证完成.
+      if pos == 901 #901 是 nick 验证完成.
         $min_next_say=Time.now 
         do_after_sec(@channel,nil,7,1)
       end
-      mystart if pos == 901
 
       #自动 whois 返回
       if $name_whois && pos == 311
@@ -706,9 +704,9 @@ class IRC
           tmp = $1.to_s
           p 'quit...'
           send 'quit optimize ' + tmp
-          myexit()
           sleep 2
-          @input.exit
+          myexit()
+          exit
         when /^\/msg\s(.+?)\s(.+)$/
           who = $1;s=$2
           send "privmsg #{who} :#{s.strip}"
@@ -725,14 +723,16 @@ class IRC
     end
   end
   def mystart
-    YAML.load_file("person.yaml").each{|p| $u = p} 
-    puts '$u load ok'
+    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue nil
+    $u = ALL_USER.new if ! $u 
+    $u.init_pp
+    puts $u.all_nick.count.to_s + ' nicks loaded from yaml file.'.red
   end
 
   def myexit
     saveu
+    p 'exiting...'.yellow
     @exit = true
-    p 'exiting...'
   end
   
   def timer_start
@@ -741,9 +741,10 @@ class IRC
       loop do
         sleep(700 + rand(850))
         p Time.now
-        n+=1;next if n%2 ==0
+        n+=1
+        next if n%2 ==0
         next unless (8..24) === Time.now.hour
-        saveu
+        saveu if n%7 ==0
         next unless $need_say_feed
         begin
           tmp = get_feed.to_s
