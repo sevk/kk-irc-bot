@@ -2,9 +2,9 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 85 #75
-Maxflood = 37   #39
-Initflood = 83 #83
+Maxfloodme = 70.0 #75
+Maxflood = 37.0   #39
+Initflood = 83.0 #83
 Maxnamed = 150
 
 class ALL_USER
@@ -59,6 +59,7 @@ class ALL_USER
     return if nick == nil
     if @index.include?(nick)
       #~ puts nick + '已经存在'
+      @addr[nick]= getaddr_fromip(ip)
       return false
     end
     @index.delete(@index.key(@pos_write))#删除原位置
@@ -70,7 +71,7 @@ class ALL_USER
     t = Time.now
     $time_in[@pos_write]= t
     $timelastsay[@pos_write]= t
-    $timelastsayme[@pos_write]= t
+    $timelastsayme[@pos_write]= t - 11
     $timelast6me[@pos_write]= Initflood * 2
     $timelast6say[@pos_write]= Initflood * 2
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
@@ -88,8 +89,8 @@ class ALL_USER
   def isBlocked?(nick)
     index = getindex(nick)
     return false if index == nil
-    $timelastsayme[index] += 1
-    return Time.now - $timelastsayme[index] < 10 #10秒之内就Block
+    $timelastsayme[index] = Time.now - 20 if ! $timelastsayme[index]
+    return Time.now - $timelastsayme[index] < 5 #10秒之内就Block
   end
   def sayorder()
      
@@ -118,8 +119,8 @@ class ALL_USER
   def check_flood_me(nick)#更严格
     index = getindex(nick)
     return false if index ==nil
-    p "~me #{nick} #{$timelast6me[index]}" if $debug
     $timelast6me[index] = Initflood * 1.5 if ! $timelast6me[index]
+    p "~me #{nick} #{$timelast6me[index]}" if $debug
     return $timelast6me[index] < Maxfloodme
   end
   def check_flood(nick)
@@ -140,9 +141,10 @@ class ALL_USER
     end
     t = Time.now
     $timelastsayme[index] = t if ! $timelastsayme[index]
-    $timelast6me[index] = Initflood * 1.5 if ! $timelast6me[index]
-    $timelast6me[index] = Initflood * 1.5 if $timelast6me[index] > Initflood * 2
+    $timelast6me[index] = Initflood * 1.2 if ! $timelast6me[index]
+    $timelast6me[index] = Initflood * 1.2 if $timelast6me[index] > Initflood * 1.5
     $timelast6me[index] = ($timelast6me[index] /6 ) * 5 +  (t - $timelastsayme[index])
+    p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
   end
   
@@ -212,7 +214,7 @@ class ALL_USER
   end
 
   def addrgrep(s)
-    @addr.select{|x,y| y =~ /#{s}/i}.to_a.join(' ')
+    @addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x+':'+y+' '}.join
   end
   def setip(nick,name,ip)
     index = getindex(nick)

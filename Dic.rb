@@ -11,7 +11,7 @@ begin
   require 'rubygems'
 
   #gem install htmlentities
-  $LOAD_PATH << '/usr/lib/ruby/gems/1.8/gems/htmlentities-4.0.0/lib'
+  #$LOAD_PATH << '/usr/lib/ruby/gems/1.8/gems/htmlentities-4.0.0/lib'
   require 'htmlentities'
 
   #require 'rchardet'
@@ -43,7 +43,7 @@ Fi2="UBUNTU新手资料.txt"
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s=新手资料 g=google d=define `b=baidu tt=google翻译 `t=百度词典 `a=查某人地址 `f=查老乡 `host=查域名 >1+1 `deb=软件包查询 `i=源代码 末尾加入|是公共消息,如 g ubuntu | nick.'
+Help = '我是ikk-irc-bot s=新手资料 g=google d=define `b=baidu tt=google翻译 `t=百度词典 `a=查某人地址 `f=查老乡 `host=查域名 >1+1 `deb=软件包查询 `i=源代码 末尾加入/是公共消息,如 g ubuntu / nick.'
 Delay_do_after = 4
 Ver='v0.22' unless defined?(Ver)
 
@@ -58,12 +58,12 @@ $lag=1
 
 #$SAFE=1 if `hostname` =~ /NoteBook/
 puts "$SAFE= #$SAFE"
-NoFloodAndPlay=/\#sevk|\-ot|arch|fire/i 
+NoFloodAndPlay=/\-ot|arch|fire/i
 BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|Psycho/i
 BotList_Code=/badgirl|O_0|\^O_/i
 BotList_ub_feed=/crazyghost|O_0|\^O_/i
-BotList_title=/GiGi/i
-#BotList_title=/GiGi|u_b|O_0|\^O_/i
+#BotList_title=/GiGi/i
+BotList_title=/GiGi|u_b|O_0|\^O_/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 
@@ -137,7 +137,7 @@ end
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   @rss_str = Net::HTTP.get(URI.parse(url)).force_encoding("utf-8")
-  @rss_str = @rss_str.gsub(/\s/,' ')
+  @rss_str = @rss_str.gsub(/\s+/,' ')
   xml_doc = REXML::Document.new(@rss_str)
   return nil unless xml_doc
   re = Array.new
@@ -195,12 +195,10 @@ def getGoogle_tran(word)
       ){ |f|
         p f.content_type
         return f.read
-        p 2323
-        re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
-        re.gsub!(/<.*?>/i,'')
-        return unescapeHTML(re)
+        #re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
+        #re.gsub!(/<.*?>/i,'')
+        #return unescapeHTML(re)
       }
-
 
     #Net::HTTP.start('translate.google.com') {|http|
       #resp = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
@@ -213,29 +211,29 @@ def dictcn(word)
   puts '1'.red
   word = word.utf8_to_gb
   
-  url = 'http://api.dict.cn/api.php?utf8=true&q=' + word
+  #url = 'http://api.dict.cn/api.php?utf8=true&q=' + word
   url = 'http://dict.cn/mini.php?q=' + word
   url = URI.escape(url)
   puts url
   uri = URI.parse(url)
   begin #加入错误处理
     res = nil
-      uri.open(
-      'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-      'Accept'=>'text/html',
-      'Referer'=> URI.escape(url),
-      'Accept-Language'=>'zh-cn',
-      #'Cookie' => cookie,
-      'Range' => 'bytes=0-9000',
-      'User-Agent'=> UserAgent
-      ){ |f|
-        p f.content_type
-        re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
-        re.gsub!(/<script.*?<\/script>/,'')
-        re.gsub!(/<.*?>/i,'')
-        re.gsub!(/.*?Define /,'')
-        return unescapeHTML(re) + ' << Dict.cn'
-      }
+    uri.open(
+    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+    'Accept'=>'text/html',
+    'Referer'=> URI.escape(url),
+    'Accept-Language'=>'zh-cn',
+    #'Cookie' => cookie,
+    'Range' => 'bytes=0-9000',
+    'User-Agent'=> UserAgent
+    ){ |f|
+      p f.content_type
+      re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
+      re.gsub!(/<script.*?<\/script>/i,'')
+      re.gsub!(/<.*?>/i,'')
+      re.gsub!(/.*?Define /i,'')
+      return unescapeHTML(re) + ' << Dict.cn'
+    }
   rescue 
     return $!
   end
@@ -254,7 +252,6 @@ def gettitle(url)
     begin #加入错误处理
         uri.open(
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-        #'Accept'=>'text/html',
         'Referer'=> URI.encode(url),
         'Accept-Language'=>'zh-cn',
         #'Cookie' => cookie,
@@ -409,14 +406,14 @@ def getGoogle(word,flg)
           if tmp.size > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
             re=tmp
           else
-            puts "tmp.size=#{tmp.size} => 是普通搜索"
+            #puts "tmp.size=#{tmp.size} => 是普通搜索"
             do1=true
           end
         else
           do1=true
         end
         if do1
-          puts '+普通搜索+'
+          #puts '+普通搜索+'
           html.match(/搜索结果(.*?)(https?:\/\/[^\s]*?)">?(.*?)<div class="s">(.*?)<em>(.*?)<br><cite>/i)
           #~ puts "$1=#{$1}\n$2=#{$2}\n$3=#{$3}\n$4=#{$4}\n$5=#{$5}"
           #url= $2.to_s
@@ -449,7 +446,6 @@ def geted2kinfo(url)
 end
 
 def getBaidu(word)
-  p 'getBaidu'
   url=  'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word
   if url =~ /[\u4E00-\u9FA5]/
     url = URI.encode(url)
@@ -478,7 +474,6 @@ def getBaidu(word)
 end
 
 def getBaidu_tran(word,en=true)
-    #word= Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",word).to_s
     url= 'http://www.baidu.com/s?cl=3&ie=UTF-8&wd='+word+'&ct=1048576'
     if url =~ /[\u4E00-\u9FA5]/
       url = URI.encode(url)

@@ -76,9 +76,9 @@ class IRC
   #发送tcp数据,如果长度大于460 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    if s.bytesize > 455 # ruby 1.9
+    if s.bytesize > 450 # ruby 1.9
     #if s.size > 450 # ruby 1.8
-      s.chop!.chop! while s.bytesize > 455
+      s.chop!.chop! while s.bytesize > 450
       if @charset == 'UTF-8'
         #str.bytes.each_slice(100).map {|s| s.map(&:chr).join }
         #s.scan(/./u)[0,150].join # 也可以用//u
@@ -88,7 +88,7 @@ class IRC
         end
       else
         #非utf-8的聊天室就直接截断了
-        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,460])
+        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
       end
       s+=' ...'
     else
@@ -128,7 +128,7 @@ class IRC
     pub =true #默认公共消息
     pub =true if dic == 5
 
-    if s=~/(.*?)\s?([#\@|>])\s?(.*?)$/i #消息重定向
+    if s=~/(.*?)\s?([#\\\/\@|>])\s?(.*?)$/i #消息重定向
       words=$1;direction=$2.to_s;b7=$3
       if b7
         b7 =$u.completename(b7)
@@ -138,7 +138,7 @@ class IRC
     end
 
     case direction
-    when /[\|\/\\]/#公共
+    when /\||\/|\\/#公共
       sto='PRIVMSG'
     when '>' #小窗
       #sto='PRIVMSG'
@@ -235,17 +235,17 @@ class IRC
     case s.strip
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
+      return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
 
       if $u.saidAndCheckFloodMe(a1,a2,a3)
         #$u.floodmereset(a1)
         send "PRIVMSG #{a2} :...go to #Sevk for playing... " if rand(10) > 7
+        return nil
       end
 
       if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
         sSay = '`help |'
       end
-
-      return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
 
       tmp = check_dic(a5,a1,a1)
       if tmp.class == Fixnum
@@ -283,16 +283,23 @@ class IRC
             #$u.floodmereset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
             $otherbot_said=true
-            send "PRIVMSG #{a1} :sleeping ... in room #Sevk " if rand(10) > 7
-            msg to ,"#{from}, play ? ... go to room  #Sevk or #{to}-ot ",0 if rand(10) > 5
+            send "PRIVMSG #{a1} :sleeping ... in room #Sevk " if rand(10) > 8
+            msg to ,"#{from}, play ? ... go to room  #Sevk or #{to}-ot ",0 if rand(10) > 4
             return nil
           end
         end
         return 'msg with my name:.+'
       else
-        return if a3=~ /^gateway\//i
+        if a3=~ /^gateway\//i
+          msg to ,"#{from}, 代理或网页已经被加入黑名单.",1 if rand(10) > 6
+          return
+        end
       end
 
+      #禁掉一段时间
+      if $u.isBlocked?(from)
+        return nil
+      end
       tmp = check_dic(sSay,from,to)
       case tmp
       when 1
@@ -694,17 +701,17 @@ class IRC
   def iSend()
     while true
       Thread.pass
-      s = Readline.readline('', true)
+      s = Readline.readline('[' + @channel + '] ', true)
+      #s = Readline.readline('', true)
       Thread.pass
       next if !s
-      #s = Readline.readline('[' + @channel + '] ', true)
       #lock.synchronize do
         case s
         when /^:q\s?(.*?)$/i #:q退出
           tmp = $1.to_s
-          p 'quit...'
           send 'quit optimize ' + tmp
-          sleep 2
+          p 'quit...'
+          sleep 3
           myexit()
           exit
         when /^\/msg\s(.+?)\s(.+)$/
@@ -754,6 +761,7 @@ class IRC
           #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
         rescue Exception => detail
           puts "#{detail.message()} in timer1"
+          puts $@
         end
       end
     end
@@ -761,33 +769,22 @@ class IRC
 
   #主循环
   def main_loop()
-    #@lock = Monitor.new
-    Thread.start {
-      #iSend(@lock)
-      iSend
-    }
+    Thread.start{ iSend }
 
-    #@server=Thread.new {
-      while true
-        Thread.pass
-        #ready = select([@irc, $stdin], nil, nil, nil)
-        Thread.exit if @exit
-        ready = select([@irc], nil, nil, nil)
-        next if !ready
-        for s in ready[0]
-          if s == @irc 
-            next if @irc.eof
-            #@lock.synchronize do
-              handle_server_input(@irc.gets.strip) rescue (p $!.message;p $@)
-            #end
-          end
+    while true
+      Thread.pass
+      #ready = select([@irc, $stdin], nil, nil, nil)
+      Thread.exit if @exit
+      ready = select([@irc], nil, nil, nil)
+      next if !ready
+      for s in ready[0]
+        if s == @irc
+          next if @irc.eof rescue (p $!.message;p $@)
+          handle_server_input(@irc.gets.strip) rescue (p $!.message;p $@)
         end
       end
-    #}
-    #@server.priority = 1
-    #@server.join
-    #@input.priority = -100000000
-    #@input.join
+    end
+
   end
 end
 
