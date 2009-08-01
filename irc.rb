@@ -24,7 +24,6 @@ load 'plugin.rb'
 #irc类
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
-    loadDic
     @tmp = ''
     @exit = false
     $otherbot_said = nil
@@ -32,7 +31,6 @@ class IRC
     @Named = false
     $name_whois = nil
     @server = server
-    $need_say_feed=false if @server =~ /oftc/i 
 
     @port = port
     @nick = nick
@@ -43,8 +41,8 @@ class IRC
     @charset = charset
     p BotList_title
     puts "$notitle = #{$notitle}" #不读取url title
+    loadDic
     mystart
-
   end
   
   #kick踢出
@@ -82,8 +80,8 @@ class IRC
       if @charset == 'UTF-8'
         #str.bytes.each_slice(100).map {|s| s.map(&:chr).join }
         #s.scan(/./u)[0,150].join # 也可以用//u
-        #while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头
-        while not s[-3,1].between?("\xe0","\xef") and s[-1].ord > 127
+        #while s[-3,1] !~ /[\xe0-\xef]/ and s[-1] > 127 #最后一位不是ASCII,并且最后第三位不是中文字的头 #ruby1.8
+        while not s[-3,1].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了,中文不会被截断半个的.
           s.chop!
         end
       else
@@ -103,6 +101,7 @@ class IRC
     @irc.close if defined?(@irc)
     @irc = TCPSocket.open(@server, @port)
     send "NICK #{@nick}"
+    sleep 1
     send @str_user
   end
 
@@ -110,14 +109,14 @@ class IRC
   def evaluate(s)
     #return '操作不安全' if s=~/pass|serv/i
     result = nil
-      begin
-        p s
-        Timeout.timeout(5) {
-          result = safe(4) {eval(s).to_s[0,420]}
-        }
-      rescue Exception => detail
-        puts detail.message()
-      end
+    begin
+      p s
+      Timeout.timeout(4) {
+        result = safe(4) {eval(s).to_s[0,400]}
+      }
+    rescue Exception => detail
+      result = detail.message()
+    end
     return result
   end
 
@@ -151,7 +150,7 @@ class IRC
       to=from if !pub
     end
 
-    Thread.new do
+    tSayDic = Thread.new do
       c = words;re=''
       case dic
       when 1 then re = getGoogle(c ,0)
@@ -501,7 +500,7 @@ class IRC
       return nil if s.size < 12
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/'
+      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
       msg to,"#{s1}",0
     when /^`rst(.+)$/i #restart      
       tmp=$1
@@ -549,6 +548,7 @@ class IRC
       if !@Named
         case pos
         when 353
+          p '353'.red
           @tmp += ' ' + tmp
         when 366#End of /NAMES list.
           from = @tmp
@@ -608,7 +608,7 @@ class IRC
   def handle_server_input(s)
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
-    puts highlighted(s) #高亮显示消息
+    puts highlighted(s) rescue nil #高亮显示消息
     save_log(s)#写入日志
     return if not $bot_on #bot 功能
     s=s.force_encoding("utf-8")
@@ -714,11 +714,14 @@ class IRC
           sleep 3
           myexit()
           exit
-        when /^\/msg\s(.+?)\s(.+)$/
+        when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
           send "privmsg #{who} :#{s.strip}"
-        when /^\/ns\s+(.*)$/ #发送到nick serv
+        when /^\/ns\s+(.*)$/i #发送到nick serv
           send "privmsg nickserv :#{$1.strip}"
+        when /^\/nick\s+(.*)$/i
+          @nick = $1
+          send s.gsub(/^[\/:]/,"")
         when /^[\/]/ # 发送 RAW命令
           send s.gsub(/^[\/:]/,"")
         when /^`/
@@ -775,7 +778,7 @@ class IRC
       Thread.pass
       #ready = select([@irc, $stdin], nil, nil, nil)
       Thread.exit if @exit
-      ready = select([@irc], nil, nil, nil)
+      ready = select([@irc], nil, nil, nil) rescue nil
       next if !ready
       for s in ready[0]
         if s == @irc

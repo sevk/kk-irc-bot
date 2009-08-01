@@ -3,8 +3,9 @@
 # Sevkme@gmail.com
 
 begin
-  #sudo gem install mechanize
-  #安装 mechanize
+  #安装 mechanize:
+  #sudo aptitude install libwww-mechanize-ruby1.9
+  ##sudo gem install mechanize
   #require 'mechanize'
 
   #sudo apt-get install rubygems
@@ -56,14 +57,13 @@ $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 $lag=1
 
-#$SAFE=1 if `hostname` =~ /NoteBook/
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
 BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|Psycho/i
 BotList_Code=/badgirl|O_0|\^O_/i
 BotList_ub_feed=/crazyghost|O_0|\^O_/i
 #BotList_title=/GiGi/i
-BotList_title=/GiGi|u_b|O_0|\^O_/i
+BotList_title=/GiGi|u_b|O_0|urlreader|\^O_/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 

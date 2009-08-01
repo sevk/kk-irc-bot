@@ -15,9 +15,7 @@ class ALL_USER
     @name=Array.new
     @ip=Array.new
     @addr=Hash.new
-
     init_pp
-
     puts 'users class start' if $debug
   end
   def init_pp
@@ -44,7 +42,6 @@ class ALL_USER
     end
   end
   def ip_from_webname(name)
-    #name.gsub(/../){$&.hex.to_s+'.'}.chop   
     name.scan(/../).map{|x| x.hex}.join('.')
   end
 
@@ -62,11 +59,13 @@ class ALL_USER
       @addr[nick]= getaddr_fromip(ip)
       return false
     end
-    @index.delete(@index.key(@pos_write))#删除原位置
+    tmp = @index.key(@pos_write)
+    @index.delete(tmp)#删除原位置
+    @addr.delete(tmp)
+    @addr[nick]= getaddr_fromip(ip)
     @index[nick] = @pos_write
     @name[@pos_write]= name
     @ip[@pos_write]= ip
-    @addr[nick]= getaddr_fromip(ip)
     #puts @addr[nick]
     t = Time.now
     $time_in[@pos_write]= t
@@ -194,6 +193,8 @@ class ALL_USER
     end
     @index[new]=index
     @index.delete(old)
+    @addr[new]=@addr[old]
+    @addr.delete(old)
   end
   def del(nick,ip)
     return #if ip != '59.36.101.19'
@@ -214,7 +215,9 @@ class ALL_USER
   end
 
   def addrgrep(s)
-    @addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x+':'+y+' '}.join
+    #@addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x+':'+y+' '}.join
+    tmp = @addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x}.sort
+    return "#{tmp.count}位 #{tmp.join(' ')}"
   end
   def setip(nick,name,ip)
     index = getindex(nick)
