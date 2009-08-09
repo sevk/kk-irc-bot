@@ -44,7 +44,7 @@ Fi2="UBUNTU新手资料.txt"
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s=新手资料 g=google d=define `b=baidu tt=google翻译 `t=百度词典 `a=查某人地址 `f=查老乡 `host=查域名 >1+1 `deb=软件包查询 `i=源代码 末尾加入/是公共消息,如 g ubuntu / nick.'
+Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 `i 源代码 末尾加入/重定向,如 g ubuntu / nick.'
 Delay_do_after = 4
 Ver='v0.22' unless defined?(Ver)
 
@@ -328,6 +328,7 @@ def getTQFromName(nick)
   ip=$u.getip(nick).to_s
   p 'getip=' + ip
   tmp=getProvince(ip).to_s
+  puts 'get province:' + tmp.to_s
   getTQ(tmp)
 end
 

@@ -290,7 +290,6 @@ class IRC
         return 'msg with my name:.+'
       else
         if a3=~ /^gateway\//i
-          msg to ,"#{from}, 代理或网页已经被加入黑名单.",1 if rand(10) > 6
           return
         end
       end
@@ -391,9 +390,8 @@ class IRC
       puts "[4 EVAL #{$1} from #{from}]"
       tmp=evaluate($1.to_s)
       msg to,"#{from}, #{tmp}",0 if tmp
-    when /^`h(ost)?\s(.*?)$/i # host
-      puts 'host ' + s
-      sayDic(10,from,to,$2)
+    when /^`host\s(.*?)$/i # host
+      sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
     when /(....)(:\/\/\S+[^\s*])/#类似 http://
       url = $2
       case $1
@@ -446,21 +444,19 @@ class IRC
     when /^`?s\s(.*)$/i  #TXT search
       #~ puts 's ' + s
       sayDic(6,from,to,$1)
-    when /^[`']help\s?(.*?)$/i #help
-      puts 'help ' + s
-      sayDic(99,from,to,$1)
+    when /^[`']h(elp)?\s?(.*?)$/i #`help
+      sayDic(99,from,to,$2)
     when /^`?(什么是)(.+)[\?？]?$/i #什么是
-      w=$2.to_s
+      w=$2.to_s.strip
       return if w =~/这|那|的|哪/
-      sayDic(1,from,to,"define: #{w} |")
+      sayDic(1,from,to,"define:#{w} |")
     when /^(.*?)[\s:,](.+)是什么[\?？]?$/i #是什么
-      #if $u.completename($1) == $1 
       if $1 
         return
       else
-        w = $2.to_s
+        w = $2.to_s.strip
         return if w =~/这|那|的|哪/
-        sayDic(1,from,to,"define: #{w} |")
+        sayDic(1,from,to,"define:#{w} |")
       end
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
@@ -481,7 +477,7 @@ class IRC
       puts 'TQ ' + s
       sayDic(40,from,to,$1)
     when /^`?d(ef(ine)?)?\s(.*?)$/i#define:
-      sayDic(1,from,to,'define: ' + $3)
+      sayDic(1,from,to,'define:' + $3.to_s.strip)
     when /^`?b\s(.*?)$/i  # 百度
       puts '百度 ' + s
       sayDic(2,from,to,$1)
@@ -491,10 +487,10 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ', hi .',10,11) if rand(10) > 7
+      do_after_sec(to,from + ', hi .',10,21) if rand(10) > 6
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', hello .',10,11)
+      do_after_sec(to,from + ', hello .',10,21)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.size < 12
