@@ -59,9 +59,13 @@ class ALL_USER
       @addr[nick]= getaddr_fromip(ip)
       return false
     end
-    tmp = @index.key(@pos_write)
+    if isruby19?
+      tmp = @index.key(@pos_write)
+    else
+      tmp = @index.index(@pos_write)
+    end
     @index.delete(tmp)#删除原位置
-    @addr.delete(tmp)
+    @addr.delete(tmp) rescue nil
     @addr[nick]= getaddr_fromip(ip)
     @index[nick] = @pos_write
     @name[@pos_write]= name
