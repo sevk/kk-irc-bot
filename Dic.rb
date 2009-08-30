@@ -1,27 +1,28 @@
-#!/usr/bin/env ruby1.9
+#!/usr/bin/env ruby
 # coding: utf-8
 # Sevkme@gmail.com
 
 begin
   #安装 mechanize:
-  #sudo aptitude install libwww-mechanize-ruby1.9
-  ##sudo gem install mechanize
+  #sudo gem install mechanize
   #require 'mechanize'
 
   #sudo apt-get install rubygems
-  require 'rubygems'
+  require 'rubygems' #以便引用相关的库
 
   #gem install htmlentities
-  #$LOAD_PATH << '/usr/lib/ruby/gems/1.8/gems/htmlentities-4.0.0/lib'
   require 'htmlentities'
 
-  #require 'rchardet'
-  require 'charguess'
-rescue
-  puts "载入相关的库时错误,你应该执行以下命令:\nsudo apt-get install ruby rubygems; sudo gem install htmlentities"
+rescue LoadError
+  puts "载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库 \n\n"
+  puts $@
   exit
 end
 
+begin
+  require 'charguess.so'
+rescue LoadError
+end
 require 'open-uri'
 require 'iconv'
 require 'uri'
@@ -33,20 +34,22 @@ require 'base64'
 #require 'md5'
 require 'resolv'
 #require 'pp'
+load 'do_as_rb19.rb'
 load 'color.rb'
 require 'yaml'
 
-UserAgent='Mozilla/4.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
+#UserAgent='Mozilla/4.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
 #UserAgent='Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
+UserAgent='kk-bot/1.0 (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/1.0'
 Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
 Fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 `i 源代码 末尾加入/重定向,如 g ubuntu / nick.'
+Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 计算 `i 源代码 末尾加入|重定向,如 g ubuntu | nick.'
 Delay_do_after = 4
-Ver='v0.22' unless defined?(Ver)
+Ver='v0.23' unless defined?(Ver)
 
 CN_re=/[\u4E00-\u9FA5]+/
 Http_re= /http:\/\/\S+[^\s*]/
@@ -59,7 +62,7 @@ $lag=1
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|Psycho/i
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|MadGirl|Psycho/i
 BotList_Code=/badgirl|O_0|\^O_/i
 BotList_ub_feed=/crazyghost|O_0|\^O_/i
 #BotList_title=/GiGi/i
@@ -84,14 +87,26 @@ end
 
 #字符串编码集猜测,只取参数的中文部分
 def guess_charset(str)
- #s = str.gsub(/./) {|s| s.ord < 128 ? '':s}
   s = str.gsub(/[\x0-\x7f]/,'')
   return nil if s.bytesize < 4
   while s.bytesize < 25
     s = s + s
   end
-  return CharGuess::guess(s)
+  return guess(s)
 end
+
+if defined?CharGuess
+  def guess(s)
+    CharGuess::guess(s)
+  end
+else
+  #第二种字符集猜测库
+  require 'rchardet'
+  def guess(s)
+    CharDet.detect(s)['encoding'].upcase
+  end
+end
+
 
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
 def readDicA()
@@ -152,7 +167,6 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 
     next if reader.title.to_s =~ /^Re:/i && not_re 
     #puts reader.title.to_s
-    #puts reader.title.to_s.size
     $ub = "新⇨ #{reader.title} #{reader.link} #{reader.description}"
     $ub = unescapeHTML($ub)
     $ub.gsub!(/<.+?>/,' ')
@@ -273,8 +287,7 @@ def gettitle(url)
     title = $1.to_s
     #puts title.green
 
-    if title.size < 1
-      puts title.size
+    if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
         return gettitle("http://#{uri.host}/#{$2}")
@@ -336,34 +349,38 @@ def getTQ(s)
   getGoogle(s + ' tq',0)
 end
 
+def encodeurl(url)
+  if url =~ /[\u4E00-\u9FA5]/
+    url = URI.encode(url)
+  end
+  url
+end
+
 def getGoogle(word,flg)
     re=''
-    #wwwgoogle.com
-    url = 'http://66.249.89.99/search?hl=zh-CN&oe=UTF-8&q=' + word.strip #+ '&btnG=Google+%E6%90%9C%E7%B4%A2&meta=lr%3Dlang_zh-TW|lang_zh-CN|lang_en&aq=f&oq='
-    url = URI.escape(url)
+    url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
+    url = encodeurl(url)
+    url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
 
     open(url,
     #'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
     'Referer'=> url,
-    'Accept-Language'=>'zh-cn',
-    #'Accept-Encoding'=>'zip,deflate',
+    #'Accept-Language'=>'zh-cn',
+    'Accept-Encoding'=>'deflate',
     'User-Agent'=> UserAgent
     ){ |f|
-      html=f.read.gsub(/\s+/,' ')#.gb_to_utf8
+      html=f.read.gsub(/\s+/,' ')
       case flg
       when 1#拼音查询
-        #~ html.match(/是不是要找：(.*?)<\/div>/)
         html.match(/是不是要找：.*?<em>(.*?)<\/em>/i)#<!--a-->
         re = $1.to_s.gsub(/\s/i,' ')
         re = unescapeHTML(re)
-        #puts re + "\n\n\n"
       when 0
         matched = true
-        #puts html
         case html
-        when /相关词句：(.*?)<p>网络上查询<b>(.*?)(https?:\/\/\S+[^\s*])&usg=/i#define
-          tmp = $2 + " > " + url
-          tmp += ' ⋙ SEE ALSO ' + $1 if rand(10)>5
+        when /相关词句：(.*?)网络上查询(.*?)(https?:\/\/\S+[^\s*])">/i#define
+          tmp = $2.to_s + " > " + $3.to_s.gsub(/&amp;.*/i,'')
+          tmp += ' ⋙ SEE ALSO ' + $1.to_s if rand(10)>5
         when /专业气象台|比价仅作信息参考/
           tmp = html.match(/>网页<.+?(搜索用时|>网页<\/b>)(.*?)(搜索结果|Google 主页)/)[2]
         when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
@@ -375,14 +392,13 @@ def getGoogle(word,flg)
         if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
             #puts ' tmp=' + $2.to_s
-            tmp =$2.gsub(/<cite>.+<\/cite>/,url)
+            tmp =$2.gsub(/<cite>.+<\/cite>/,url_mini)
             #puts ' tmp1=' + tmp1.to_s
             tmp1=$1
           end
-          tmp.gsub!(/(.+?)此展示您的广告/i,'')
+          tmp.gsub!(/(.+?)此展示您的广告/,'')
           if tmp=~/赞助商链接/
             tmp.gsub!(/赞助商链接.+?<ol.+?<\/ol>/,' ')
-            puts '有赞助商链接'
           end
           tmp.gsub!(/更多有关货币兑换的信息。/,"")
           tmp.gsub!(/<br>/i," ")
@@ -402,12 +418,11 @@ def getGoogle(word,flg)
             tmp.gsub!(/°C/,'°C ')
           end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
-          #puts "tmp.size=#{tmp.size} , #{tmp}"
           #~ puts html
-          if tmp.size > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
+          if tmp.bytesize > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
             re=tmp
           else
-            #puts "tmp.size=#{tmp.size} => 是普通搜索"
+            #puts "tmp.bytesize=#{tmp.bytesize} => 是普通搜索"
             do1=true
           end
         else
@@ -424,19 +439,18 @@ def getGoogle(word,flg)
             #puts '清理二次http'
             #url=$2.to_s
           #end
-          re = url + ' ' + re
+          re = url_mini + ' ' + re
         end
       end
-      return nil if re.size < 3
+      return nil if re.bytesize < 3
       re.gsub!(/<.*?>/i,'')
       re.gsub!(/\[\s翻译此页\s\]/,'')
-      re = unescapeHTML(re)
-      #puts "-" * 10 + re + "-" * 10
-      #puts '结果长度=' + re.to_s.size.to_s
+      re= unescapeHTML(re)
     }
 
-    re = nil if re.strip.size == url.strip.size
+    return unless re
     return re
+
 end
 
 def geted2kinfo(url)
