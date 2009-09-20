@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
 # 版本需ruby较新的版本, 比如ruby1.8.6以上 或 ruby1.9.1 以上
-#
 
 =begin
    * Name: irc.rb
@@ -41,7 +40,7 @@ class IRC
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     p BotList_title
-    puts "$notitle = #{$notitle}" #不读取url title
+    puts "$saytitle = #{$saytitle}" #不读取url title
     loadDic
     mystart
   end
@@ -217,7 +216,7 @@ class IRC
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
         return if s =~ /action/i
         
-        return 'matched err charset' if !$need_Check_code #not match
+        return 'matched err charset, but not need check code' if $need_Check_code < 1
         send "Notice #{from} :use #{@charset} charset, not #{tmp}"
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
@@ -341,9 +340,10 @@ class IRC
       #@gateway/tor/x-2f4b59a0d5adf051
       nick=from=$1;name=$2;ip=$3;to=$5
       return if from =~ /#{Regexp::escape @nick}/i
-      $need_Check_code=false if from =~ BotList_Code
-      $need_say_feed=false if from =~ BotList_ub_feed
-      $notitle=true if from =~ BotList_title
+
+      $need_Check_code -= 1 if from =~ BotList_Code
+      $need_say_feed -= 1 if from =~ BotList_ub_feed
+      $saytitle -= 1 if from =~ BotList_title
 
       $u.add(nick,name,ip)
       #if $u.chg_ip(nick,ip) ==1
@@ -354,9 +354,9 @@ class IRC
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
       from=$1;name=$2;ip=$3;room=$5.to_s
 
-      $need_Check_code=true if from =~ BotList_Code
-      $need_say_feed=true if from =~ BotList_ub_feed
-      $notitle=false if from =~ BotList_title
+      $need_Check_code += 1 if from =~ BotList_Code
+      $need_say_feed += 1 if from =~ BotList_ub_feed
+      $saytitle += 1 if from =~ BotList_title
 
       $u.del(from,ip)
       renew_Readline_complete($u.all_nick)
@@ -373,9 +373,9 @@ class IRC
     when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i #KICK 
       #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
       from=$1;chan=$4;tag=$5;reason=$6
-      $need_Check_code=true if from =~ BotList_Code
-      $need_say_feed=true if from =~ BotList_ub_feed
-      $notitle=false if from =~ BotList_title
+      $need_Check_code += 1 if from =~ BotList_Code
+      $need_say_feed += 1 if from =~ BotList_ub_feed
+      $saytitle += 1 if from =~ BotList_title
 
       renew_Readline_complete($u.all_nick)
     else
@@ -399,7 +399,7 @@ class IRC
         #when  /^(.*)(http:\/\/\S+[^\s*])/i #url_title查询
         #url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
         url = "http#{url}"
-        return if $notitle
+        return if $saytitle < 1
         return if from =~ BotList
         return if url =~ /past/i 
 
@@ -494,19 +494,22 @@ class IRC
       msg to,"#{s1}",0
     when /^`rst\s?(\d*)$/i #restart
       tmp=$1
-      #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
+      return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
 
-      $need_Check_code = tmp[0].ord != 48
-      $need_say_feed = tmp[1].ord != 48
-      $notitle = tmp[2].ord != 48
+      $need_Check_code -= 1 if tmp[0].ord == 48
+      $need_Check_code += 1 if tmp[0].ord == 49
+      $need_say_feed -= 1 if tmp[1].ord == 48
+      $need_say_feed += 1 if tmp[1].ord == 49
+      $saytitle -= 1 if tmp[2].ord == 48
+      $saytitle += 1 if tmp[2].ord == 49
 
       load 'Dic.rb'
       load 'irc_user.rb'
       load "ipwry.rb"
       #load 'plugin.rb'
       loadDic
-      msg(to,"restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{not $notitle}",0)
+      msg(to,"restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
     else
       return 1#not match dic_event
     end
@@ -545,9 +548,10 @@ class IRC
         when 366#End of /NAMES list.
           from = @tmp
           puts from
-          $need_Check_code=false if from =~ BotList_Code
-          $need_say_feed=false if from =~ BotList_ub_feed
-          $notitle=true if from =~ BotList_title
+
+          $need_Check_code -= 1 if from =~ BotList_Code
+          $need_say_feed -= 1 if from =~ BotList_ub_feed
+          $saytitle -= 1 if from =~ BotList_title
 
           @Named = true 
           Readline.completion_case_fold = true
@@ -556,7 +560,7 @@ class IRC
 
           puts "是否检测乱码= #{$need_Check_code}"
           puts 'feed功能= ' + $need_say_feed.to_s
-          puts 'notitle= ' + $notitle.to_s 
+          print 'saytitle= ' , $saytitle
         end 
       end
       if pos == 901 #901 是 nick 验证完成.
@@ -748,7 +752,7 @@ class IRC
         next if n%2 ==0
         next unless (8..24) === Time.now.hour
         saveu if n%7 ==0
-        next unless $need_say_feed
+        next if $need_say_feed < 1
         begin
           tmp = get_feed.to_s
           if tmp.bytesize > 4

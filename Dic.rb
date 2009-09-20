@@ -392,7 +392,7 @@ def getGoogle(word,flg)
         if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
             #puts ' tmp=' + $2.to_s
-            tmp =$2.gsub(/<cite>.+<\/cite>/,url_mini)
+            tmp =$2.gsub(/<cite>.+<\/cite>/,' ' + url_mini)
             #puts ' tmp1=' + tmp1.to_s
             tmp1=$1
           end
@@ -449,6 +449,7 @@ def getGoogle(word,flg)
     }
 
     return unless re
+    return if re.bytesize < url_mini.bytesize + 3
     return re
 
 end
@@ -548,8 +549,11 @@ end
 def chr_hour()
   if Time.now - $last_time_min > 1800
     $last_time_min = Time.now
-    return (Time.now.hour + 0x3358).chr("UTF-8")
-    #"\xE3\x8D"+ (Time.now.hour + 0x98).chr
+    if RUBY_VERSION < '1.9'
+      "\xE3\x8D"+ (Time.now.hour + 0x98).chr
+    else
+      (Time.now.hour + 0x3358).chr("UTF-8")
+    end
   end
 end
 
