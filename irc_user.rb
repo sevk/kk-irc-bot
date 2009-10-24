@@ -15,6 +15,7 @@ class ALL_USER
     @name=Array.new
     @ip=Array.new
     @addr=Hash.new
+    @count_said=Array.new
     init_pp
     puts 'users class start' if $debug
   end
@@ -66,6 +67,7 @@ class ALL_USER
     @index[nick] = @pos_write
     @name[@pos_write]= name
     @ip[@pos_write]= ip
+    @count_said[@pos_write] = @count_said[@pos_write].to_i + 1
     #puts @addr[nick]
     t = Time.now
     $time_in[@pos_write]= t
@@ -85,6 +87,7 @@ class ALL_USER
     end
     return nil
   end
+
   def isBlocked?(nick)
     index = getindex(nick)
     return false if index == nil

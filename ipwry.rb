@@ -90,7 +90,7 @@ class IpLocationSeeker
     count = 0
     while c = @datafile.getc
       break if count>100
-      break if c < 0x32.chr #ord 兼容ruby1.8.7 1.9
+      break if c.ord < 0x32 #ord 兼容ruby1.8.7 1.9
       str << c
       count += 1
     end

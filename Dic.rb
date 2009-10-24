@@ -49,7 +49,7 @@ $old_feed_size = 0
 
 Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 计算 `i 源代码 末尾加入|重定向,如 g ubuntu | nick.'
 Delay_do_after = 4
-Ver='v0.23' unless defined?(Ver)
+Ver='v0.24' unless defined?(Ver)
 
 CN_re=/[\u4E00-\u9FA5]+/
 Http_re= /http:\/\/\S+[^\s*]/
@@ -62,11 +62,11 @@ $lag=1
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|\^O_|O_0|MadGirl|Psycho/i
-BotList_Code=/badgirl|O_0|\^O_/i
-BotList_ub_feed=/crazyghost|O_0|\^O_/i
+BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|MadGirl|Psycho/i
+BotList_Code=/badgirl|^O_|^\^O_/i
+BotList_ub_feed=/crazyghost|^O_|^\^O_/i
 #BotList_title=/GiGi/i
-BotList_title=/GiGi|u_b|O_0|urlreader|\^O_/i
+BotList_title=/GiGi|u_b|^O_|^\^O_/i
 TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 UrlList=TiList
 
@@ -172,11 +172,10 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     $ub.gsub!(/<.+?>/,' ')
     break
   end
-  #puts re[0].title.to_s + " == "
-  #puts re[0].description.to_s + " == "
-  #puts re[0].link.to_s + " == "
+  puts $ub
   if $old_feed_size == $ub.size
     $ub = nil
+    return 'hehe,去论坛逛了一下，暂时无新帖.'
   else
     $old_feed_size = $ub.size
   end

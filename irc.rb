@@ -151,12 +151,16 @@ class IRC
     tSayDic = Thread.new do
       c = words;re=''
       case dic
+      when /new/i
+        re = get_feed.to_s
+        c=''
+        b7=from
       when 1 then re = getGoogle(c ,0)
       when 2 then re = getBaidu(c )
       when 3 then re = googleFinance(c )
       when 4 then re = getGoogle_tran(c );c=''
       when 5#拼音
-        re = "#{getPY(c)}";c=''; b7= from +':'
+        re = "#{getPY(c)}";c=''; b7= from
       when 6 then re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
       when 10 then re = hostA(c)
       when 20 then re = $u.igetlastsay(c).to_s
@@ -173,7 +177,6 @@ class IRC
           send('whois ' + c)
           return
         end
-
         re = "#{$u.getname(c)} #{hostA(ip)}"
       when 23
         re = "#{$u.addrgrep(c)}"
@@ -183,7 +186,6 @@ class IRC
         #`apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
         re="#$3".gsub(/~/,'')
         # gsub(/xxx/){$&.upcase; gsub(/xxx/,'\2,\1')}
-        #~ re='未找到软件包' if re.to_s.bytesize<3
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 then re = Help ;c=''
@@ -442,6 +444,8 @@ class IRC
       sayDic(6,from,to,$1)
     when /^[`']h(elp)?\s?(.*?)$/i #`help
       sayDic(99,from,to,$2)
+    when /`?(new|论坛新帖|来个新帖)/i
+      sayDic('new',from,to,$1)
     when /^`?(什么是)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
@@ -494,7 +498,7 @@ class IRC
       msg to,"#{s1}",0
     when /^`rst\s?(\d*)$/i #restart
       tmp=$1
-      return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
+      #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
 
       $need_Check_code -= 1 if tmp[0].ord == 48
@@ -742,6 +746,19 @@ class IRC
     @exit = true
   end
   
+  #说新帖
+  def say_new(to)
+    begin
+      tmp = get_feed.to_s
+      if tmp.bytesize > 4
+        msg(to,tmp,0)
+      end
+    rescue Exception => detail
+      puts "#{detail.message()} in timer1"
+      puts $@
+    end
+  end
+
   def timer_start
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
@@ -753,16 +770,7 @@ class IRC
         next unless (8..24) === Time.now.hour
         saveu if n%7 ==0
         next if $need_say_feed < 1
-        begin
-          tmp = get_feed.to_s
-          if tmp.bytesize > 4
-            msg(@channel,tmp,0)  
-          end
-          #msg('#Sevk',tmp,0) if Time.now.hour.between?(9,24)
-        rescue Exception => detail
-          puts "#{detail.message()} in timer1"
-          puts $@
-        end
+        say_new($channel)
       end
     end
   end
@@ -779,7 +787,7 @@ class IRC
       next if !ready
       for s in ready[0]
         if s == @irc
-          next if @irc.eof rescue (p $!.message;p $@)
+          next if @irc.eof rescue (p $!.message;p $@; next)
           handle_server_input(@irc.gets.strip) rescue (p $!.message;p $@)
         end
       end
@@ -791,14 +799,14 @@ end
 load 'default.conf'
 load ARGV[0] if ARGV[0]
 
-#while true
+while true
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
   irc.connect()
   irc.timer_start
   irc.main_loop()
-  #p 'sleep ..'
-  #sleep 3600 * 6
-#end
+  p 'sleep ..'
+  sleep 3600 * 6
+end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
