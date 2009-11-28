@@ -38,37 +38,34 @@ load 'do_as_rb19.rb'
 load 'color.rb'
 require 'yaml'
 
-#UserAgent='Mozilla/4.0 (X11; U; Linux i686; en-US; rv:1.9.0.11) Gecko/2009060309 Ubuntu/8.04 (hardy) Firefox/3.0.11'
-#UserAgent='Opera/4.00 (X11; Linux i686 ; U; zh-cn) Presto/2.2.0'
-UserAgent='kk-bot/1.0 (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/1.0'
-Fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
-Fi2="UBUNTU新手资料.txt"
+fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
+fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 计算 `i 源代码 末尾加入|重定向,如 g ubuntu | nick.'
+Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu `new 取论坛新贴 tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 计算 `i 源代码 末尾加入|重定向,如 g ubuntu | nick.'
 Delay_do_after = 4
-Ver='v0.24' unless defined?(Ver)
+Ver='v0.25' unless defined?(Ver)
+UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re=/[\u4E00-\u9FA5]+/
 Http_re= /http:\/\/\S+[^\s*]/
 
 Minsaytime= 4
-#puts "最小说话时间=#{Minsaytime}"
+puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 $lag=1
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-BotList=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|MadGirl|Psycho/i
-BotList_Code=/badgirl|^O_|^\^O_/i
-BotList_ub_feed=/crazyghost|^O_|^\^O_/i
-#BotList_title=/GiGi/i
-BotList_title=/GiGi|u_b|^O_|^\^O_/i
-TiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
-UrlList=TiList
+$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|MadGirl|Psycho/i
+$botlist_Code=/badgirl|^O_|^\^O_/i
+$botlist_ub_feed=/crazyghost|^O_|^\^O_/i
+$botlist_title=/GiGi|u_b|^O_|^\^O_/i
+$tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
+$urlList=$tiList
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
@@ -110,10 +107,10 @@ end
 
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
 def readDicA()
-  if (File.exist?Fi1 )
-    IO.read(Fi1)
-  elsif (File.exist?Fi2 )
-    IO.read(Fi2)
+  if (File.exist?fi1 )
+    IO.read(fi1)
+  elsif (File.exist?fi2 )
+    IO.read(fi2)
   else
     ''
     #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
@@ -395,7 +392,7 @@ def getGoogle(word,flg)
             #puts ' tmp1=' + tmp1.to_s
             tmp1=$1
           end
-          tmp.gsub!(/(.+?)此展示您的广告/,'')
+          tmp.gsub!(/(.+?)您的广告/,'')
           if tmp=~/赞助商链接/
             tmp.gsub!(/赞助商链接.+?<ol.+?<\/ol>/,' ')
           end
@@ -455,7 +452,7 @@ end
 
 def geted2kinfo(url)
   url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
-  $ti = "#{URLDecode($2.to_s)} , #{ '%.1f' % ($3.to_f / 1024**3)} GB"
+  $ti = "#{URLDecode($2.to_s)} , #{ '%.2f' % ($3.to_f / 1024**3)} GB"
   $ti.gsub!(/.*\]\./,'')
   "⇪ #{unescapeHTML($ti)}"
 end
@@ -473,11 +470,9 @@ def getBaidu(word)
   'Accept-Encoding'=>'deflate',
   'User-Agent'=> UserAgent,
   'Host'=>'www.baidu.com',
-  'Connection'=>'close',
-  'Cookie'=>'BAIDUID=EBBDCF1D3F9B11071169B4971122829A:FG=1; BDSTAT=172f338baaeb951db319ebc4b74543a98226cffc1f178a82b9014a90f703d697'
+  'Connection'=>'close'
   ) {|f|
       html=f.read().gsub!(/\s/,' ')
-      re = nil
       re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
       re = $4 ; a2=$2[0,120]
       re= re.gsub(/<.*?>/i,'')[0,330]

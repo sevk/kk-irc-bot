@@ -2,10 +2,10 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-Maxfloodme = 70.0 #75
-Maxflood = 37.0   #39
-Initflood = 83.0 #83
-Maxnamed = 150
+maxfloodme = 70.0 #75
+maxflood = 37.0   #39
+initFlood = 83.0 #83
+maxNamed = 150
 
 class ALL_USER
   #attr :nick, true
@@ -16,10 +16,16 @@ class ALL_USER
     @ip=Array.new
     @addr=Hash.new
     @count_said=Array.new
+    @sex=Array.new
     init_pp
     puts 'users class start' if $debug
   end
   def init_pp
+    if not @sex
+      puts 'fix in init_pp '
+      @count_said=Array.new
+      @sex=Array.new
+    end
     $time_in=Array.new
     $timelastsay=Array.new
     $timelastsayme=Array.new
@@ -28,12 +34,15 @@ class ALL_USER
     $tWarned=Array.new
     $lastsay=Array.new
   end
+
   def addr
     return @addr
   end
+
   def havenick?(nick)
     @index.include?(nick)
   end
+
   def getindex(nick)
     if @index.include?(nick)
       return @index[nick]
@@ -73,15 +82,15 @@ class ALL_USER
     $time_in[@pos_write]= t
     $timelastsay[@pos_write]= t
     $timelastsayme[@pos_write]= t - 11
-    $timelast6me[@pos_write]= Initflood * 2
-    $timelast6say[@pos_write]= Initflood * 2
+    $timelast6me[@pos_write]= initFlood * 2
+    $timelast6say[@pos_write]= initFlood * 2
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=''
 
-    if @pos_write == Maxnamed
+    if @pos_write == maxNamed
       @pos_write = 0
-      p @index.size
-      p t
+      puts t
+      puts @index.size
     else
       @pos_write += 1
     end
@@ -111,25 +120,25 @@ class ALL_USER
   def floodreset(nick)
     index = getindex(nick)
     return if index == nil
-    $timelast6say[index] = Initflood
+    $timelast6say[index] = initFlood
   end
   def floodmereset(nick)
     index = getindex(nick)
     return if index == nil
-    $timelast6me[index] = Initflood
+    $timelast6me[index] = initFlood
   end
   def check_flood_me(nick)#更严格
     index = getindex(nick)
     return false if index ==nil
-    $timelast6me[index] = Initflood * 1.5 if ! $timelast6me[index]
+    $timelast6me[index] = initFlood * 1.5 if ! $timelast6me[index]
     p "~me #{nick} #{$timelast6me[index]}" if $debug
-    return $timelast6me[index] < Maxfloodme
+    return $timelast6me[index] < maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
     return false if index ==nil
     p "~ #{nick} #{$timelast6say[index]}" if $debug
-    return $timelast6say[index] < Maxflood
+    return $timelast6say[index] < maxflood
   end
 
   def said_me(nick,name,ip)
@@ -143,8 +152,8 @@ class ALL_USER
     end
     t = Time.now
     $timelastsayme[index] = t if ! $timelastsayme[index]
-    $timelast6me[index] = Initflood * 1.2 if ! $timelast6me[index]
-    $timelast6me[index] = Initflood * 1.2 if $timelast6me[index] > Initflood * 1.5
+    $timelast6me[index] = initFlood * 1.2 if ! $timelast6me[index]
+    $timelast6me[index] = initFlood * 1.2 if $timelast6me[index] > initFlood * 1.5
     $timelast6me[index] = ($timelast6me[index] /6 ) * 5 +  (t - $timelastsayme[index])
     p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
@@ -164,8 +173,8 @@ class ALL_USER
     #~ puts '21 $timelast6say[index]:  index: ' + index.to_s
     t = Time.now
     $timelastsay[index] = t if ! $timelastsay[index]
-    $timelast6say[index] = Initflood * 1.5 if ! $timelast6say[index]
-    $timelast6say[index] = Initflood * 1.5 if $timelast6say[index] > Initflood * 2
+    $timelast6say[index] = initFlood * 1.5 if ! $timelast6say[index]
+    $timelast6say[index] = initFlood * 1.5 if $timelast6say[index] > initFlood * 2
     $timelast6say[index] = ($timelast6say[index] /6 ) * 5 +  (t - $timelastsay[index])
     $timelastsay[index] = t
   end
@@ -217,8 +226,10 @@ class ALL_USER
     return @index.select{|x,y| x =~ /#{Regexp::escape s}/i}.keys[0]
   end
 
+  def ipgrep(ip)
+  end
+
   def addrgrep(s)
-    #@addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x+':'+y+' '}.join
     tmp = @addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x}.sort
     return "#{tmp.count}位 #{tmp.join(' ')}"
   end

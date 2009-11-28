@@ -39,7 +39,7 @@ class IRC
     @channel = channel
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
-    p BotList_title
+    p $botlist_title
     puts "$saytitle = #{$saytitle}" #不读取url title
     loadDic
     mystart
@@ -222,7 +222,6 @@ class IRC
         send "Notice #{from} :use #{@charset} charset, not #{tmp}"
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
-
       end
     end
     return nil
@@ -264,7 +263,7 @@ class IRC
       return if a1==@nick
 
       #有BOT说话
-      $otherbot_said=true if name =~ BotList || nick =~ BotList
+      $otherbot_said=true if name =~ $botlist || nick =~ $botlist
       #~ $u.setip(from,name,ip)
 
       #以我的名字开头
@@ -337,15 +336,14 @@ class IRC
         end
       end
 
-    when /^:(.+?)!(.+?)@(.+?)\s(JOIN)\s:(.*)$/i #join
-      #:U55555!i=3cbe89d2@gateway/web/ajax/mibbit.com/x-d50dbdfe784bbbd2 JOIN :#sevk
+    when /^:(.+?)!(.+?)@(.+?)\s(JOIN)\s:(.*)$/i #joins
       #@gateway/tor/x-2f4b59a0d5adf051
       nick=from=$1;name=$2;ip=$3;to=$5
       return if from =~ /#{Regexp::escape @nick}/i
 
-      $need_Check_code -= 1 if from =~ BotList_Code
-      $need_say_feed -= 1 if from =~ BotList_ub_feed
-      $saytitle -= 1 if from =~ BotList_title
+      $need_Check_code -= 1 if from =~ $botlist_Code
+      $need_say_feed -= 1 if from =~ $botlist_ub_feed
+      $saytitle -= 1 if from =~ $botlist_title
 
       $u.add(nick,name,ip)
       #if $u.chg_ip(nick,ip) ==1
@@ -356,9 +354,9 @@ class IRC
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
       from=$1;name=$2;ip=$3;room=$5.to_s
 
-      $need_Check_code += 1 if from =~ BotList_Code
-      $need_say_feed += 1 if from =~ BotList_ub_feed
-      $saytitle += 1 if from =~ BotList_title
+      $need_Check_code += 1 if from =~ $botlist_Code
+      $need_say_feed += 1 if from =~ $botlist_ub_feed
+      $saytitle += 1 if from =~ $botlist_title
 
       $u.del(from,ip)
       renew_Readline_complete($u.all_nick)
@@ -375,9 +373,9 @@ class IRC
     when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i #KICK 
       #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
       from=$1;chan=$4;tag=$5;reason=$6
-      $need_Check_code += 1 if from =~ BotList_Code
-      $need_say_feed += 1 if from =~ BotList_ub_feed
-      $saytitle += 1 if from =~ BotList_title
+      $need_Check_code += 1 if from =~ $botlist_Code
+      $need_say_feed += 1 if from =~ $botlist_ub_feed
+      $saytitle += 1 if from =~ $botlist_title
 
       renew_Readline_complete($u.all_nick)
     else
@@ -402,7 +400,7 @@ class IRC
         #url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
         url = "http#{url}"
         return if $saytitle < 1
-        return if from =~ BotList
+        return if from =~ $botlist
         return if url =~ /past/i 
 
         $ti = nil
@@ -413,9 +411,10 @@ class IRC
             $!
           end
           if $ti 
-            #if $ti =~ TiList || url =~ UrlList
-              if s =~ /#{Regexp::escape $ti[0,15]}/i#已经发了就不说了
-                puts '已经发了标题 ' + $ti[0,15]
+            #if $ti =~ $tiList || url =~ $urlList
+              tmp = $ti.gsub(/\s+/,'')
+              if s =~ /#{Regexp::escape tmp[0,15]}/i#已经发了就不说了
+                puts "已经发了标题 #{tmp[0,15]}"
               else
                 msg(to,"⇪ title: #{$ti}",0) 
               end
@@ -444,7 +443,7 @@ class IRC
       sayDic(6,from,to,$1)
     when /^[`']h(elp)?\s?(.*?)$/i #`help
       sayDic(99,from,to,$2)
-    when /`?(new|论坛新帖|来个新帖)/i
+    when /^`?(new|论坛新帖|来个新帖|新帖)$/i
       sayDic('new',from,to,$1)
     when /^`?(什么是)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
@@ -462,13 +461,10 @@ class IRC
       puts 'IMS ' + s
       sayDic(21,from,to,$1)
     when /^`flood\s(.*?)$/i  #flood查询
-      puts 'flood ' + s
       sayDic(20,from,to,$1)
     when /^`?tt\s(.*?)$/i  # getGoogle_tran
-      puts 'getGoogle_tran ' + s
       sayDic(4,from,to,$1)
     when /^`?g\s(.*?)$/i  # Google
-      puts 'google ' + s
       sayDic(1,from,to,$1)
     when /^`x\s(.*?)$/i  # plugin
       $otherbot_said=false
@@ -548,14 +544,14 @@ class IRC
         case pos
         when 353
           puts '353'.red
-          @tmp += ' ' + tmp
+          @tmp += " #{tmp}"
         when 366#End of /NAMES list.
           from = @tmp
           puts from
 
-          $need_Check_code -= 1 if from =~ BotList_Code
-          $need_say_feed -= 1 if from =~ BotList_ub_feed
-          $saytitle -= 1 if from =~ BotList_title
+          $need_Check_code -= 1 if from =~ $botlist_Code
+          $need_say_feed -= 1 if from =~ $botlist_ub_feed
+          $saytitle -= 1 if from =~ $botlist_title
 
           @Named = true 
           Readline.completion_case_fold = true
@@ -582,7 +578,7 @@ class IRC
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
     when /^:(.+?)\sTOPIC\s(.+)\s:(.+)$/i#topic
       from=$1;chan=$2;topic=$3
-      puts s
+      puts s.yellow
       #:Wii-2!n=Sevk@60.163.53.134 TOPIC #sevk :"此频道目前主要用于闲聊和调戏BOT."
 
       #QUIT name :niven.freenode.net irc.freenode.net
@@ -590,15 +586,16 @@ class IRC
     when /^:(.+?)\sMODE\s(.+)\+(.+)$/i#mode
       #:services. MODE ikk-bot :+e
       #:ChanServ!ChanServ@services. MODE #sevk +o ikk-bot
-      puts s
+      puts s.red
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
-      puts s
+      puts s.red
       myexit if s =~ /:Closing Link:/i
     else
       return nil#not match 
     end #end case
     return 'matched'
   end #end irc_event
+
   #写入日志
   def save_log(s)
 
