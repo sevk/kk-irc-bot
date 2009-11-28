@@ -2,15 +2,19 @@
 # coding: utf-8
 # jianglibo(jianglibo@gmail.com)
 # website: http://www.g0574.com
-# =KK=修改
-# 很多ip查不到,哪里算法不对..
+# =KK= 修改
+#
 
 require 'iconv'
-(File.exist?'QQWry.Dat' )? QQwrydat='QQWry.Dat' : QQwrydat='/media/other/LINUX学习/www/study/QQWry.Dat'
+require 'do_as_rb19.rb'
+
+(File.exist?'QQWry.Dat' )? fQQwry='QQWry.Dat' : fQQwry='/media/other/LINUX学习/www/study/QQWry.Dat'
+
 class IpLocationSeeker
-  def initialize(data_filename = QQwrydat)
-    data_filename = File.join(File.dirname(__FILE__),QQwrydat) if FileTest::exist?(QQwrydat)
-    @datafile = File.open(QQwrydat,"r:utf-8")
+  def initialize(data_filename = fQQwry)
+    data_filename = File.join(File.dirname(__FILE__),fQQwry) if FileTest::exist?(fQQwry)
+    #@datafile = File.open(fQQwry,"r:utf-8")
+    @datafile = File.open(fQQwry,"rb")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
     @index_num = (@last_index_pos - @first_index_pos)/7 + 1
   end
@@ -40,11 +44,12 @@ class IpLocationSeeker
     @ip_str = ip_str
     @ip_record_pos = get_ip_record_pos
     begin #错误处理
-        [get_country_string,get_area_string].join('')
+      tmp = get_country_string + get_area_string
+      puts tmp
+      return tmp
     rescue Interrupt
       return ip_str
     rescue Exception => detail
-      #puts detail.message()
       p $!
       p $@
       return ip_str
@@ -90,18 +95,17 @@ class IpLocationSeeker
     count = 0
     while c = @datafile.getc
       break if count>100
-      break if c.ord < 0x32 #ord 兼容ruby1.8.7 1.9
+      break if c.to_s.ord < 0x32 rescue p c
       str << c
       count += 1
     end
-    str = Iconv.conv("UTF-8","GB18030//IGNORE",str).to_s rescue ''
     if count > 70
-      puts 'count:' + count.to_s
+      puts 'ipwry count:' + count.to_s
       str = "2 unknown string."
       @get_country_string_error = true
     end
     @after_read_country_pos = @datafile.pos
-    return str
+    return Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",str) rescue ''
   end
 
   #private
@@ -149,7 +153,7 @@ class IpLocationSeeker
         read_zero_end_string(@after_read_country_pos)
       elsif @mode_flag == 1
         if @level_two_mode_flag == 2
-          p @level_three_mode_flag
+          #p @level_three_mode_flag
           if @level_three_mode_flag == 1 || @level_three_mode_flag == 2
             @datafile.seek(@ip_record_level_two_pos + 5)
             @ip_record_area_string_pos = three_bytes_long_int(@datafile.read(3).unpack('C3'))
