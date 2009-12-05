@@ -482,7 +482,7 @@ class IRC
     when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ', hi .',10,21) if rand(10) > 6
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,8})?)$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,7})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', hello .',10,21)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
@@ -615,7 +615,7 @@ class IRC
   #显示高亮
   def highlighted(s)
     s=s.force_encoding("utf-8")
-    s=s.gb_to_utf8 if $charset !~ /UTF-8/i
+    s=s.gb_to_utf8 if @charset !~ /UTF-8/i
     case s
     when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s:(.+)$/i
       from=$1;name=$2;ip=$3;mt=msgto=$4;sy=$5
@@ -625,9 +625,9 @@ class IRC
         mt= mt.green 
       end
       sy=sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
-      re= "#{from} #{mt} #{sy}"
+      re= "#{from.cyan} #{mt} #{sy}"
     else
-      re= s.blue
+      re= s.red
     end
     re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
     return re

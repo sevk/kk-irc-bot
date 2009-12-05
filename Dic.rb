@@ -38,8 +38,6 @@ load 'do_as_rb19.rb'
 load 'color.rb'
 require 'yaml'
 
-fi1="/media/other/LINUX学习/www/study/UBUNTU新手资料.txt"
-fi2="UBUNTU新手资料.txt"
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
@@ -107,10 +105,9 @@ end
 
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
 def readDicA()
+  fi1= 'UBUNTU新手资料.txt'
   if (File.exist?fi1 )
     IO.read(fi1)
-  elsif (File.exist?fi2 )
-    IO.read(fi2)
   else
     ''
     #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
@@ -252,6 +249,7 @@ end
 #取标题,参数是url.
 def gettitle(url)
     title = $tmp = ''
+    charset = ''
     flag = 0
     istxthtml = false
     if url =~ /[\u4E00-\u9FA5]/
@@ -270,7 +268,7 @@ def gettitle(url)
         ){ |f|
           #p f.content_type
           istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
-          $charset= f.charset          # "iso-8859-1"
+          charset= f.charset          # "iso-8859-1"
           $tmp = f.read[0,9999].gsub(/\s+/,' ')
         }
     rescue 
@@ -292,14 +290,13 @@ def gettitle(url)
 
     return nil if title =~ /index of/i
 
-    charset=$charset
-    #puts "1=" + charset.to_s
+    puts "1=" + charset.to_s
     tmp.match(/<meta.*?charset=(.+?)["']/i)
     charset=$1 if $1
     if charset =~ /^gb/i
       charset='gb18030' 
     end
-    #puts '2=' + charset.to_s
+    puts '2=' + charset.to_s
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'

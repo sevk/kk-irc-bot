@@ -8,11 +8,10 @@
 require 'iconv'
 require 'do_as_rb19.rb'
 
-(File.exist?'QQWry.Dat' )? fQQwry='QQWry.Dat' : fQQwry='/media/other/LINUX学习/www/study/QQWry.Dat'
-
 class IpLocationSeeker
-  def initialize(data_filename = fQQwry)
-    data_filename = File.join(File.dirname(__FILE__),fQQwry) if FileTest::exist?(fQQwry)
+  def initialize()
+    fQQwry='./QQWry.Dat'
+
     #@datafile = File.open(fQQwry,"r:utf-8")
     @datafile = File.open(fQQwry,"rb")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
@@ -45,7 +44,7 @@ class IpLocationSeeker
     @ip_record_pos = get_ip_record_pos
     begin #错误处理
       tmp = get_country_string + get_area_string
-      puts tmp
+      #puts tmp
       return tmp
     rescue Interrupt
       return ip_str
