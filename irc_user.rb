@@ -2,8 +2,8 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 70.0 #75
-$maxflood = 37.0   #39
+$maxfloodme = 86.0 #75
+$maxflood = 40.0   #39
 $initFlood = 83.0 #83
 $maxNamed = 180
 
@@ -55,13 +55,10 @@ class ALL_USER
     name.scan(/../).map{|x| x.hex}.join('.')
   end
 
+  #记录nick库
   def add(nick,name,ip)
     name.gsub!(/[in]=/i,'')
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
-    if name =~ /^U\d{5}$/ && ip == '59.36.101.19'
-      #不记录黑名单用户
-      return 19
-    end
     #puts '6 add ' +  nick if $debug
     return if nick == nil
     if @index.include?(nick)

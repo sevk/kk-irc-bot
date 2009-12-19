@@ -43,9 +43,7 @@ class IpLocationSeeker
     @ip_str = ip_str
     @ip_record_pos = get_ip_record_pos
     begin #错误处理
-      tmp = get_country_string + get_area_string
-      #puts tmp
-      return tmp
+      return get_country_string + get_area_string
     rescue Interrupt
       return ip_str
     rescue Exception => detail
@@ -137,7 +135,7 @@ class IpLocationSeeker
       p $!
       p $@
       @get_country_string_error = true
-      "3 unknown country!"
+      return "unknown country!"
     end
   end
 
@@ -169,7 +167,7 @@ class IpLocationSeeker
     rescue
       p $!
       @get_area_string_error = true
-      "1 unknown area!"
+      return "unknown area!"
     end
   end
 

@@ -106,6 +106,7 @@ class IRC
   #eval
   def evaluate(s)
     #return '操作不安全' if s=~/pass|serv/i
+    return if s !~ /\d/ and s.size < 4
     result = nil
     begin
       p s
@@ -216,10 +217,9 @@ class IRC
       p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
-        return if s =~ /action/i
-        
-        return 'matched err charset, but not need check code' if $need_Check_code < 1
+        #return if s =~ /action/i
         send "Notice #{from} :use #{@charset} charset, not #{tmp}"
+        return 'matched err charset, but not need check code' if $need_Check_code < 1
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
       end
@@ -231,7 +231,7 @@ class IRC
   def check_msg(s)
     return if !s
     s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
-    case s.strip
+    case s
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
@@ -282,16 +282,14 @@ class IRC
             #$u.floodmereset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
             $otherbot_said=true
-            send "PRIVMSG #{a1} :sleeping ... in room #Sevk " if rand(10) > 8
-            msg to ,"#{from}, play ? ... go to room  #Sevk or #{to}-ot ",0 if rand(10) > 4
+            msg to ,"#{from}, 玩机器人? ? ... 去 #Sevk or #{to}-ot ",0 if rand(10) > 4
             return nil
           end
         end
         return 'msg with my name:.+'
       else
-        if a3=~ /^gateway\//i
-          return
-        end
+        #不处理gateway用户
+        return if a3=~ /^gateway\//i
       end
 
       #禁掉一段时间
@@ -410,6 +408,10 @@ class IRC
           rescue
             $!
           end
+
+          return if $last_ti == $ti
+          $last_ti = $ti
+
           if $ti 
             #if $ti =~ $tiList || url =~ $urlList
               tmp = $ti.gsub(/\s+/,'')
@@ -482,9 +484,9 @@ class IRC
     when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ', hi .',10,21) if rand(10) > 6
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test|测试(中)?(.{1,7})?)$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,7})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', hello .',10,21)
+      do_after_sec(to,from + ', hello .',10,17)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -525,7 +527,7 @@ class IRC
       puts "LAG = #{$lag} 秒" if $lag > 3
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING (.+)[\001]$/i #ctcp ping
       puts "[2 CTCP PING from #{$1}!#{$2}@#{$3} ]"
-      send "NOTICE #{$1} :\001PING #{$4}\001"
+      send "NOTICE #{$1} :\001PONG #{$4}\001"
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]VERSION[\001]$/i #ctcp
       puts "[3 CTCP VERSION from #{$1}!#{$2}@#{$3} ]"
       send "NOTICE #{$1} :\001VERSION Sevkme@gmail.com Ruby-irc #{Ver} birthday=2008.7.20\001"
@@ -559,7 +561,7 @@ class IRC
           Readline.completion_append_character = ', '
 
           puts "是否检测乱码= #{$need_Check_code}"
-          puts 'feed功能= ' + $need_say_feed.to_s
+          puts "feed功能= " + $need_say_feed.to_s
           print 'saytitle= ' , $saytitle
         end 
       end
@@ -608,7 +610,7 @@ class IRC
     puts highlighted(s) rescue nil #高亮显示消息
     save_log(s)#写入日志
     return if not $bot_on #bot 功能
-    s=s.force_encoding("UTF-8")
+    #s=s.force_encoding("UTF-8")
     return if check_msg(s).class != Fixnum #字典消息
   end
 
@@ -625,7 +627,7 @@ class IRC
         mt= mt.green 
       end
       sy=sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
-      re= "#{from.cyan} #{mt} #{sy}"
+      re= "<#{from.cyan}> #{mt} #{sy}"
     else
       re= s.red
     end
@@ -633,6 +635,7 @@ class IRC
     return re
   end
 
+  #记录自己说话的时间
   def isaid(second=3)
     $min_next_say=Time.now + Minsaytime + second
   end
@@ -761,7 +764,7 @@ class IRC
       n = 0
       loop do
         sleep(700 + rand(850))
-        p Time.now
+        p Time.now.to_s.yellow
         n+=1
         next if n%2 ==0
         next unless (8..24) === Time.now.hour

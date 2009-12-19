@@ -42,7 +42,7 @@ require 'yaml'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_size = 0
 
-Help = '我是ikk-irc-bot s 新手资料 g google d define `b baidu `new 取论坛新贴 tt google翻译 `t 词典 `a 查某人地址 `f 查老乡 `host 查域名 >1+1 计算 `i 源代码 末尾加入|重定向,如 g ubuntu | nick.'
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 `host 查域名 >1+1 计算 `a 查某人地址 `f 查老乡 `i 机器人源代码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4
 Ver='v0.25' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
@@ -50,7 +50,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 CN_re=/[\u4E00-\u9FA5]+/
 Http_re= /http:\/\/\S+[^\s*]/
 
-Minsaytime= 4
+Minsaytime= 3
 puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -58,10 +58,10 @@ $lag=1
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|MadGirl|Psycho/i
-$botlist_Code=/badgirl|^O_|^\^O_/i
-$botlist_ub_feed=/crazyghost|^O_|^\^O_/i
-$botlist_title=/GiGi|u_b|^O_|^\^O_/i
+$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|^A_U.?$|MadGirl|Psycho/i
+$botlist_Code=/badgirl|^O_|^\^O_|^A_U.?$/i
+$botlist_ub_feed=/crazyghost|^O_|^\^O_|^A_U.?$/i
+$botlist_title=/GiGi|u_b|^O_|^\^O_|^A_U.?$/i
 $tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 $urlList=$tiList
 
@@ -102,7 +102,6 @@ else
   end
 end
 
-
 #如果当前目录存在UBUNTU新手资料.txt,就读取.
 def readDicA()
   fi1= 'UBUNTU新手资料.txt'
@@ -123,7 +122,7 @@ def saveu
   File.open("person_#{ARGV[0]}.yaml","w") do|io|
     YAML.dump($u,io)
   end
-  puts 'save u ok'.red
+  puts ' save u ok'.red
 end
 
 #使用安全进程进行eval操作,参数level是安全级别.
@@ -178,44 +177,43 @@ end
 
 #google 全文翻译,参数可以是中文,也可以是英文.
 def getGoogle_tran(word) 
-    if word =~/^[\u4E00-\u9FA5]+$/#有中文
-      flg = 'zh-CN%7Cen'
-      #flg = '#auto|en|' + word ; puts '中文>英文'
-    else
-      flg = 'auto%7Czh-CN'
-      #flg = '#auto|zh-CN|' + word
-    end
-    word = URI.escape(word)
-    puts word
-    #url = "http://66.249.89.100/translate_t?hl=zh-CN#{flg}"
-    #66.249.89.100 = translate.google.com
-    url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
-    uri = URI.parse(url)
-    uri.open(
-      'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-      'Accept'=>'text/html',
-      'Referer'=> URI.escape(url)
-      #'Accept-Language'=>'zh-cn',
-      #'Cookie' => cookie,
-      #'Range' => 'bytes=0-8000',
-      #'User-Agent'=> UserAgent
-      ){ |f|
-        p f.content_type
-        return f.read
-        #re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
-        #re.gsub!(/<.*?>/i,'')
-        #return unescapeHTML(re)
-      }
+  if word =~/^[\u4E00-\u9FA5]+$/#有中文
+    flg = 'zh-CN%7Cen'
+    #flg = '#auto|en|' + word ; puts '中文>英文'
+  else
+    flg = 'auto%7Czh-CN'
+    #flg = '#auto|zh-CN|' + word
+  end
+  word = URI.escape(word)
+  puts word
+  #url = "http://66.249.89.100/translate_t?hl=zh-CN#{flg}"
+  #66.249.89.100 = translate.google.com
+  url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
+  uri = URI.parse(url)
+  uri.open(
+           'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+           'Accept'=>'text/html',
+           'Referer'=> URI.escape(url)
+           #'Accept-Language'=>'zh-cn',
+           #'Cookie' => cookie,
+           #'Range' => 'bytes=0-8000',
+           #'User-Agent'=> UserAgent
+           ){
+    |f| p f.content_type
+    return f.read
+    #re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
+    #re.gsub!(/<.*?>/i,'')
+    #return unescapeHTML(re)
+  }
 
-    #Net::HTTP.start('translate.google.com') {|http|
-      #resp = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
-      #p resp.body
-      #return resp.body
-    #}
+  #Net::HTTP.start('translate.google.com') {|http|
+  #resp = http.get("/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8", nil)
+  #p resp.body
+  #return resp.body
+  #}
 end
 
 def dictcn(word)
-  puts '1'.red
   word = word.utf8_to_gb
   
   #url = 'http://api.dict.cn/api.php?utf8=true&q=' + word
@@ -373,7 +371,7 @@ def getGoogle(word,flg)
         case html
         when /相关词句：(.*?)网络上查询(.*?)(https?:\/\/\S+[^\s*])">/i#define
           tmp = $2.to_s + " > " + $3.to_s.gsub(/&amp;.*/i,'')
-          tmp += ' ⋙ SEE ALSO ' + $1.to_s if rand(10)>5
+          tmp += ' ⋙ SEE ALSO ' + $1.to_s if rand(10)>5 and $1.to_s.size > 2
         when /专业气象台|比价仅作信息参考/
           tmp = html.match(/>网页<.+?(搜索用时|>网页<\/b>)(.*?)(搜索结果|Google 主页)/)[2]
         when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
