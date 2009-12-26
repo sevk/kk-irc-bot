@@ -69,7 +69,7 @@ def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
   URI.unescape(str)
 end
-   
+
 def URLEncode(str)
   #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }  
   URI.escape(str)
@@ -117,7 +117,7 @@ def loadDic()
   puts 'Dic load [ok]'
 end
 def saveu
-  return if Time.now - $last_save < 60 rescue nil
+  return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
   File.open("person_#{ARGV[0]}.yaml","w") do|io|
     YAML.dump($u,io)
@@ -288,13 +288,13 @@ def gettitle(url)
 
     return nil if title =~ /index of/i
 
-    puts "1=" + charset.to_s
+    #puts "1=" + charset.to_s
     tmp.match(/<meta.*?charset=(.+?)["']/i)
     charset=$1 if $1
     if charset =~ /^gb/i
       charset='gb18030' 
     end
-    puts '2=' + charset.to_s
+    #puts '2=' + charset.to_s
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
@@ -319,7 +319,7 @@ def getPY(c)
     needAddKub=true
     c.gsub!(/\skubuntu/i,' ')
   end
-  re = getGoogle(c ,1).to_s
+  re = google_py(c)
   re = re + ' Kubuntu' if needAddKub==true
   re.gsub!(/还原/i,'换源')
 
@@ -347,6 +347,23 @@ def encodeurl(url)
   url
 end
 
+def google_py(word)
+    re=''
+    url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
+    url = encodeurl(url)
+    url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
+
+    open(url,
+    'Referer'=> url,
+    'Accept-Encoding'=>'deflate',
+    'User-Agent'=> UserAgent
+    ){ |f|
+      html=f.read.gsub(/\s+/,' ')
+      html.match(/是不是要找.*<em>(.*?)<\/em>/i)
+      return unescapeHTML($1.to_s)
+    }
+end
+
 def getGoogle(word,flg)
     re=''
     url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
@@ -361,12 +378,6 @@ def getGoogle(word,flg)
     'User-Agent'=> UserAgent
     ){ |f|
       html=f.read.gsub(/\s+/,' ')
-      case flg
-      when 1#拼音查询
-        html.match(/是不是要找：.*?<em>(.*?)<\/em>/i)#<!--a-->
-        re = $1.to_s.gsub(/\s/i,' ')
-        re = unescapeHTML(re)
-      when 0
         matched = true
         case html
         when /相关词句：(.*?)网络上查询(.*?)(https?:\/\/\S+[^\s*])">/i#define
@@ -432,7 +443,6 @@ def getGoogle(word,flg)
           #end
           re = url_mini + ' ' + re
         end
-      end
       return nil if re.bytesize < 3
       re.gsub!(/<.*?>/i,'')
       re.gsub!(/\[\s翻译此页\s\]/,'')
@@ -442,7 +452,6 @@ def getGoogle(word,flg)
     return unless re
     return if re.bytesize < url_mini.bytesize + 3
     return re
-
 end
 
 def geted2kinfo(url)
@@ -584,6 +593,22 @@ def hostA(domain,hideip=false)#处理IP 或域名
   tmp.gsub!(/CZ88\.NET/i,'')
   tmp.gsub!(/IANA/i,'不在宇宙')
   tmp.gsub(/\s+/,'').to_s + ' '
+end
+
+#eval
+def evaluate(s)
+  #return '操作不安全' if s=~/pass|serv/i
+  return if s !~ /\d/ and s.size < 6
+  result = nil
+  begin
+    #p s
+    Timeout.timeout(4) {
+      result = safe(4) {eval(s).to_s[0,400]}
+    }
+  rescue Exception => detail
+    result = detail.message()
+  end
+  return result
 end
 
 #为字符串添加2个方法,用于gb18030和utf8互转.

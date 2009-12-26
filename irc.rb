@@ -47,8 +47,24 @@ class IRC
   
   #kick踢出
   def kick(s)
-    send "kick #@channel #{s} 大段内容请贴到http://paste.ubuntu.org.cn"
+    send "kick #@channel #{s} 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn"
   end
+
+  #/mode #ubuntu-cn +b *!*@1.1.1.0
+  def autoban(chan,s)
+    send "mode #{chan} +b #{s}"
+    Thread.new do
+      tmp = s
+      sleep 35
+      puts 'unban: ' + tmp
+      send "mode #{chan} -b #{tmp}"
+    end
+  end
+
+  def unban(chan,s)
+    send "mode #{chan} -b #{s}"
+  end
+
   def ping(s)
     $Lping = Time.now
     $Lsay = Time.now
@@ -101,22 +117,6 @@ class IRC
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
-  end
-
-  #eval
-  def evaluate(s)
-    #return '操作不安全' if s=~/pass|serv/i
-    return if s !~ /\d/ and s.size < 4
-    result = nil
-    begin
-      p s
-      Timeout.timeout(4) {
-        result = safe(4) {eval(s).to_s[0,400]}
-      }
-    rescue Exception => detail
-      result = detail.message()
-    end
-    return result
   end
 
   #发送字典结果 ,取字典,可以用>之类的重定向,向某人提供字典数据
@@ -218,7 +218,7 @@ class IRC
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
         #return if s =~ /action/i
-        send "Notice #{from} :use #{@charset} charset, not #{tmp}"
+        send "Notice #{from} :使用 #{@charset} 字符编码,别用#{tmp}".utf8_to_gb
         return 'matched err charset, but not need check code' if $need_Check_code < 1
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
@@ -244,6 +244,10 @@ class IRC
 
       if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
         sSay = '`help |'
+      end
+
+      if $u.isBlocked?(from)
+        return nil
       end
 
       tmp = check_dic(a5,a1,a1)
@@ -282,14 +286,14 @@ class IRC
             #$u.floodmereset(a1)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
             $otherbot_said=true
-            msg to ,"#{from}, 玩机器人? ? ... 去 #Sevk or #{to}-ot ",0 if rand(10) > 4
+            msg to ,"#{from}, 玩机器人? ? ... 去 #Sevk or #{to}-ot ",0 if rand(10) > 5
             return nil
           end
         end
         return 'msg with my name:.+'
       else
-        #不处理gateway用户
-        return if a3=~ /^gateway\//i
+        ##不处理gateway用户
+        return if a3=~ /^gateway\//i && $black_gateway
       end
 
       #禁掉一段时间
@@ -308,15 +312,17 @@ class IRC
           #puts '消息以我名字开头'
           #$otherbot_said=false
           #do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
-          #`sh sound.sh`
+          #`sh sound.sh` if File.exist? 'sound.sh'
         else
           #$u.said(from,name,ip)
           #$u.setLastSay(from,sSay)
-          if $u.saidAndCheckFlood(a1,a2,a3,sSay)
-            $u.floodreset(a1)
+          if $u.saidAndCheckFlood(nick,name,ip,sSay)
+            $u.floodreset(nick)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            msg(a4,"#{a1}: ...flood ? 超过4行或图片请贴到 http://paste.ubuntu.org.cn",4)
-            kick a1
+            #kick a1
+            autoban to,"#{nick}!*@*"
+            #msg(a4,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",0)
+            notice(nick,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",4)
             return nil
           end
         end
@@ -386,7 +392,7 @@ class IRC
     case s.strip
     when /^\`?>\s?(.+)$/i #eval
       puts "[4 EVAL #{$1} from #{from}]"
-      tmp=evaluate($1.to_s)
+      tmp = evaluate($1.to_s)
       msg to,"#{from}, #{tmp}",0 if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
@@ -486,7 +492,7 @@ class IRC
       do_after_sec(to,from + ', hi .',10,21) if rand(10) > 6
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,7})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', hello .',10,17)
+      do_after_sec(to,from + ', hello .',10,20)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -500,18 +506,18 @@ class IRC
       tmp = "%03s" % tmp
 
       $need_Check_code -= 1 if tmp[0].ord == 48
-      $need_Check_code += 1 if tmp[0].ord == 49
+      $need_Check_code += 1 if tmp[0].ord == 49 and $need_Check_code < 1
       $need_say_feed -= 1 if tmp[1].ord == 48
-      $need_say_feed += 1 if tmp[1].ord == 49
+      $need_say_feed += 1 if tmp[1].ord == 49 and $need_say_feed < 1
       $saytitle -= 1 if tmp[2].ord == 48
-      $saytitle += 1 if tmp[2].ord == 49
+      $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
       load 'Dic.rb'
       load 'irc_user.rb'
       load "ipwry.rb"
-      #load 'plugin.rb'
+      #load 'plugin.rb' ✘
       loadDic
-      msg(to,"restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
+      msg(to,"✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
     else
       return 1#not match dic_event
     end
@@ -607,7 +613,7 @@ class IRC
   def handle_server_input(s)
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
-    puts highlighted(s) rescue nil #高亮显示消息
+    pr_highlighted(s) #高亮显示消息
     save_log(s)#写入日志
     return if not $bot_on #bot 功能
     #s=s.force_encoding("UTF-8")
@@ -615,7 +621,7 @@ class IRC
   end
 
   #显示高亮
-  def highlighted(s)
+  def pr_highlighted(s)
     s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i
     case s
@@ -624,15 +630,17 @@ class IRC
       if mt =~ /^priv/i
         mt= ''
       else
+        #return if mt =~ Regexp.new(Regexp.escape($ignore),Regexp::IGNORECASE)
+        return if mt =~ Regexp.new($ignore,Regexp::IGNORECASE)
         mt= mt.green 
       end
-      sy=sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
+      sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
       re= "<#{from.cyan}> #{mt} #{sy}"
     else
       re= s.red
     end
     re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
-    return re
+    puts re
   end
 
   #记录自己说话的时间
@@ -712,8 +720,8 @@ class IRC
           tmp = $1.to_s
           send 'quit optimize ' + tmp
           p 'quit...'
-          sleep 3
           myexit()
+          sleep 2
           exit
         when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
@@ -727,6 +735,8 @@ class IRC
           send s.gsub(/^[\/:]/,"")
         when /^`/
           check_dic(s,@nick,@channel)
+        when /^\>(.*)/
+          say eval($1).to_s
         else
           say s
         end
@@ -734,14 +744,16 @@ class IRC
     end
   end
   def mystart
-    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue nil
-    $u = ALL_USER.new if ! $u 
+    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue (p $!.message)
+    p $u.class
+    $u = ALL_USER.new if $u.class != ALL_USER
     $u.init_pp
     puts $u.all_nick.count.to_s + ' nicks loaded from yaml file.'.red
   end
 
   def myexit
     saveu
+    sleep 1
     puts 'exiting...'.yellow
     @exit = true
   end
@@ -764,7 +776,7 @@ class IRC
       n = 0
       loop do
         sleep(700 + rand(850))
-        p Time.now.to_s.yellow
+        puts Time.now.to_s.yellow
         n+=1
         next if n%2 ==0
         next unless (8..24) === Time.now.hour
