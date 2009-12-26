@@ -2,10 +2,10 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 86.0 #75
-$maxflood = 40.0   #39
+$maxfloodme = 85.0 #75
+$maxflood = 48.0   #39
 $initFlood = 83.0 #83
-$maxNamed = 180
+$maxNamed = 220
 
 class ALL_USER
   #attr :nick, true
@@ -51,6 +51,8 @@ class ALL_USER
       return nil
     end
   end
+
+  #解析网页登录的IP
   def ip_from_webname(name)
     name.scan(/../).map{|x| x.hex}.join('.')
   end
@@ -79,14 +81,14 @@ class ALL_USER
     $time_in[@pos_write]= t
     $timelastsay[@pos_write]= t
     $timelastsayme[@pos_write]= t - 11
-    $timelast6me[@pos_write]= $initFlood * 2
-    $timelast6say[@pos_write]= $initFlood * 2
+    $timelast6me[@pos_write]= $initFlood * 1.2
+    $timelast6say[@pos_write]= $initFlood * 1.2
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=''
 
     if @pos_write == $maxNamed
       @pos_write = 0
-      puts t
+      puts t.to_s.blueb
       puts @index.size
     else
       @pos_write += 1
@@ -127,14 +129,15 @@ class ALL_USER
   def check_flood_me(nick)#更严格
     index = getindex(nick)
     return false if index ==nil
-    $timelast6me[index] = $initFlood * 1.5 if ! $timelast6me[index]
-    p "~me #{nick} #{$timelast6me[index]}" if $debug
+    $timelast6me[index] = $initFlood if ! $timelast6me[index]
+    p "~me #{$timelast6me[index]}" if $debug
     return $timelast6me[index] < $maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
     return false if index ==nil
-    p "~ #{nick} #{$timelast6say[index]}" if $debug
+    $timelast6say[index] = $initFlood if ! $timelast6say[index]
+    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +15
     return $timelast6say[index] < $maxflood
   end
 
@@ -149,9 +152,9 @@ class ALL_USER
     end
     t = Time.now
     $timelastsayme[index] = t if ! $timelastsayme[index]
-    $timelast6me[index] = $initFlood * 1.2 if ! $timelast6me[index]
-    $timelast6me[index] = $initFlood * 1.2 if $timelast6me[index] > $initFlood * 1.5
-    $timelast6me[index] = ($timelast6me[index] /6 ) * 5 +  (t - $timelastsayme[index])
+    $timelast6me[index] = $initFlood if ! $timelast6me[index]
+    $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood
+    $timelast6me[index] = $timelast6me[index] / 5 * 4 +  (t - $timelastsayme[index])
     p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
   end
@@ -170,9 +173,9 @@ class ALL_USER
     #~ puts '21 $timelast6say[index]:  index: ' + index.to_s
     t = Time.now
     $timelastsay[index] = t if ! $timelastsay[index]
-    $timelast6say[index] = $initFlood * 1.5 if ! $timelast6say[index]
-    $timelast6say[index] = $initFlood * 1.5 if $timelast6say[index] > $initFlood * 2
-    $timelast6say[index] = ($timelast6say[index] /6 ) * 5 +  (t - $timelastsay[index])
+    $timelast6say[index] = $initFlood if ! $timelast6say[index]
+    $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood
+    $timelast6say[index] = $timelast6say[index] / 5 * 4 +  (t - $timelastsay[index])
     $timelastsay[index] = t
   end
 
@@ -215,7 +218,7 @@ class ALL_USER
     return @name[getindex(nick)]
   end
   def all_nick()
-    @index.keys
+    @index.keys rescue ''
   end
 
   def completename(s)

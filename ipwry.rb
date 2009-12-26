@@ -6,7 +6,6 @@
 #
 
 require 'iconv'
-require 'do_as_rb19.rb'
 
 class IpLocationSeeker
   def initialize()
