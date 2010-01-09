@@ -46,7 +46,7 @@ $old_feed_size = 0
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 `host 查域名 >1+1 计算 `a 查某人地址 `f 查老乡 `i 机器人源代码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4
-Ver='v0.25' unless defined?(Ver)
+Ver='v0.26' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
