@@ -2,10 +2,10 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 85.0 #75
-$maxflood = 48.0   #39
+$maxfloodme = 75.0 #75
+$maxflood = 41.0   #41
 $initFlood = 83.0 #83
-$maxNamed = 220
+$maxNamed = 230
 
 class ALL_USER
   #attr :nick, true
@@ -15,17 +15,19 @@ class ALL_USER
     @name=Array.new
     @ip=Array.new
     @addr=Hash.new
-    @count_said=Array.new
+    #@count_said=Array.new
     @sex=Array.new
+    @RP=Array.new
     init_pp
     puts 'users class start' if $debug
   end
   def init_pp
-    if not @sex
-      puts 'fix in init_pp '
-      @count_said=Array.new
-      @sex=Array.new
+    if not defined?@RP
+      puts 'init_pp: not define @RP'.red if not defined?@RP
+      @RP=Array.new
     end
+    $mode=Array.new
+    $ban_time=Array.new
     $time_in=Array.new
     $timelastsay=Array.new
     $timelastsayme=Array.new
@@ -75,7 +77,7 @@ class ALL_USER
     @index[nick] = @pos_write
     @name[@pos_write]= name
     @ip[@pos_write]= ip
-    @count_said[@pos_write] = @count_said[@pos_write].to_i + 1
+    #@count_said[@pos_write] = @count_said[@pos_write].to_i + 1
     #puts @addr[nick]
     t = Time.now
     $time_in[@pos_write]= t
@@ -84,7 +86,10 @@ class ALL_USER
     $timelast6me[@pos_write]= $initFlood * 1.2
     $timelast6say[@pos_write]= $initFlood * 1.2
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
-    $lastsay[@pos_write]=''
+    $lastsay[@pos_write]=nil
+    #$ban_time=read_from_db
+    $ban_time[@pos_write]=Time.now - 200
+    $mode[@pos_write]=nil
 
     if @pos_write == $maxNamed
       @pos_write = 0
@@ -106,6 +111,14 @@ class ALL_USER
      
   end
 
+  def set_ban_time(nick)
+    puts '设置ban 时间 ' + nick
+    $ban_time[getindex(nick)] = Time.now
+  end
+  def get_ban_time(nick)
+    puts '取ban 时间 ' + nick
+    $ban_time[getindex(nick)] rescue Time.now - 900
+  end
   def lastSay=(nick,w)
     $lastsay[getindex(nick)]=w
   end

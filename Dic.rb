@@ -27,8 +27,10 @@ require 'open-uri'
 require 'iconv'
 require 'uri'
 require 'net/http'
-require 'rss/1.0'
-require 'rss/2.0'
+#require 'rexml/document'
+#include REXML
+#require 'nokogiri'
+require 'rss'
 #require 'cgi'
 require 'base64'
 #require 'md5'
@@ -47,10 +49,12 @@ Delay_do_after = 4
 Ver='v0.25' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
-CN_re=/[\u4E00-\u9FA5]+/
+CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
+#CN_re=/^(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+$/n
+
 Http_re= /http:\/\/\S+[^\s*]/
 
-Minsaytime= 3
+Minsaytime= 4
 puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -77,6 +81,7 @@ end
 
 def unescapeHTML(str)
   HTMLEntities.new.decode(str)
+  #str.gsub!(/<.*?>/i,'')
   #CGI.unescapeHTML(str)
 end 
 
@@ -117,7 +122,7 @@ def loadDic()
   puts 'Dic load [ok]'
 end
 def saveu
-  return if Time.now - $last_save < 120 rescue nil
+  return if Time.now - $last_save < 60 rescue nil
   $last_save = Time.now
   File.open("person_#{ARGV[0]}.yaml","w") do|io|
     YAML.dump($u,io)
@@ -142,30 +147,54 @@ end
 class Rss_reader
   attr_accessor :title, :pub_date, :description, :link
 end
+
+def get_Atom(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+  buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
+  document = Document.new(buffer)
+  elements = REXML::XPath.match(document.root, "//atom:entry/atom:title/text()","atom" => "http://www.w3.org/2005/Atom")
+  titles = elements.map {|el| el.value }
+  puts titles.join("\n")
+end
+
+def get_Atom_n(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+  buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
+  #Nokogiri.new()
+  document = Nokogiri::XML(buffer)
+  elements = document.xpath("//atom:entry/atom:title/text()","atom" => "http://www.w3.org/2005/Atom")
+  titles = elements.map {|e| e.to_s}
+  puts titles.join("\n")
+end
+
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  @rss_str = Net::HTTP.get(URI.parse(url)).force_encoding("utf-8")
-  @rss_str = @rss_str.gsub(/\s+/,' ')
-  xml_doc = REXML::Document.new(@rss_str)
-  return nil unless xml_doc
-  re = Array.new
-  $ub = ''
-  xml_doc.elements["rss/channel"].each_element("//item") do |ele|
-    reader = Rss_reader.new
-    reader.title = ele.elements["title"].get_text
-    reader.pub_date = ele.elements["pubDate"].get_text
-    reader.description = ele.elements["description"].get_text
-    reader.link = ele.elements["link"].get_text
-    re << reader
+  feed  = RSS::Parser.parse( url )
 
-    next if reader.title.to_s =~ /^Re:/i && not_re 
-    #puts reader.title.to_s
+  $ub = ''
+  feed.items.each do |item|
+    reader = Rss_reader.new
+    reader.title = item.title.content
+    reader.pub_date = item.updated
+    reader.description = item.content
+    reader.link = item.link.href
+
+  #@rss_str = Net::HTTP.get(URI.parse(url)).force_encoding("utf-8")
+  #xml_doc = REXML::Document.new(@rss_str)
+  #return nil unless xml_doc
+  #$ub = ''
+  #xml_doc.elements["rss/atom"].each_element("//item") do |ele|
+    #reader = Rss_reader.new
+    #reader.title = ele.elements["title"].get_text
+    #reader.pub_date = ele.elements["pubDate"].get_text
+    #reader.description = ele.elements["description"].get_text
+    #reader.link = ele.elements["link"].get_text
+
+    next if reader.title.to_s =~ /Re:/i && not_re
     $ub = "新⇨ #{reader.title} #{reader.link} #{reader.description}"
-    $ub = unescapeHTML($ub)
-    $ub.gsub!(/<.+?>/,' ')
+    $ub.gsub!(/\s+/,' ')
+    return $ub.unescapeHTML
+    #$ub.gsub!(/<.+?>/,' ')
     break
   end
-  puts $ub
   if $old_feed_size == $ub.size
     $ub = nil
     return 'hehe,去论坛逛了一下，暂时无新帖.'
@@ -177,15 +206,14 @@ end
 
 #google 全文翻译,参数可以是中文,也可以是英文.
 def getGoogle_tran(word) 
-  if word =~/^[\u4E00-\u9FA5]+$/#有中文
-    flg = 'zh-CN%7Cen'
+  if word.force_encoding("ASCII-8BIT") =~ CN_re #有中文
+    flg = 'zh-CN%7cen'
     #flg = '#auto|en|' + word ; puts '中文>英文'
   else
-    flg = 'auto%7Czh-CN'
+    flg = 'auto%7czh-CN'
     #flg = '#auto|zh-CN|' + word
   end
   word = URI.escape(word)
-  puts word
   #url = "http://66.249.89.100/translate_t?hl=zh-CN#{flg}"
   #66.249.89.100 = translate.google.com
   url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
@@ -199,8 +227,8 @@ def getGoogle_tran(word)
            #'Range' => 'bytes=0-8000',
            #'User-Agent'=> UserAgent
            ){
-    |f| p f.content_type
-    return f.read
+    |f|
+    return f.read.match(/"trans":"(.*?)","/)[1]
     #re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
     #re.gsub!(/<.*?>/i,'')
     #return unescapeHTML(re)
@@ -215,8 +243,6 @@ end
 
 def dictcn(word)
   word = word.utf8_to_gb
-  
-  #url = 'http://api.dict.cn/api.php?utf8=true&q=' + word
   url = 'http://dict.cn/mini.php?q=' + word
   url = URI.escape(url)
   puts url
@@ -232,12 +258,12 @@ def dictcn(word)
     'Range' => 'bytes=0-9000',
     'User-Agent'=> UserAgent
     ){ |f|
-      p f.content_type
       re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
       re.gsub!(/<script.*?<\/script>/i,'')
       re.gsub!(/<.*?>/i,'')
       re.gsub!(/.*?Define /i,'')
-      return unescapeHTML(re) + ' << Dict.cn'
+      re.gsub!(/加入生词本.*/,'')
+      re.unescapeHTML + ' << Dict.cn'
     }
   rescue 
     return $!
@@ -479,9 +505,8 @@ def getBaidu(word)
       html=f.read().gsub!(/\s/,' ')
       re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
       re = $4 ; a2=$2[0,120]
-      re= re.gsub(/<.*?>/i,'')[0,330]
+      re= re.unescapeHTML.gsub(/<.*?>/i,'')[0,330]
       $re =  a2 + ' ' +  re
-      $re = unescapeHTML($re)
       $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
   }
   $re
@@ -507,10 +532,11 @@ def getBaidu_tran(word,en=true)
         re = ' <' + html.match(/class="wd"(.+?)<script>pronu/i)[1].to_s + ' '
         re += html.match(/class="explain">(.+?)<script/i)[1]
         re.gsub!(/<script\s?.+?>.+?<\/script>/i,'')
-        re.gsub!(/<.*?>/,'')
         re = re[0,600]
         re.gsub!(/&nbsp/,' ')
+        puts re; return
         re = unescapeHTML(re)
+        re.gsub!(/<.*?>/,'')
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
         $re.gsub!(/以下结果由.*?提供词典解释/,' ')
         $re.gsub!(/部首笔画部首.+?基本字义/,' 基本字义: ')
@@ -598,7 +624,6 @@ end
 #eval
 def evaluate(s)
   #return '操作不安全' if s=~/pass|serv/i
-  return if s !~ /\d/ and s.size < 6
   result = nil
   begin
     #p s
@@ -634,7 +659,14 @@ class String
   def ee(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
+
+  #整理HTML 和 &nbsp
+  def unescapeHTML
+    HTMLEntities.new.decode(self).gsub(/<.*?>/i,'')
+    #CGI.unescapeHTML(str)
+  end
 end
 
-
-
+def roll
+  rand(101).to_s
+end
