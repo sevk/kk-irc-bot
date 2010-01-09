@@ -55,7 +55,7 @@ class IRC
     send "mode #{chan} +b #{s}"
     Thread.new do
       tmp = s
-      sleep 35
+      sleep 36
       puts 'unban: ' + tmp
       send "mode #{chan} -b #{tmp}"
     end
@@ -78,7 +78,7 @@ class IRC
 
   #发送msg消息,随机 delay 秒数.
   def msg(who,sSay='',delay=4)
-    return if sSay == ''
+    return if sSay.size == 0
     $otherbot_said=false
     do_after_sec(who,sSay,0,delay)
   end
@@ -190,7 +190,8 @@ class IRC
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 then re = Help ;c=''
-      when 101 then re = getBaidu_tran(c);c=''
+      when 101 then re = dictcn(c);c=''
+      #when 101 then re = getBaidu_tran(c);c=''
       end
       Thread.exit if re.bytesize < 2
 
@@ -319,10 +320,14 @@ class IRC
           if $u.saidAndCheckFlood(nick,name,ip,sSay)
             $u.floodreset(nick)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            #kick a1
-            autoban to,"#{nick}!*@*"
-            #msg(a4,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",0)
-            notice(nick,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",4)
+            if Time.now - $u.get_ban_time(nick) < 90 #90 秒之前ban过
+              kick a1
+            else
+              autoban to,"#{nick}!*@*"
+              $u.set_ban_time(nick)
+            end
+            #msg(a4,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",6)
+            notice(nick,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
             return nil
           end
         end
@@ -390,7 +395,7 @@ class IRC
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     case s.strip
-    when /^\`?>\s?(.+)$/i #eval
+    when /^\`?>\s(.+)$/i #eval
       puts "[4 EVAL #{$1} from #{from}]"
       tmp = evaluate($1.to_s)
       msg to,"#{from}, #{tmp}",0 if tmp
@@ -421,8 +426,8 @@ class IRC
           if $ti 
             #if $ti =~ $tiList || url =~ $urlList
               tmp = $ti.gsub(/\s+/,'')
-              if s =~ /#{Regexp::escape tmp[0,15]}/i#已经发了就不说了
-                puts "已经发了标题 #{tmp[0,15]}"
+              if s =~ /#{Regexp::escape tmp[0,14]}/i#已经发了就不说了
+                puts "已经发了标题 #{tmp[0,14]}"
               else
                 msg(to,"⇪ title: #{$ti}",0) 
               end
@@ -438,13 +443,7 @@ class IRC
     when /^`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #baidu_tran
-      word = $1.to_s
-      en = $2 == "0"
-      #sayDic(101,from,to,$1)
-      Thread.new do
-        re = getBaidu_tran(word,en)
-        msg to,"#{re}",0 if re.bytesize > 3
-      end
+      sayDic(101,from,to,$1)
     when /^`deb\s(.*)$/i  #aptitude show
       sayDic(30,from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
@@ -489,10 +488,10 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ', hi .',10,21) if rand(10) > 6
+      do_after_sec(to,from + ', hi .',10,18) if rand(10) > 3
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,7})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', hello .',10,20)
+      do_after_sec(to,from + ', hello .',10,18)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -562,7 +561,6 @@ class IRC
           $saytitle -= 1 if from =~ $botlist_title
 
           @Named = true 
-          Readline.completion_case_fold = true
           renew_Readline_complete(@tmp.gsub('@','').split(' '))
           Readline.completion_append_character = ', '
 
@@ -591,10 +589,12 @@ class IRC
 
       #QUIT name :niven.freenode.net irc.freenode.net
       #Netsplit hubbard.freenode.net <-> irc.freenode.net
-    when /^:(.+?)\sMODE\s(.+)\+(.+)$/i#mode
+    when /^:(.+?)\sMODE\s(.+?)([\+\-])(.+?)\s(.+)$/i#mode
+      from=$1;chan=$2;type=$3;mode=$4;nick=$5
       #:services. MODE ikk-bot :+e
       #:ChanServ!ChanServ@services. MODE #sevk +o ikk-bot
-      puts s.red
+
+      puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       puts s.red
       myexit if s =~ /:Closing Link:/i
@@ -679,23 +679,24 @@ class IRC
         send "JOIN #{@channel}"
         #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
-        tmp = ((DateTime.parse('2009-01-26 00:00:00+08:00')-DateTime.now)*24*60*60).round
+        tmp = ((DateTime.parse('2010-02-14 00:00:00+08:00')-DateTime.now)*24*60*60).round
         if tmp < 0 #不用显示倒计时
           return if sSay =~ /\s$/
           send "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
           return
         end
+
         case tmp
         when 0..60
-          tmp="还有#{tmp}秒"
+          tmp="#{tmp}秒"
         when 61..3600
-          tmp="还有#{tmp/60}分钟"
+          tmp="#{tmp/60}分钟"
         when 3601..86400
-          tmp="还有#{tmp/60/60}小时"
+          tmp="#{tmp/60/60}小时"
         else
-          tmp="还有#{tmp/60/60/24}天"
+          tmp="#{tmp/60/60/24}天"
         end
-        send "privmsg #{to} :#{sSay} #{chr_hour} #{Time.now.strftime('[%H:%M]')} \0039新年快乐，离除夕0点#{tmp}\017"
+        send "privmsg #{to} :#{sSay} #{chr_hour} #{Time.now.strftime('[%H:%M]')} \0039新年快乐，离除夕0点还有 #{tmp}\017"
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
       end
@@ -704,6 +705,7 @@ class IRC
 
   def renew_Readline_complete(w)
     Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
+    Readline.completion_case_fold=true
   end
 
   #检测用户输入,实现IRC客户端功能.
@@ -780,7 +782,7 @@ class IRC
         n+=1
         next if n%2 ==0
         next unless (8..24) === Time.now.hour
-        saveu if n%7 ==0
+        saveu if n%8 ==0
         next if $need_say_feed < 1
         say_new($channel)
       end
