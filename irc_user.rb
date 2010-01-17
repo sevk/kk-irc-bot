@@ -2,9 +2,9 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 75.0 #75
-$maxflood = 41.0   #41
-$initFlood = 83.0 #83
+$maxfloodme = 68.0 #70
+$maxflood = 37.0   #40
+$initFlood = 82.0 #83
 $maxNamed = 230
 
 class ALL_USER
@@ -88,7 +88,7 @@ class ALL_USER
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=nil
     #$ban_time=read_from_db
-    $ban_time[@pos_write]=Time.now - 200
+    $ban_time[@pos_write]=Time.now - 3600
     $mode[@pos_write]=nil
 
     if @pos_write == $maxNamed
@@ -117,7 +117,7 @@ class ALL_USER
   end
   def get_ban_time(nick)
     puts '取ban 时间 ' + nick
-    $ban_time[getindex(nick)] rescue Time.now - 900
+    $ban_time[getindex(nick)] rescue Time.now - 3600
   end
   def lastSay=(nick,w)
     $lastsay[getindex(nick)]=w

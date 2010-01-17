@@ -55,7 +55,7 @@ class IRC
     send "mode #{chan} +b #{s}"
     Thread.new do
       tmp = s
-      sleep 36
+      sleep 40
       puts 'unban: ' + tmp
       send "mode #{chan} -b #{tmp}"
     end
@@ -320,14 +320,14 @@ class IRC
           if $u.saidAndCheckFlood(nick,name,ip,sSay)
             $u.floodreset(nick)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            if Time.now - $u.get_ban_time(nick) < 90 #90 秒之前ban过
+            if Time.now - $u.get_ban_time(nick) < 180 #180 秒之前ban过
               kick a1
             else
               autoban to,"#{nick}!*@*"
               $u.set_ban_time(nick)
             end
-            #msg(a4,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",6)
-            notice(nick,"#{a1}: ... 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+            msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+            notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
             return nil
           end
         end
