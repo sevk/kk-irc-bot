@@ -11,27 +11,27 @@
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
 =end
 
+load 'Dic.rb'
 include Math
-require 'date'
 require "monitor"
 require "readline"
 require 'yaml'
 load "ipwry.rb"
 load 'irc_user.rb'
-load 'Dic.rb'
 load 'plugin.rb'
 
 #irc类
 class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
+    $_hour = $_min = $_sec = 0
     @tmp = ''
     @exit = false
     $otherbot_said = nil
     @Motded = false
     @Named = false
     $name_whois = nil
-    @server = server
 
+    @server = server
     @port = port
     @nick = nick
     @pass = pass
@@ -39,7 +39,6 @@ class IRC
     @channel = channel
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
-    p $botlist_title
     puts "$saytitle = #{$saytitle}" #不读取url title
     loadDic
     mystart
@@ -51,11 +50,11 @@ class IRC
   end
 
   #/mode #ubuntu-cn +b *!*@1.1.1.0
-  def autoban(chan,s)
+  def autoban(chan,s,time=50)
     send "mode #{chan} +b #{s}"
     Thread.new do
       tmp = s
-      sleep 40
+      sleep time
       puts 'unban: ' + tmp
       send "mode #{chan} -b #{tmp}"
     end
@@ -181,7 +180,6 @@ class IRC
         re = "#{$u.getname(c)} #{hostA(ip)}"
       when 23
         re = "#{$u.addrgrep(c)}"
-        p 'addrgrep ' + c
       when 30
         return if c !~/^[\w\-\.]+$/#只能是字母,数字,-. "#{$`}<<#{$&}>>#{$'}"
         #`apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
@@ -320,7 +318,8 @@ class IRC
           if $u.saidAndCheckFlood(nick,name,ip,sSay)
             $u.floodreset(nick)
             return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            if Time.now - $u.get_ban_time(nick) < 180 #180 秒之前ban过
+            if Time.now - $u.get_ban_time(nick) < 240 #240 秒之前ban过
+              autoban to,"#{nick}!*@*",600
               kick a1
             else
               autoban to,"#{nick}!*@*"
@@ -486,10 +485,10 @@ class IRC
       sayDic(22,from,to,$1)
     when /^`?f\s(.*?)$/i #查地区
       sayDic(23,from,to,$1)
-    when /^`?(大家...(...)?|hi( all)?.?|hello)$/i
+    when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ', hi .',10,18) if rand(10) > 3
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,7})?)$/i #有人吗?
+      do_after_sec(to,from + ', hi .',10,18) if rand(10) > 4
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,5})?)$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', hello .',10,18)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
@@ -528,7 +527,7 @@ class IRC
     when /^PING :(.+)$/i  # ping
       @irc.send "PONG :#{$1}\n", 0
     when /LAG1982067890/i #LAG
-      $lag=Time.new - $Lping
+      $lag=Time.now - $Lping
       puts "LAG = #{$lag} 秒" if $lag > 3
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING (.+)[\001]$/i #ctcp ping
       puts "[2 CTCP PING from #{$1}!#{$2}@#{$3} ]"
@@ -537,8 +536,15 @@ class IRC
       puts "[3 CTCP VERSION from #{$1}!#{$2}@#{$3} ]"
       send "NOTICE #{$1} :\001VERSION Sevkme@gmail.com Ruby-irc #{Ver} birthday=2008.7.20\001"
     when /^:(.+?)\s(\d+)\s(.*?)\s:(.*)/i#motd , names list
-      pos=$2.to_i;tmp=$4.to_s 
-      puts pos.to_s + ' ' +  tmp + '  <--- motd'
+      pos=$2.to_i;names=$3;tmp=$4.to_s
+      puts pos.to_s + ' ' +  tmp
+      if pos ==391#对时
+        $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
+        $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
+        t = Time.new
+        $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
+        puts Time.now.to_s.pink
+      end
       if !@Motded
         #376 End of /MOTD
         if pos == 376
@@ -677,9 +683,10 @@ class IRC
       when 7
         send "JOIN #sevk"
         send "JOIN #{@channel}"
+        send 'time'
         #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
-        tmp = ((DateTime.parse('2010-02-14 00:00:00+08:00')-DateTime.now)*24*60*60).round
+        tmp = (Time.parse('2010-02-14 00:00:00+08:00')-Time.now).round
         if tmp < 0 #不用显示倒计时
           return if sSay =~ /\s$/
           send "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
@@ -732,13 +739,16 @@ class IRC
           send "privmsg nickserv :#{$1.strip}"
         when /^\/nick\s+(.*)$/i
           @nick = $1
-          send s.gsub(/^[\/:]/,"")
-        when /^[\/]/ # 发送 RAW命令
-          send s.gsub(/^[\/:]/,"")
+          send s.gsub(/^[\/]/,'')
+        when /^[\/\:]/ # 发送 RAW命令
+          send s.gsub(/^[\/\:]/,'')
         when /^`/
           check_dic(s,@nick,@channel)
-        when /^\>(.*)/
-          say eval($1).to_s
+        when /^\>\s?(.*)/
+          t1 = Thread.new{
+            tmp=eval($1.to_s).to_s[0,512]
+            say tmp
+          }
         else
           say s
         end
@@ -772,17 +782,20 @@ class IRC
       puts $@
     end
   end
-
+  def get_time
+    send('time')
+  end
   def timer_start
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep(700 + rand(850))
+        sleep(650 + rand(850))
         puts Time.now.to_s.yellow
         n+=1
         next if n%2 ==0
         next unless (8..24) === Time.now.hour
         saveu if n%8 ==0
+        get_time if n%12 ==0
         next if $need_say_feed < 1
         say_new($channel)
       end

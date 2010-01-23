@@ -2,8 +2,8 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 68.0 #70
-$maxflood = 37.0   #40
+$maxfloodme = 71.0 #70
+$maxflood = 35.5   #37
 $initFlood = 82.0 #83
 $maxNamed = 230
 
@@ -88,7 +88,7 @@ class ALL_USER
     $tWarned[@pos_write]= t - 3600#加入黑名单1个小时
     $lastsay[@pos_write]=nil
     #$ban_time=read_from_db
-    $ban_time[@pos_write]=Time.now - 3600
+    $ban_time[@pos_write]=Time.now - 7200
     $mode[@pos_write]=nil
 
     if @pos_write == $maxNamed
@@ -243,7 +243,7 @@ class ALL_USER
   end
 
   def addrgrep(s)
-    tmp = @addr.select{|x,y| y =~ /#{s}/i}.to_a.map{|x,y| x}.sort
+    tmp = @addr.select{|x,y| y =~ /#{s.strip}/i}.to_a.map{|x,y| x}.sort
     return "#{tmp.count}位 #{tmp.join(' ')}"
   end
   def setip(nick,name,ip)

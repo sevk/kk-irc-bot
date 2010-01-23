@@ -3,13 +3,11 @@
 # Sevkme@gmail.com
 
 begin
-  #安装 mechanize:
   #sudo gem install mechanize
   #require 'mechanize'
 
   #sudo apt-get install rubygems
   require 'rubygems' #以便引用相关的库
-
   #gem install htmlentities
   require 'htmlentities'
 
@@ -23,6 +21,7 @@ begin
   require 'charguess.so'
 rescue LoadError
 end
+require 'time'
 require 'open-uri'
 require 'iconv'
 require 'uri'
@@ -42,9 +41,10 @@ require 'yaml'
 
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
-$old_feed_size = 0
+$old_feed_date = nil unless defined?$old_feed_date
+$_time=86400 if not defined?$_time
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 `host 查域名 >1+1 计算 `a 查某人地址 `f 查老乡 `i 机器人源代码. 末尾加入|重定向,如 g ubuntu | nick'
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4
 Ver='v0.26' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
@@ -58,7 +58,6 @@ Minsaytime= 4
 puts "最小说话时间=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
-$lag=1
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
@@ -81,8 +80,6 @@ end
 
 def unescapeHTML(str)
   HTMLEntities.new.decode(str)
-  #str.gsub!(/<.*?>/i,'')
-  #CGI.unescapeHTML(str)
 end 
 
 #字符串编码集猜测,只取参数的中文部分
@@ -144,10 +141,6 @@ def safe(level)
   result
 end
 
-class Rss_reader
-  attr_accessor :title, :pub_date, :description, :link
-end
-
 def get_Atom(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
   document = Document.new(buffer)
@@ -167,41 +160,38 @@ end
 
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  feed  = RSS::Parser.parse( url )
+  feed = RSS::Parser.parse(url)
+  $ub=nil
+  begin
+    feed.items.each { |i|
+      link = i.link.href
+      des = i.content.to_s
+      #date = i.updated.content
+      $date = link
+      ti = i.title.content.to_s
 
-  $ub = ''
-  feed.items.each do |item|
-    reader = Rss_reader.new
-    reader.title = item.title.content
-    reader.pub_date = item.updated
-    reader.description = item.content
-    reader.link = item.link.href
-
-  #@rss_str = Net::HTTP.get(URI.parse(url)).force_encoding("utf-8")
-  #xml_doc = REXML::Document.new(@rss_str)
-  #return nil unless xml_doc
-  #$ub = ''
-  #xml_doc.elements["rss/atom"].each_element("//item") do |ele|
-    #reader = Rss_reader.new
-    #reader.title = ele.elements["title"].get_text
-    #reader.pub_date = ele.elements["pubDate"].get_text
-    #reader.description = ele.elements["description"].get_text
-    #reader.link = ele.elements["link"].get_text
-
-    next if reader.title.to_s =~ /Re:/i && not_re
-    $ub = "新⇨ #{reader.title} #{reader.link} #{reader.description}"
-    $ub.gsub!(/\s+/,' ')
-    return $ub.unescapeHTML
-    #$ub.gsub!(/<.+?>/,' ')
-    break
+      next if ti =~ /Re:/i && not_re
+      puts i.updated.content
+      $ub = "新⇨ #{ti} #{link} #{des}"
+      break
+    }
+  rescue
+    (p $!.message;p $@)
   end
-  if $old_feed_size == $ub.size
-    $ub = nil
-    return 'hehe,去论坛逛了一下，暂时无新帖.'
+
+  if $old_feed_date == $date || (!$ub)
+    link = feed.items[0].link.href
+    ti = feed.items[0].title.content
+    #date = feed.items[0].updated.content
+    $date = link
+    des = feed.items[0].content
+    $ub = "新⇨ #{ti} #{link} #{des}"
   else
-    $old_feed_size = $ub.size
+    $old_feed_date = $date
   end
-  return $ub
+
+  $ub.gsub!(/\s+/,' ')
+  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML
 end
 
 #google 全文翻译,参数可以是中文,也可以是英文.
@@ -215,7 +205,6 @@ def getGoogle_tran(word)
   end
   word = URI.escape(word)
   #url = "http://66.249.89.100/translate_t?hl=zh-CN#{flg}"
-  #66.249.89.100 = translate.google.com
   url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
   uri = URI.parse(url)
   uri.open(
@@ -337,7 +326,6 @@ def getPY(c)
   c=' '+ c
   c.gsub!(/\sfirefox(.*?)\s/i,' huohuliulanqi ')
   c.gsub!(/\subuntu/i,' wu ban tu ')
-  c.gsub!(/\sEnglish/i,' ying yu ')
   c.gsub!(/\sopen(.*?)\s/i,' ')
   c.gsub!(/\s(xubuntu|fedora)/i,' ')
   c.gsub!(/\s[A-Z](.*?)\s/,' ')
@@ -349,7 +337,7 @@ def getPY(c)
   re = re + ' Kubuntu' if needAddKub==true
   re.gsub!(/还原/i,'换源')
 
-  if re=~CN_re#是中文才返回
+  if re=~ CN_re#是中文才返回
     return re
   end
 end
@@ -441,6 +429,7 @@ def getGoogle(word,flg)
             tmp.gsub!(/今日\s+/, ' 今日' )
             tmp.gsub!(/<\/b>/, ' ')
             tmp.gsub!(/添加到(.*?)当前：/,' ')
+            tmp.gsub!(/相关搜索.*?\-/,'天气- ')
             #tmp.gsub!(/北京市专业气象台(.*)/, '' )
             tmp=tmp.match(/.+?°C.+?°C.+?°C/)[0]
             tmp.gsub!(/°C/,'°C ')
@@ -636,7 +625,7 @@ def evaluate(s)
   return result
 end
 
-#为字符串添加2个方法,用于gb18030和utf8互转.
+#为字符串添加一些方法
 class String
   def utf8
     self.force_encoding("utf-8")
@@ -662,11 +651,35 @@ class String
 
   #整理HTML 和 &nbsp
   def unescapeHTML
-    HTMLEntities.new.decode(self).gsub(/<.*?>/i,'')
+    HTMLEntities.new.decode(self)
     #CGI.unescapeHTML(str)
+  end
+end
+def onemin
+  60
+end
+def onehour
+  3600
+end
+def oneday
+  86400
+end
+#def DateTime.now
+  #t = $T
+  #Time.mktime(t.year,t.month,t.day,$_hour.to_i,$_min.to_i,$_sec.to_i)
+#end
+unless defined?Time._now
+  p 'redefine Time.now'
+  class Time
+    class << self
+      alias _now now if not defined?_now
+      def now
+        _now - $_time
+      end
+    end
   end
 end
 
 def roll
-  rand(101).to_s
+  "掷出了随机数: #{rand(101)} "
 end
