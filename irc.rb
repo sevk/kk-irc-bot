@@ -217,7 +217,7 @@ class IRC
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
         #return if s =~ /action/i
-        send "Notice #{from} :使用 #{@charset} 字符编码,别用#{tmp}".utf8_to_gb
+        send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset, but not need check code' if $need_Check_code < 1
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
@@ -265,6 +265,35 @@ class IRC
       nick=from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       return if a1==@nick
 
+      #禁掉一段时间
+      if $u.isBlocked?(from)
+        return nil
+      end
+
+      #flood检测
+      if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
+        $u.floodreset(nick)
+        $u.set_ban_time(nick)
+        if Time.now - $u.get_ban_time(nick) < 300 #5分钟之前ban过
+          autoban to,"#{nick}!*@*",120
+          kick a1
+        else
+          autoban to,"#{nick}!*@*"
+        end
+        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        return nil
+      end
+
+      #ban ctcp but not /me
+      if sSay[0].ord == 1 then
+        $u.saidAndCheckFlood(nick,name,ip,sSay)
+        if sSay[1..2] != /ACTION/i then
+          $u.saidAndCheckFlood(nick,name,ip,sSay)
+          return nil
+        end
+      end
+
       #有BOT说话
       $otherbot_said=true if name =~ $botlist || nick =~ $botlist
       #$u.setip(from,name,ip)
@@ -292,26 +321,6 @@ class IRC
       else
         ##不处理gateway用户
         return if a3=~ /^gateway\//i && $black_gateway
-      end
-
-      #禁掉一段时间
-      if $u.isBlocked?(from)
-        return nil
-      end
-
-      #flood检测
-      if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
-        $u.floodreset(nick)
-        $u.set_ban_time(nick)
-        if Time.now - $u.get_ban_time(nick) < 300 #5分钟之前ban过
-          autoban to,"#{nick}!*@*",120
-          kick a1
-        else
-          autoban to,"#{nick}!*@*"
-        end
-        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
-        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
-        return nil
       end
 
       tmp = check_dic(sSay,from,to)
@@ -394,7 +403,7 @@ class IRC
 
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
-    case s.strip
+    case s.strip.force_encoding('utf-8')
     when /^\`?>\s(.+)$/i #eval
       puts "[4 EVAL #{$1} from #{from}]"
       tmp = evaluate($1.to_s)
@@ -531,11 +540,9 @@ class IRC
     when /LAG1982067890/i #LAG
       $lag=Time.now - $Lping
       puts "LAG = #{$lag} 秒" if $lag > 3
-    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING (.+)[\001]$/i #ctcp ping
-      puts "[2 CTCP PING from #{$1}!#{$2}@#{$3} ]"
-      send "NOTICE #{$1} :\001PONG #{$4}\001"
+    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
+      send "NOTICE #{$1} :\001PONG#{$4}\001"
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]VERSION[\001]$/i #ctcp
-      puts "[3 CTCP VERSION from #{$1}!#{$2}@#{$3} ]"
       send "NOTICE #{$1} :\001VERSION Sevkme@gmail.com Ruby-irc #{Ver} birthday=2008.7.20\001"
     when /^:(.+?)\s(\d+)\s(.*?)\s:(.*)/i#motd , names list
       pos=$2.to_i;names=$3;tmp=$4.to_s
@@ -579,8 +586,8 @@ class IRC
         end 
       end
       if pos == 901 #901 是 nick 验证完成.
-        $min_next_say=Time.now 
-        do_after_sec(@channel,nil,7,1)
+        #$min_next_say=Time.now
+        #do_after_sec(@channel,nil,7,1)
       end
 
       #自动 whois 返回
@@ -620,6 +627,7 @@ class IRC
 
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
+    p s if $debug
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) #高亮显示消息
@@ -745,7 +753,13 @@ class IRC
           @nick = $1
           send s.gsub(/^[\/]/,'')
         when /^[\/\:]/ # 发送 RAW命令
-          send s.gsub(/^[\/\:]/,'')
+          if s[0..2] =~ /\/me/i then
+            say s.gsub(/me/i,"\001ACTION") + "\001"
+          elsif s[0..5] =~ /\/ctcp/i then
+            say s.gsub(/ctcp/i,"\001") + "\001"
+          else
+            send s.gsub(/^[\/\:]/,'')
+          end
         when /^`/
           p s
           if s[1..-1] =~ />\s(.*)/
@@ -818,7 +832,7 @@ class IRC
       #ready = select([@irc, $stdin], nil, nil, nil)
       Thread.exit if @exit
       ready = select([@irc], nil, nil, nil) rescue (p $!.message;p $@)
-      next if !ready
+      next if not ready
       for s in ready[0]
         if s == @irc
           next if @irc.eof rescue (p $!.message;p $@; next)

@@ -27,7 +27,7 @@ class String
     self.split(//u).join(s)
   end
 
-  #整理HTML 和 &nbsp
+  #整理html里的 &nbsp; 等转义串，需要安装
   def unescapeHTML
     HTMLEntities.new.decode(self) rescue self
   end
@@ -134,7 +134,7 @@ else
   end
 end
 
-#如果当前目录存在UBUNTU新手资料.txt,就读取.
+#如果当前目录存在UBUNTU新手资料.txt就读取.
 def readDicA()
   fi1= 'UBUNTU新手资料.txt'
   if (File.exist?fi1 )
@@ -694,3 +694,5 @@ end
 def roll
   "掷出了随机数: #{rand(101)} "
 end
+
+
