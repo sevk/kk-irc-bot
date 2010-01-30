@@ -4,6 +4,9 @@ if RUBY_VERSION < '1.9'
   p 'do as ruby 1.9'
   #为字符串类添加force_encoding和ord方法
   class String
+    def bytesize
+      self.size
+    end
     def force_encoding(s)
       self
     end
