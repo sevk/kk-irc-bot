@@ -216,7 +216,6 @@ class IRC
       p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
-        #return if s =~ /action/i
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset, but not need check code' if $need_Check_code < 1
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
@@ -274,21 +273,21 @@ class IRC
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         $u.set_ban_time(nick)
-        if Time.now - $u.get_ban_time(nick) < 300 #5分钟之前ban过
-          autoban to,"#{nick}!*@*",120
+        if Time.now - $u.get_ban_time(nick) < 360 #6分钟之前ban过
+          autoban to,"#{nick}!*@*",180
           kick a1
         else
           autoban to,"#{nick}!*@*"
         end
-        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10) if rand(10) > 8
         notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
         return nil
       end
 
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
-        $u.saidAndCheckFlood(nick,name,ip,sSay)
-        if sSay[1..2] != /ACTION/i then
+        if sSay[1,6] != /ACTION/i then
+          $u.saidAndCheckFlood(nick,name,ip,sSay)
           $u.saidAndCheckFlood(nick,name,ip,sSay)
           return nil
         end
@@ -438,6 +437,7 @@ class IRC
               if s =~ /#{Regexp::escape tmp[0,14]}/i#已经发了就不说了
                 puts "已经发了标题 #{tmp[0,14]}"
               else
+                $ti.gsub!(/Ubuntu中文论坛 • 登录/,'感觉是个水贴')
                 msg(to,"⇪ title: #{$ti}",0) 
               end
             #end
@@ -781,7 +781,7 @@ class IRC
     p $u.class
     $u = ALL_USER.new if $u.class != ALL_USER
     $u.init_pp
-    puts $u.all_nick.count.to_s + ' nicks loaded from yaml file.'.red
+    puts $u.all_nick.size.to_s + ' nicks loaded from yaml file.'.red
   end
 
   def myexit
