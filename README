@@ -1,3 +1,4 @@
 运行方法:
- ./irc.rb
+ruby irc.rb 或 ./irc.rb 或双击 irc.rb
 配置文件是 default.conf
+
