@@ -152,7 +152,7 @@ class IRC
       c = words;re=''
       case dic
       when /new/i
-        re = get_feed.to_s
+        re = get_feed
         c=''
         b7=from
       when 1 then re = getGoogle(c ,0)
@@ -194,9 +194,9 @@ class IRC
       Thread.exit if re.bytesize < 2
 
       if sto =~ /notice/i 
-        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",0)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",0)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
       end
       msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",0) if tellSender
 
@@ -267,7 +267,7 @@ class IRC
 
       #有BOT说话
       $otherbot_said=true if name =~ $botlist || nick =~ $botlist
-      #~ $u.setip(from,name,ip)
+      #$u.setip(from,name,ip)
 
       #以我的名字开头
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
@@ -283,7 +283,6 @@ class IRC
           puts '是字典消息' if $debug
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
-            return if to =~ NoFloodAndPlay # 不检测flood和玩bot
             $otherbot_said=true
             msg to ,"#{from}, 玩机器人? ? ... 去 #Sevk or #{to}-ot ",0 if rand(10) > 5
             return nil
@@ -299,44 +298,46 @@ class IRC
       if $u.isBlocked?(from)
         return nil
       end
+
+      #flood检测
+      if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
+        $u.floodreset(nick)
+        $u.set_ban_time(nick)
+        if Time.now - $u.get_ban_time(nick) < 300 #5分钟之前ban过
+          autoban to,"#{nick}!*@*",120
+          kick a1
+        else
+          autoban to,"#{nick}!*@*"
+        end
+        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        return nil
+      end
+
       tmp = check_dic(sSay,from,to)
       case tmp
+      #非字典消息
       when 1
-        #非字典消息
+        #puts '消息以我名字开头'
         if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i
           sSay=$1.to_s.strip
           if sSay.bytesize < 3
             send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10)>7 
           end
-          #puts '消息以我名字开头'
           #$otherbot_said=false
           #do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
           #`sh sound.sh` if File.exist? 'sound.sh'
         else
           #$u.said(from,name,ip)
           #$u.setLastSay(from,sSay)
-          if $u.saidAndCheckFlood(nick,name,ip,sSay)
-            $u.floodreset(nick)
-            return if to =~ NoFloodAndPlay # 不检测flood和玩bot
-            if Time.now - $u.get_ban_time(nick) < 240 #240 秒之前ban过
-              autoban to,"#{nick}!*@*",600
-              kick a1
-            else
-              autoban to,"#{nick}!*@*"
-              $u.set_ban_time(nick)
-            end
-            msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
-            notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
-            return nil
-          end
         end
+      #是title
       when 2
-        #是title
+
+      #是字典消息
       else
-        #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           #$u.floodmereset(a1)
-          return if to =~ NoFloodAndPlay # 不检测flood和玩bot
           $otherbot_said=true
           send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
           msg to ,"#{from}, play ? ... go to channel #Sevk or #{to}-ot ",0 if rand(10) > 4
@@ -409,7 +410,7 @@ class IRC
         url = "http#{url}"
         return if $saytitle < 1
         return if from =~ $botlist
-        return if url =~ /past/i 
+        return if url =~ /past|imagebin\.org/i
 
         $ti = nil
         @ti=Thread.start {
@@ -497,7 +498,7 @@ class IRC
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
       s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
-      msg to,"#{s1}",0
+      msg to,"#{s1}",9
     when /^`rst\s?(\d*)$/i #restart
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
@@ -510,9 +511,10 @@ class IRC
       $saytitle -= 1 if tmp[2].ord == 48
       $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
-      load 'Dic.rb'
-      load 'irc_user.rb'
-      load "ipwry.rb"
+      #load 'dic.rb'
+      #load 'irc_user.rb'
+      #load "ipwry.rb"
+      load 'irc.rb'
       #load 'plugin.rb' ✘
       loadDic
       msg(to,"✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
@@ -541,6 +543,7 @@ class IRC
       if pos ==391#对时
         $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
         $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
+        $_hour = $_hour % 24
         t = Time.new
         $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
         puts Time.now.to_s.pink
@@ -681,12 +684,12 @@ class IRC
         $min_next_say = Time.now
         do_after_sec(@channel,nil,7,11)
       when 7
+        send 'time'
         send "JOIN #sevk"
         send "JOIN #{@channel}"
-        send 'time'
         #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
-        tmp = (Time.parse('2010-02-14 00:00:00+08:00')-Time.now).round
+        tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
         if tmp < 0 #不用显示倒计时
           return if sSay =~ /\s$/
           send "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
@@ -710,6 +713,7 @@ class IRC
     end #Thread
   end
 
+  #更新自动补全
   def renew_Readline_complete(w)
     Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
     Readline.completion_case_fold=true
@@ -743,18 +747,21 @@ class IRC
         when /^[\/\:]/ # 发送 RAW命令
           send s.gsub(/^[\/\:]/,'')
         when /^`/
-          check_dic(s,@nick,@channel)
-        when /^\>\s?(.*)/
-          t1 = Thread.new{
-            tmp=eval($1.to_s).to_s[0,512]
-            say tmp
-          }
+          p s
+          if s[1..-1] =~ />\s(.*)/
+            tmp=eval($1.to_s) rescue nil
+            p tmp.class
+            say tmp if tmp.class == String
+          else
+            check_dic(s,@nick,@channel)
+          end
         else
           say s
         end
       #end
     end
   end
+
   def mystart
     $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue (p $!.message)
     p $u.class
@@ -772,32 +779,32 @@ class IRC
   
   #说新帖
   def say_new(to)
-    begin
-      tmp = get_feed.to_s
-      if tmp.bytesize > 4
-        msg(to,tmp,0)
-      end
-    rescue Exception => detail
-      puts "#{detail.message()} in timer1"
-      puts $@
+    Thread.start{
+      tmp = get_feed
+      msg(to,tmp,0) if tmp.bytesize > 4
+    }.join
+  end
+
+  #对时
+  def get_time
+    if Time.now.hour == 4
+      send('time') if Time.now.min < 30
+    else
+      puts Time.now.to_s.blue
     end
   end
-  def get_time
-    send('time')
-  end
+  #定时器
   def timer_start
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep(650 + rand(850))
-        puts Time.now.to_s.yellow
+        sleep(650 + rand(850)) #间隔17分钟
+        get_time #对时
         n+=1
         next if n%2 ==0
-        next unless (8..24) === Time.now.hour
         saveu if n%8 ==0
-        get_time if n%12 ==0
-        next if $need_say_feed < 1
-        say_new($channel)
+        next unless (8..24) === Time.now.hour
+        say_new($channel) if $need_say_feed < 1
       end
     end
   end
@@ -810,7 +817,7 @@ class IRC
       Thread.pass
       #ready = select([@irc, $stdin], nil, nil, nil)
       Thread.exit if @exit
-      ready = select([@irc], nil, nil, nil) rescue nil
+      ready = select([@irc], nil, nil, nil) rescue (p $!.message;p $@)
       next if !ready
       for s in ready[0]
         if s == @irc
@@ -823,17 +830,16 @@ class IRC
   end
 end
 
-load 'default.conf'
-load ARGV[0] if ARGV[0]
+if not defined? $u
+  load 'default.conf'
+  load ARGV[0] if ARGV[0]
 
-while true
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
   irc.connect()
   irc.timer_start
   irc.main_loop()
-  p 'sleep ..'
-  sleep 3600 * 6
 end
+
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
