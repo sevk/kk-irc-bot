@@ -43,7 +43,7 @@ begin
   require 'htmlentities'
 
 rescue LoadError
-  s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库 \n\n"
+  s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
   s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
   puts s
   puts $@
@@ -128,7 +128,14 @@ if defined?CharGuess
   end
 else
   #第二种字符集猜测库
-  require 'rchardet'
+  begin
+    require 'rchardet'
+  rescue LoadError
+    s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
+    s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
+    puts s
+    puts $@
+  end
   def guess(s)
     CharDet.detect(s)['encoding'].upcase
   end
