@@ -2,6 +2,37 @@
 # coding: utf-8
 # Sevkme@gmail.com
 
+require 'iconv'
+#为字符串添加一些方法
+class String
+  def utf8
+    self.force_encoding("utf-8")
+  end
+  def gb
+    self.force_encoding("gb18030")
+  end
+  def gb_to_utf8
+    Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
+  end
+  def utf8_to_gb
+    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
+  end
+  def decode64
+    Base64.decode64 self
+  end
+  def encode64
+    Base64.encode64 self
+  end
+  def ee(s=['☘',"\322\211"][rand(2)])
+    self.split(//u).join(s)
+  end
+
+  #整理HTML 和 &nbsp
+  def unescapeHTML
+    HTMLEntities.new.decode(self) rescue self
+  end
+end
+
 begin
   #sudo gem install mechanize
   #require 'mechanize'
@@ -12,9 +43,10 @@ begin
   require 'htmlentities'
 
 rescue LoadError
-  puts "载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库 \n\n"
+  s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库 \n\n"
+  s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
+  puts s
   puts $@
-  exit
 end
 
 begin
@@ -23,7 +55,6 @@ rescue LoadError
 end
 require 'time'
 require 'open-uri'
-require 'iconv'
 require 'uri'
 require 'net/http'
 #require 'rexml/document'
@@ -34,7 +65,6 @@ require 'rss'
 require 'base64'
 #require 'md5'
 require 'resolv'
-#require 'pp'
 load 'do_as_rb19.rb'
 load 'color.rb'
 require 'yaml'
@@ -45,7 +75,7 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=86400 if not defined?$_time
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
-Delay_do_after = 4
+Delay_do_after = 4 unless defined? Delay_do_after
 Ver='v0.26' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
@@ -55,7 +85,7 @@ CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x
 Http_re= /http:\/\/\S+[^\s*]/
 
 Minsaytime= 4
-puts "最小说话时间=#{Minsaytime}"
+puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 
@@ -79,7 +109,7 @@ def URLEncode(str)
 end
 
 def unescapeHTML(str)
-  HTMLEntities.new.decode(str)
+  HTMLEntities.new.decode(str) rescue str
 end 
 
 #字符串编码集猜测,只取参数的中文部分
@@ -119,7 +149,7 @@ def loadDic()
   puts 'Dic load [ok]'
 end
 def saveu
-  return if Time.now - $last_save < 60 rescue nil
+  return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
   File.open("person_#{ARGV[0]}.yaml","w") do|io|
     YAML.dump($u,io)
@@ -160,7 +190,18 @@ end
 
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  feed = RSS::Parser.parse(url)
+  begin
+    Timeout.timeout(12) {
+      $tmp = RSS::Parser.parse(url)
+    }
+  #rescue Timeout::Error => e
+  rescue Exception => e
+    p e.message
+    return e.class.to_s
+  end
+  feed = $tmp
+  #feed = RSS::Parser.parse(url)
+
   $ub=nil
   begin
     feed.items.each { |i|
@@ -176,7 +217,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       break
     }
   rescue
-    (p $!.message;p $@)
+    p $!.message;p $@
   end
 
   if $old_feed_date == $date || (!$ub)
@@ -625,36 +666,6 @@ def evaluate(s)
   return result
 end
 
-#为字符串添加一些方法
-class String
-  def utf8
-    self.force_encoding("utf-8")
-  end
-  def gb
-    self.force_encoding("gb18030")
-  end
-  def gb_to_utf8
-    Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
-  end
-  def utf8_to_gb
-    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
-  end
-  def decode64
-    Base64.decode64 self
-  end
-  def encode64
-    Base64.encode64 self
-  end
-  def ee(s=['☘',"\322\211"][rand(2)])
-    self.split(//u).join(s)
-  end
-
-  #整理HTML 和 &nbsp
-  def unescapeHTML
-    HTMLEntities.new.decode(self)
-    #CGI.unescapeHTML(str)
-  end
-end
 def onemin
   60
 end
