@@ -166,7 +166,7 @@ class ALL_USER
     t = Time.now
     $timelastsayme[index] = t if ! $timelastsayme[index]
     $timelast6me[index] = $initFlood if ! $timelast6me[index]
-    $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood
+    $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood or $timelast6me[index] < 1
     $timelast6me[index] = $timelast6me[index] / 5 * 4 +  (t - $timelastsayme[index])
     p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
@@ -187,7 +187,7 @@ class ALL_USER
     t = Time.now
     $timelastsay[index] = t if ! $timelastsay[index]
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
-    $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood
+    $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood or $timelast6say[index] < 1
     $timelast6say[index] = $timelast6say[index] / 5 * 4 +  (t - $timelastsay[index])
     $timelastsay[index] = t
   end
