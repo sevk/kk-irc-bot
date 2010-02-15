@@ -204,10 +204,9 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   #rescue Timeout::Error => e
   rescue Exception => e
     p e.message
-    return e.class.to_s
+    return e.class.to_s + ' in get_feed '
   end
   feed = $tmp
-  #feed = RSS::Parser.parse(url)
 
   $ub=nil
   begin
@@ -316,10 +315,19 @@ def gettitle(url)
     if url =~ /[\u4E00-\u9FA5]/
       url = URI.encode(url)
     end
-    #puts url.red
-    uri = URI.parse(url)
+    puts url.red
+    if url =~ /^http:\/\/(www\.)?youtube.com/i
+      p 'xx oo xx'
+    end
     begin #加入错误处理
-        uri.open(
+      Timeout.timeout(13) {
+      $uri = URI.parse(url)
+      #Net::HTTP::Proxy($proxy_addr, $proxy_port)
+      #Net::HTTP.get_print $uri
+        #puts url.yellow
+        #return 1
+        $uri.open(
+        'proxy'=>true,
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
         'Referer'=> URI.encode(url),
         'Accept-Language'=>'zh-cn',
@@ -327,13 +335,14 @@ def gettitle(url)
         #'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
-          #p f.content_type
           istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
           charset= f.charset          # "iso-8859-1"
           $tmp = f.read[0,9999].gsub(/\s+/,' ')
         }
-    rescue 
-      return $!
+      }
+    rescue Exception => e
+      p e.message
+      return e.class.to_s + ' in gettitle '
     end
     return nil unless istxthtml
 

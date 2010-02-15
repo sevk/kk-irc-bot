@@ -25,6 +25,7 @@ class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
     $_hour = $_min = $_sec = 0
     @tmp = ''
+    @count = 0
     @exit = false
     $otherbot_said = nil
     @Motded = false
@@ -37,6 +38,7 @@ class IRC
     @pass = pass
     @str_user= user
     @channel = channel
+    #@channel = Ch.new
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     puts "$saytitle = #{$saytitle}" #不读取url title
@@ -51,17 +53,13 @@ class IRC
 
   #/mode #ubuntu-cn +b *!*@1.1.1.0
   def autoban(chan,s,time=50)
-    send "mode #{chan} +b #{s}"
+    send "mode #{chan} +q #{s}"
     Thread.new do
       tmp = s
       sleep time
       puts 'unban: ' + tmp
-      send "mode #{chan} -b #{tmp}"
+      send "mode #{chan} -q #{tmp}"
     end
-  end
-
-  def unban(chan,s)
-    send "mode #{chan} -b #{s}"
   end
 
   def ping(s)
@@ -126,7 +124,7 @@ class IRC
     pub =true if dic == 5
 
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
-      words=$1;direction=$2.to_s;b7=$3
+      words=$1;direction=$2;b7=$3
       if b7
         b7 =$u.completename(b7)
       end
@@ -193,10 +191,11 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
+      b7=from if b7
       if sto =~ /notice/i 
-        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",8)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",8)
       end
       msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",0) if tellSender
 
@@ -231,12 +230,12 @@ class IRC
     s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     case s
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
-      from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
+      from=a1=$1;to=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
 
-      if $u.saidAndCheckFloodMe(a1,a2,a3)
+      if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        send "PRIVMSG #{a2} :...go to #Sevk for playing... " if rand(10) > 7
+        msg from,"...go to #Sevk for playing... ",11 if rand(10) > 6
         return nil
       end
 
@@ -272,15 +271,16 @@ class IRC
       #flood检测
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
+        tmp = Time.now - $u.get_ban_time(nick)
         $u.set_ban_time(nick)
-        if Time.now - $u.get_ban_time(nick) < 360 #6分钟之前ban过
-          autoban to,"#{nick}!*@*",180
+        if tmp < 360 #6分钟之前ban过
+          autoban to,"#{nick}!*@*",360 if tmp > 30
           kick a1
         else
           autoban to,"#{nick}!*@*"
         end
-        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10) if rand(10) > 8
-        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10)
+        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10) if rand(7) > 6
+        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",7)
         return nil
       end
 
@@ -288,9 +288,9 @@ class IRC
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
           $u.saidAndCheckFlood(nick,name,ip,sSay)
-          $u.saidAndCheckFlood(nick,name,ip,sSay)
-          return nil
+          #$u.saidAndCheckFlood(nick,name,ip,sSay)
         end
+        return nil
       end
 
       #有BOT说话
@@ -362,6 +362,7 @@ class IRC
       $need_say_feed -= 1 if from =~ $botlist_ub_feed
       $saytitle -= 1 if from =~ $botlist_title
 
+      @count +=1
       $u.add(nick,name,ip)
       #if $u.chg_ip(nick,ip) ==1
         #$u.add(nick,name,ip)
@@ -375,6 +376,8 @@ class IRC
       $need_say_feed += 1 if from =~ $botlist_ub_feed
       $saytitle += 1 if from =~ $botlist_title
 
+      @count -=1
+      puts "all channel nick count : #@count" if rand(10) > 6
       $u.del(from,ip)
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
@@ -394,6 +397,7 @@ class IRC
       $need_say_feed += 1 if from =~ $botlist_ub_feed
       $saytitle += 1 if from =~ $botlist_title
 
+      @count -=1
       renew_Readline_complete($u.all_nick)
     else
       return 1 # not match
@@ -404,7 +408,6 @@ class IRC
   def check_dic(s,from,to)
     case s.strip.force_encoding('utf-8')
     when /^\`?>\s(.+)$/i #eval
-      puts "[4 EVAL #{$1} from #{from}]"
       tmp = evaluate($1.to_s)
       msg to,"#{from}, #{tmp}",0 if tmp
     when /^`host\s(.*?)$/i # host
@@ -419,25 +422,19 @@ class IRC
         return if $saytitle < 1
         return if from =~ $botlist
         return if url =~ /past|imagebin\.org/i
+        return if $last_ti == url
+        $last_ti = url
 
         $ti = nil
         @ti=Thread.start {
-          $ti=begin
-            Timeout.timeout(12) { gettitle(url) }
-          rescue
-            $!
-          end
-
-          return if $last_ti == $ti
-          $last_ti = $ti
-
+          $ti= gettitle(url)
           if $ti 
             #if $ti =~ $tiList || url =~ $urlList
-              tmp = $ti.gsub(/\s+/,'')
-              if s =~ /#{Regexp::escape tmp[0,14]}/i#已经发了就不说了
-                puts "已经发了标题 #{tmp[0,14]}"
+              tmp = $ti.gsub(/\s+|Ubuntu中文论坛.+?查看主题/,'')
+              if s =~ /#{Regexp::escape tmp[tmp.size/2-6,8]}/i#已经发了就不说了
+                puts "已经发了标题 #{tmp[tmp.size/2-6,8]}"
               else
-                $ti.gsub!(/Ubuntu中文论坛 • 登录/,'感觉是个水贴')
+                $ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
                 msg(to,"⇪ title: #{$ti}",0) 
               end
             #end
@@ -540,8 +537,11 @@ class IRC
     when /LAG1982067890/i #LAG
       $lag=Time.now - $Lping
       puts "LAG = #{$lag} 秒" if $lag > 3
-    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
-      send "NOTICE #{$1} :\001PONG#{$4}\001"
+    when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
+      from=$1;name=$2;ip=$3;to=$4;sSay=$5
+      return if $ignore_nick =~ Regexp.new(from,Regexp::IGNORECASE)
+    #when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
+      #send "NOTICE #{$1} :\001PONG#{$4}\001"
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]VERSION[\001]$/i #ctcp
       send "NOTICE #{$1} :\001VERSION Sevkme@gmail.com Ruby-irc #{Ver} birthday=2008.7.20\001"
     when /^:(.+?)\s(\d+)\s(.*?)\s:(.*)/i#motd , names list
@@ -566,11 +566,12 @@ class IRC
       if !@Named
         case pos
         when 353
-          puts '353'.red
           @tmp += " #{tmp}"
         when 366#End of /NAMES list.
           from = @tmp
-          puts from
+          @count = @tmp.split(' ').size
+          puts "nick list: #@tmp , #@count ".red
+
 
           $need_Check_code -= 1 if from =~ $botlist_Code
           $need_say_feed -= 1 if from =~ $botlist_ub_feed
@@ -648,7 +649,8 @@ class IRC
         mt= ''
       else
         #return if mt =~ Regexp.new(Regexp.escape($ignore),Regexp::IGNORECASE)
-        return if mt =~ Regexp.new($ignore,Regexp::IGNORECASE)
+        #return if mt =~ Regexp.new($ignore,Regexp::IGNORECASE)
+        return if $ignore_action =~ Regexp.new(mt,Regexp::IGNORECASE)
         mt= mt.green 
       end
       sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
@@ -666,7 +668,7 @@ class IRC
   end
 
   #延时发送
-  def do_after_sec(to,sSay,flg,second)
+  def do_after_sec(to,sSay,flg,second=4)
     #puts "need_do #{flg} #{second}"
     Thread.new do
       flag=flg
@@ -737,11 +739,10 @@ class IRC
       next if !s
       #lock.synchronize do
         case s
-        when /^:q\s?(.*?)$/i #:q退出
-          tmp = $1.to_s
-          send 'quit optimize ' + tmp
+        when /^:q\s?(.*)?$/i #:q退出
+          send 'quit optimize' + $1
           p 'quit...'
-          myexit()
+          myexit ;
           sleep 2
           exit
         when /^\/msg\s(.+?)\s(.+)$/i
@@ -807,18 +808,19 @@ class IRC
       puts Time.now.to_s.blue
     end
   end
-  #定时器
+
+  #主定时器
   def timer_start
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep(650 + rand(850)) #间隔17分钟
+        sleep 650 + rand(850)  #间隔17分钟
         get_time #对时
         n+=1
         next if n%2 ==0
         saveu if n%8 ==0
         next unless (8..24) === Time.now.hour
-        say_new($channel) if $need_say_feed < 1
+        say_new($channel) if $need_say_feed > 0
       end
     end
   end

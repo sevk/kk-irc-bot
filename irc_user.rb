@@ -3,7 +3,7 @@
 #51070540@qq.com ; sevkme@gmail.com
 
 $maxfloodme = 71.0 #70
-$maxflood = 35.5   #37
+$maxflood = 34.0   #37
 $initFlood = 82.0 #83
 $maxNamed = 230
 
@@ -112,11 +112,9 @@ class ALL_USER
   end
 
   def set_ban_time(nick)
-    puts '设置ban 时间 ' + nick
     $ban_time[getindex(nick)] = Time.now
   end
   def get_ban_time(nick)
-    puts '取ban 时间 ' + nick
     $ban_time[getindex(nick)] rescue Time.now - 3600
   end
   def lastSay=(nick,w)
@@ -231,7 +229,7 @@ class ALL_USER
     return @name[getindex(nick)]
   end
   def all_nick()
-    @index.keys rescue ''
+    @index.keys
   end
 
   def completename(s)
