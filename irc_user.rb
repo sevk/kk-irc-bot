@@ -4,7 +4,7 @@
 
 $maxfloodme = 71.0 #70
 $maxflood = 34.0   #37
-$initFlood = 82.0 #83
+$initFlood = 83.0 #83
 $maxNamed = 230
 
 class ALL_USER
@@ -140,7 +140,7 @@ class ALL_USER
   def check_flood_me(nick)#更严格
     index = getindex(nick)
     return false if index ==nil
-    $timelast6me[index] = $initFlood if ! $timelast6me[index]
+    $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
     p "~me #{$timelast6me[index]}" if $debug
     return $timelast6me[index] < $maxfloodme
   end

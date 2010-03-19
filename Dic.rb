@@ -52,6 +52,7 @@ end
 begin
   require 'charguess.so'
 rescue LoadError
+  p 'charguess.so not found'
 end
 require 'time'
 require 'open-uri'
@@ -76,7 +77,7 @@ $_time=86400 if not defined?$_time
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
-Ver='v0.26' unless defined?(Ver)
+Ver='v0.27' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
@@ -91,7 +92,7 @@ $Lsay=Time.now; $Lping=Time.now
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|^A_U.?$|MadGirl|Psycho/i
+$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|^A_U.?$|MadGirl/i
 $botlist_Code=/badgirl|^O_|^\^O_|^A_U.?$/i
 $botlist_ub_feed=/crazyghost|^O_|^\^O_|^A_U.?$/i
 $botlist_title=/GiGi|u_b|^O_|^\^O_|^A_U.?$/i
@@ -137,7 +138,8 @@ else
     puts $@
   end
   def guess(s)
-    CharDet.detect(s)['encoding'].upcase
+    a=CharDet.detect(s)['encoding'].upcase
+    return a
   end
 end
 
@@ -155,6 +157,8 @@ def loadDic()
   $str1 = readDicA
   puts 'Dic load [ok]'
 end
+
+#保存缓存的users
 def saveu
   return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
@@ -204,7 +208,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   #rescue Timeout::Error => e
   rescue Exception => e
     p e.message
-    return e.class.to_s + ' in get_feed '
+    return e.message[0,60] + ' IN get_feed '
   end
   feed = $tmp
 
@@ -227,12 +231,14 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   end
 
   if $old_feed_date == $date || (!$ub)
-    link = feed.items[0].link.href
-    ti = feed.items[0].title.content
-    #date = feed.items[0].updated.content
-    $date = link
-    des = feed.items[0].content
-    $ub = "新⇨ #{ti} #{link} #{des}"
+    #link = feed.items[0].link.href
+    #ti = feed.items[0].title.content
+    ##date = feed.items[0].updated.content
+    #$date = link
+    #des = feed.items[0].content
+    #$ub = "新⇨ #{ti} #{link} #{des}"
+    $ub = "呵呵,逛了一下论坛,暂时无新贴.只有RE: ."
+    $ub = '' if rand(10) > 5
   else
     $old_feed_date = $date
   end
@@ -277,6 +283,7 @@ def getGoogle_tran(word)
   #}
 end
 
+#dict.cn
 def dictcn(word)
   word = word.utf8_to_gb
   url = 'http://dict.cn/mini.php?q=' + word
@@ -327,7 +334,7 @@ def gettitle(url)
         #puts url.yellow
         #return 1
         $uri.open(
-        'proxy'=>true,
+        'proxy'=>'',
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
         'Referer'=> URI.encode(url),
         'Accept-Language'=>'zh-cn',
@@ -342,7 +349,8 @@ def gettitle(url)
       }
     rescue Exception => e
       p e.message
-      return e.class.to_s + ' in gettitle '
+      puts $@
+      return e.message[0,60] + ' IN gettitle '
     end
     return nil unless istxthtml
 
@@ -480,7 +488,7 @@ def getGoogle(word,flg)
           when /^tq|tq$|天气$|tianqi$/i
             #puts '天气过滤' + tmp.to_s
             tmp.gsub!(/alt="/,'>')
-            tmp.gsub!(/"\stitle=/,'<')
+            tmp.gsub!(/"?\s?title=|right/,'<')
             tmp.gsub!(/\s\/\s/,"\/")
             tmp.gsub!(/级/, '级 ' )
             tmp.gsub!(/今日\s+/, ' 今日' )
@@ -526,6 +534,7 @@ def getGoogle(word,flg)
     return re
 end
 
+#ed2k
 def geted2kinfo(url)
   url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
   $ti = "#{URLDecode($2.to_s)} , #{ '%.2f' % ($3.to_f / 1024**3)} GB"
@@ -632,14 +641,15 @@ def getaddr_fromip(ip)
   hostA(ip,true)
 end
 
-def host(domain)#处理域名
+#域名转化为IP
+def host(domain)
   return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
-  return domain unless domain.include?('.')
-  domain=domain.match(/^[\w\.\/\-\d]*/)[0]
   begin
+    domain.gsub!(/\/.*/i,'')
+    return domain if not domain.include?('.')
     return Resolv.getaddress(domain)
   rescue Exception => detail
-    puts detail.message()
+    puts detail.message
     p $@
     domain
   end
@@ -653,9 +663,9 @@ end
 def hostA(domain,hideip=false)#处理IP 或域名
   return nil if !domain
   if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
-      tmp = $1
+    tmp = $1
   else
-      tmp = host(domain)
+    tmp = host(domain)
   end
   if hideip 
     tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
@@ -669,7 +679,6 @@ end
 
 #eval
 def evaluate(s)
-  #return '操作不安全' if s=~/pass|serv/i
   result = nil
   begin
     #p s
@@ -691,10 +700,7 @@ end
 def oneday
   86400
 end
-#def DateTime.now
-  #t = $T
-  #Time.mktime(t.year,t.month,t.day,$_hour.to_i,$_min.to_i,$_sec.to_i)
-#end
+
 unless defined?Time._now
   p 'redefine Time.now'
   class Time
