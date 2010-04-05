@@ -5,7 +5,7 @@
 $maxfloodme = 71.0 #70
 $maxflood = 34.0   #37
 $initFlood = 83.0 #83
-$maxNamed = 230
+$maxNamed = 200
 
 class ALL_USER
   #attr :nick, true

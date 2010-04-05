@@ -34,13 +34,12 @@ class String
 end
 
 begin
-  #sudo gem install mechanize
-  #require 'mechanize'
-
   #sudo apt-get install rubygems
   require 'rubygems' #以便引用相关的库
   #gem install htmlentities
   require 'htmlentities'
+  #sudo gem install mechanize
+  #require 'mechanize'
 
 rescue LoadError
   s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
@@ -138,8 +137,7 @@ else
     puts $@
   end
   def guess(s)
-    a=CharDet.detect(s)['encoding'].upcase
-    return a
+    CharDet.detect(s)['encoding'].upcase
   end
 end
 
@@ -208,7 +206,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   #rescue Timeout::Error => e
   rescue Exception => e
     p e.message
-    return e.message[0,60] + ' IN get_feed '
+    return e.message[0,60] + ' . IN `new '
   end
   feed = $tmp
 
@@ -237,7 +235,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     #$date = link
     #des = feed.items[0].content
     #$ub = "新⇨ #{ti} #{link} #{des}"
-    $ub = "呵呵,逛了一下论坛,暂时无新贴.只有RE: ."
+    $ub = "呵呵,逛了一下论坛,暂时无新贴.只有Re: ."
     $ub = '' if rand(10) > 5
   else
     $old_feed_date = $date
@@ -314,7 +312,7 @@ def dictcn(word)
 end
 
 #取标题,参数是url.
-def gettitle(url)
+def gettitle(url,proxy=nil)
     title = $tmp = ''
     charset = ''
     flag = 0
@@ -322,21 +320,41 @@ def gettitle(url)
     if url =~ /[\u4E00-\u9FA5]/
       url = URI.encode(url)
     end
-    puts url.red
+    puts url.yellow
     if url =~ /^http:\/\/(www\.)?youtube.com/i
       p 'xx oo xx'
     end
+
+    if false
+      agent = Mechanize.new
+      agent.user_agent_alias = 'Linux Mozilla'
+      #agent.set_proxy('ip',port) if proxy
+      agent.max_history = 1
+      agent.open_timeout = 10
+      agent.cookies
+      #agent.auth('username', 'password')
+      begin
+        page = agent.get(url)
+        return nil if page.class != Mechanize::Page
+      rescue Exception => e
+        p e.message
+        if $!.message == 'Connection reset by peer'
+          sleep 0.5
+          return Timeout.timeout(10){gettitle(url,true)}
+        else
+          return e.message[0,60] + ' . IN title'
+        end
+      end
+      title = page.title
+      return title
+    end
+
     begin #加入错误处理
       Timeout.timeout(13) {
       $uri = URI.parse(url)
-      #Net::HTTP::Proxy($proxy_addr, $proxy_port)
-      #Net::HTTP.get_print $uri
-        #puts url.yellow
-        #return 1
         $uri.open(
-        'proxy'=>'',
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-        'Referer'=> URI.encode(url),
+        'Referer'=> url,
         'Accept-Language'=>'zh-cn',
         #'Cookie' => cookie,
         #'Range' => 'bytes=0-9999',
@@ -349,28 +367,28 @@ def gettitle(url)
       }
     rescue Exception => e
       p e.message
-      puts $@
-      return e.message[0,60] + ' IN gettitle '
+      p $@
+      return e.message[0,60] + ' . IN title'
     end
     return nil unless istxthtml
 
     tmp = $tmp
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
-    #puts title.green
 
     if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return gettitle("http://#{uri.host}/#{$2}")
+        return Timeout.timeout(13){gettitle("http://#{$uri.host}/#{$2}")}
       end
     end
 
     return nil if title =~ /index of/i
 
     #puts "1=" + charset.to_s
-    tmp.match(/<meta.*?charset=(.+?)["']/i)
-    charset=$1 if $1
+    if tmp =~ /<meta.*?charset=(.+?)["']/i
+      charset=$1 if $1
+    end
     if charset =~ /^gb/i
       charset='gb18030' 
     end
@@ -589,7 +607,6 @@ def getBaidu_tran(word,en=true)
         re.gsub!(/<script\s?.+?>.+?<\/script>/i,'')
         re = re[0,600]
         re.gsub!(/&nbsp/,' ')
-        puts re; return
         re = unescapeHTML(re)
         re.gsub!(/<.*?>/,'')
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
@@ -681,9 +698,10 @@ end
 def evaluate(s)
   result = nil
   begin
-    #p s
-    Timeout.timeout(4) {
-      result = safe(4) {eval(s).to_s[0,400]}
+    l=4
+    l=0 if s =~ /^(`uptime`|b)$/i
+    Timeout.timeout(4){
+      result = safe(l){eval(s).to_s[0,400]}
     }
   rescue Exception => detail
     result = detail.message()
@@ -716,5 +734,7 @@ end
 def roll
   "掷出了随机数: #{rand(101)} "
 end
-
+def b
+  `uptime`
+end
 

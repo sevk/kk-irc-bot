@@ -109,8 +109,10 @@ class IRC
   end
 
   def connect()
-    @irc.close if defined?(@irc)
+    @irc.close if @irc
+    $need_reconn = false
     @irc = TCPSocket.open(@server, @port)
+    #sleep 1
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
@@ -456,7 +458,7 @@ class IRC
       sayDic(30,from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
-    when /^[`']h(elp)?\s?(.*?)$/i #`help
+    when /^[`']help$/i #`help
       sayDic(99,from,to,$2)
     when /^`?(new|论坛新帖|来个新帖|新帖)$/i
       sayDic('new',from,to,$1)
@@ -623,7 +625,7 @@ class IRC
       puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       puts s.red
-      myexit if s =~ /:Closing Link:/i
+      $need_reconn=true if s =~ /:Closing/i
 
     else
       return nil #not matched, go on
@@ -642,7 +644,7 @@ class IRC
     p s if $debug
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
-    pr_highlighted(s) #高亮显示消息
+    pr_highlighted(s) #if not $client #简单显示消息
     save_log(s)#写入日志
     return if not $bot_on #bot 功能
     #s=s.force_encoding("UTF-8")
@@ -706,7 +708,8 @@ class IRC
         do_after_sec(@channel,nil,7,11)
       when 7
         send 'time'
-        send "JOIN #sevk"
+        sleep 2
+        send "JOIN #sevk" if @channel != '#sevk'
         send "JOIN #{@channel}"
         #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
@@ -743,6 +746,7 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   def iSend()
     while true
+      sleep 0.0001
       Thread.pass
       s = Readline.readline('[' + @channel + '] ', true)
       #s = Readline.readline('', true)
@@ -840,17 +844,19 @@ class IRC
   #主循环
   def main_loop()
     #客户端输入并发送.
-    Thread.start{ iSend }
+    Thread.start{ iSend } if $client
 
     while true
+      sleep 0.0001
       Thread.pass
       #ready = select([@irc, $stdin], nil, nil, nil)
       Thread.exit if @exit
       ready = select([@irc], nil, nil, nil) rescue (p $!.message;p $@)
+      break if $need_reconn
       next if not ready
       for s in ready[0]
         if s == @irc
-          next if @irc.eof rescue (break if $!.message=='Connection reset by peer';nil)
+          next if @irc.eof
           handle_server_input(@irc.gets.strip) rescue (p $!.message;p $@)
         end
       end
@@ -869,8 +875,9 @@ if not defined? $u
   while true do
     irc.connect()
     irc.main_loop()
+    exit if @exit
     p 're-connection...'
-    sleep 3600
+    sleep 600
   end
 end
 
