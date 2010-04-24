@@ -19,6 +19,7 @@ require 'yaml'
 load "ipwry.rb"
 load 'irc_user.rb'
 load 'plugin.rb'
+load 'log.rb'
 
 #irc类
 class IRC
@@ -41,7 +42,7 @@ class IRC
     #@channel = Ch.new
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
-    puts "$saytitle = #{$saytitle}" #不读取url title
+    puts "$saytitle = #{$saytitle}" #是否读取url title
     loadDic
     mystart
   end
@@ -51,7 +52,7 @@ class IRC
     send "kick #@channel #{s} 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn"
   end
 
-  #/mode #ubuntu-cn +b *!*@1.1.1.0
+  #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,s,time=50)
     send "mode #{chan} +q #{s}"
     Thread.new do
@@ -109,10 +110,9 @@ class IRC
   end
 
   def connect()
-    @irc.close if @irc
     $need_reconn = false
+    @irc.close if @irc
     @irc = TCPSocket.open(@server, @port)
-    #sleep 1
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
@@ -180,10 +180,11 @@ class IRC
         re = "#{$u.getname(c)} #{hostA(ip)}"
       when 23
         re = "#{$u.addrgrep(c)}"
-      when 30
+      when 'deb'
         return if c !~/^[\w\-\.]+$/#只能是字母,数字,-. "#{$`}<<#{$&}>>#{$'}"
+        re = get_deb_info c
         #`apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
-        re="#$3".gsub(/~/,'')
+        #re="#$3".gsub(/~/,'')
         # gsub(/xxx/){$&.upcase; gsub(/xxx/,'\2,\1')}
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
@@ -277,8 +278,8 @@ class IRC
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         $u.set_ban_time(nick)
-        if tmp < 360 #6分钟之前ban过
-          autoban to,"#{nick}!*@*",360 if tmp > 30
+        if tmp < 300 #n分钟之前ban过
+          autoban to,"#{nick}!*@*",240 if tmp > 30
           kick a1
         else
           autoban to,"#{nick}!*@*"
@@ -434,7 +435,7 @@ class IRC
           $ti= gettitle(url)
           if $ti 
             #if $ti =~ $tiList || url =~ $urlList
-              tmp = $ti.gsub(/\s+|Ubuntu中文论坛.+?查看主题/,'')
+              tmp = $ti.gsub(/_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
               if s =~ /#{Regexp::escape tmp[tmp.size/2-4,8]}/i#已经发了就不说了
                 puts "已经发了标题 #{tmp[tmp.size/2-4,8]}"
               else
@@ -455,7 +456,7 @@ class IRC
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #baidu_tran
       sayDic(101,from,to,$1)
     when /^`deb\s(.*)$/i  #aptitude show
-      sayDic(30,from,to,$1)
+      sayDic('deb',from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
     when /^[`']help$/i #`help
@@ -494,7 +495,7 @@ class IRC
       sayDic(2,from,to,$1)
     when /^`?a\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
-    when /^`?f\s(.*?)$/i #查地区
+    when /^`?f\s(.*?)$/i #查某人的老乡
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
@@ -508,8 +509,8 @@ class IRC
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
       s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
-      msg to,"#{s1}",9
-    when /^`rst\s?(\d*)$/i #restart
+      msg to,from + ", #{s1}",9
+    when /^`rst\s?(\d*)$/i #restart soft
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
@@ -527,7 +528,7 @@ class IRC
       #load 'irc.rb'
       #load 'plugin.rb' ✘
       loadDic
-      msg(to,"✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
+      msg(to,from + ", ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
     else
       return 1#not match dic_event
     end
@@ -544,12 +545,12 @@ class IRC
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
       if $ignore_nick =~ Regexp.new(from+'!',Regexp::IGNORECASE)
-        p 'ignore_nick ' + from if $debug
+        print 'ignore_nick ' , from,"\n" if $debug
         return 'ignore_nick'
       end
       if sSay =~ /[\001]VERSION[\001]/i
-        p 'get VERSION'
-        send "NOTICE #{$1} :\001VERSION kk-Ruby-irc #{Ver} birthday=2008.7.20\001"
+        print from, ' get VERSION', "\n"
+        send "NOTICE #{from} :\001VERSION kk-Ruby-irc #{Ver} birthday=2008.7.20\001"
         return 'match version'
       end
       return nil
@@ -566,14 +567,15 @@ class IRC
         $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
         puts Time.now.to_s.pink
       end
-      if !@Motded
+      #if !@Motded
         #376 End of /MOTD
         if pos == 376
-          @Motded = true
+          #@Motded = true
+          p 'Motded'
           $min_next_say=Time.now 
           do_after_sec(@channel,nil,5, 1)
         end
-      end
+      #end
       if !@Named
         case pos
         when 353
@@ -708,8 +710,9 @@ class IRC
         do_after_sec(@channel,nil,7,11)
       when 7
         send 'time'
-        sleep 2
+        sleep 1
         send "JOIN #sevk" if @channel != '#sevk'
+        sleep 1
         send "JOIN #{@channel}"
         #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
       when 10#打招呼回复
@@ -745,20 +748,19 @@ class IRC
 
   #检测用户输入,实现IRC客户端功能.
   def iSend()
-    while true
-      sleep 0.0001
-      Thread.pass
+    loop do
+      sleep 0.3
       s = Readline.readline('[' + @channel + '] ', true)
       #s = Readline.readline('', true)
-      Thread.pass
       next if !s
       #lock.synchronize do
         case s
         when /^:q\s?(.*)?$/i #:q退出
           send 'quit optimize' + $1
+          sleep 1
           p 'quit...'
+          @exit = true
           myexit ;
-          sleep 2
           exit
         when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
@@ -800,12 +802,15 @@ class IRC
     puts $u.all_nick.size.to_s + ' nicks loaded from yaml file.'.red
   end
 
+  def exited?
+    @exit
+  end
+
   #自定义退出
   def myexit
     saveu
     sleep 1
     puts 'exiting...'.yellow
-    @exit = true
   end
   
   #说新帖
@@ -816,12 +821,23 @@ class IRC
     }.join
   end
 
-  #对时
-  def get_time
+  #每天一次
+  def timer_daily
     if Time.now.hour == 4
-      send('time') if Time.now.min < 30
+      if Time.now.min < 30
+        send 'join ' + @channel
+        sleep 1
+        send('time')
+      end
     else
       puts Time.now.to_s.blue
+    end
+  end
+
+  #客户端输入并发送.
+  def input_start
+    i1=Thread.new do
+      iSend
     end
   end
 
@@ -831,7 +847,7 @@ class IRC
       n = 0
       loop do
         sleep 660 + rand(900)  #间隔17分钟
-        get_time #对时
+        timer_daily
         n+=1
         next if n%2 ==0
         saveu if n%8 ==0
@@ -843,14 +859,10 @@ class IRC
 
   #主循环
   def main_loop()
-    #客户端输入并发送.
-    Thread.start{ iSend } if $client
-
-    while true
+    loop do
       sleep 0.0001
-      Thread.pass
       #ready = select([@irc, $stdin], nil, nil, nil)
-      Thread.exit if @exit
+      return if @exit
       ready = select([@irc], nil, nil, nil) rescue (p $!.message;p $@)
       break if $need_reconn
       next if not ready
@@ -872,15 +884,25 @@ if not defined? $u
 
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
   irc.timer_start
-  while true do
+
+  loop do
+    irc.input_start if $client
     irc.connect()
-    irc.main_loop()
-    exit if @exit
-    p 're-connection...'
-    sleep 600
+    begin
+      irc.main_loop()
+      exit if irc.exited?
+    rescue
+      log $!.message
+      p 're-connection...'
+      sleep 300
+      restart
+    end
   end
 end
 
+def restart #restart hard
+  exec "./#{$0} #{ARGV[0]}"
+end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
