@@ -26,7 +26,6 @@ class IRC
   def initialize(server, port, nick, channel, charset, pass, user)
     $_hour = $_min = $_sec = 0
     @tmp = ''
-    @count = 0
     @exit = false
     $otherbot_said = nil
     @Motded = false
@@ -36,7 +35,6 @@ class IRC
     @server = server
     @port = port
     @nick = nick
-    @pass = pass
     @str_user= user
     @channel = channel
     #@channel = Ch.new
@@ -63,10 +61,9 @@ class IRC
     end
   end
 
-  def ping(s)
+  def ping
     $Lping = Time.now
-    $Lsay = Time.now
-    send "PING #{s}"
+    send "PING LAG1982067890"
   end
   #发送notice消息
   def notice(who,sSay,delay=4)
@@ -110,6 +107,7 @@ class IRC
   end
 
   def connect()
+    return if @exit
     $need_reconn = false
     @irc.close if @irc
     @irc = TCPSocket.open(@server, @port)
@@ -284,15 +282,14 @@ class IRC
         else
           autoban to,"#{nick}!*@*"
         end
-        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",10) if rand(7) > 6
-        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",7)
+        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",0)
+        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",5)
         return nil
       end
 
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
-          $u.saidAndCheckFlood(nick,name,ip,sSay)
           #$u.saidAndCheckFlood(nick,name,ip,sSay)
         end
         return nil
@@ -549,6 +546,7 @@ class IRC
         return 'ignore_nick'
       end
       if sSay =~ /[\001]VERSION[\001]/i
+        from.delete! ':'
         print from, ' get VERSION', "\n"
         send "NOTICE #{from} :\001VERSION kk-Ruby-irc #{Ver} birthday=2008.7.20\001"
         return 'match version'
@@ -573,7 +571,17 @@ class IRC
           #@Motded = true
           p 'Motded'
           $min_next_say=Time.now 
-          do_after_sec(@channel,nil,5, 1)
+          File.open(ARGV[0]).each { |line|
+            if line =~ /pass/
+              eval line
+              break
+            end
+          }
+          send "PRIVMSG nickserv :id #{$pass}"
+          $pass = nil
+          $bot_on = $bot_on1
+          $min_next_say = Time.now
+          do_after_sec(@channel,nil,7,11)
         end
       #end
       if !@Named
@@ -584,7 +592,6 @@ class IRC
           from = @tmp
           @count = @tmp.split(' ').size
           puts "nick list: #@tmp , #@count ".red
-
 
           $need_Check_code -= 1 if from =~ $botlist_Code
           $need_say_feed -= 1 if from =~ $botlist_ub_feed
@@ -636,7 +643,7 @@ class IRC
     return 'matched'
   end #end irc_event
 
-  #写入日志
+  #写入聊天记录
   def save_log(s)
 
   end
@@ -647,7 +654,7 @@ class IRC
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) #if not $client #简单显示消息
-    save_log(s)#写入日志
+    save_log(s)
     return if not $bot_on #bot 功能
     #s=s.force_encoding("UTF-8")
     return if check_msg(s).class != Fixnum #字典消息
@@ -703,18 +710,14 @@ class IRC
       case flag
       when 0
         send "PRIVMSG #{to} :#{sSay}"
-      when 5 #发送密码
-        send "PRIVMSG nickserv :id #{@pass}"
-        $pass=@pass=rand(100)
-        $min_next_say = Time.now
-        do_after_sec(@channel,nil,7,11)
       when 7
         send 'time'
         sleep 1
         send "JOIN #sevk" if @channel != '#sevk'
         sleep 1
         send "JOIN #{@channel}"
-        #send "privmsg #{@channel}  :\001ACTION 我不是机器人#{0.chr} "
+        p 'get osod'
+        Thread.new do send "privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} " end
       when 10#打招呼回复
         tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
         if tmp < 0 #不用显示倒计时
@@ -749,7 +752,7 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   def iSend()
     loop do
-      sleep 0.3
+      sleep 0.28
       s = Readline.readline('[' + @channel + '] ', true)
       #s = Readline.readline('', true)
       next if !s
@@ -847,6 +850,7 @@ class IRC
       n = 0
       loop do
         sleep 660 + rand(900)  #间隔17分钟
+        ping
         timer_daily
         n+=1
         next if n%2 ==0
@@ -878,16 +882,19 @@ class IRC
 end
 
 if not defined? $u
-  load 'default.conf'
-  load ARGV[0] if ARGV[0]
+  ARGV[0] = 'default.conf' if not ARGV[0]
+  p 'ARGV[0] :' +  ARGV[0]
+  load ARGV[0]
+  $bot_on1 = $bot_on
+  $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
 
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
   irc.timer_start
 
   loop do
-    irc.input_start if $client
     irc.connect()
+    irc.input_start if $client
     begin
       irc.main_loop()
       exit if irc.exited?
@@ -900,7 +907,7 @@ if not defined? $u
   end
 end
 
-def restart #restart hard
+def restart #Hard Reset
   exec "./#{$0} #{ARGV[0]}"
 end
 

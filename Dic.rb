@@ -23,7 +23,7 @@ class String
   def encode64
     Base64.encode64 self
   end
-  def ee(s=['☘',"\322\211"][rand(2)])
+  def ii(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
 
@@ -39,7 +39,7 @@ begin
   #gem install htmlentities
   require 'htmlentities'
   #sudo gem install mechanize
-  #require 'mechanize'
+  require 'mechanize'
 
 rescue LoadError
   s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
@@ -91,10 +91,10 @@ $Lsay=Time.now; $Lping=Time.now
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-$botlist=/bot|fity|badgirl|crazyghost|u_b|iphone|^\^O_|^O_|^A_U.?$|MadGirl/i
-$botlist_Code=/badgirl|^O_|^\^O_|^A_U.?$/i
-$botlist_ub_feed=/crazyghost|^O_|^\^O_|^A_U.?$/i
-$botlist_title=/GiGi|u_b|^O_|^\^O_|^A_U.?$/i
+$botlist=/bot|fity|badgirl|crazyghost|iphone|\^?[Ou]_[ou]|MadGirl/i
+$botlist_Code=/badgirl|\^?[Ou]_[ou]/i
+$botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
+$botlist_title=/GiGi|\^?[Ou]_[ou]/i
 $tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
 $urlList=$tiList
 
@@ -368,7 +368,8 @@ def gettitle(url,proxy=nil)
     rescue Exception => e
       p e.message
       p $@
-      return e.message[0,60] + ' . IN title'
+      return nil
+      #return e.message[0,60] + ' . IN title'
     end
     return nil unless istxthtml
 
@@ -661,15 +662,9 @@ end
 #域名转化为IP
 def host(domain)
   return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
-  begin
-    domain.gsub!(/\/.*/i,'')
-    return domain if not domain.include?('.')
-    return Resolv.getaddress(domain)
-  rescue Exception => detail
-    puts detail.message
-    p $@
-    domain
-  end
+  domain.gsub!(/\/.*/i,'')
+  return domain if not domain.include?('.')
+  return Resolv.getaddress(domain) rescue domain
 end
 def getProvince(domain)#取省
   hostA(domain).gsub(/^.*(\s|省)/,'').match(/\s?(.*?)市/)[1]
@@ -737,4 +732,63 @@ end
 def b
   `uptime`
 end
+
+def osod
+  agent = Mechanize.new
+  agent.user_agent_alias = 'Linux Mozilla'
+  agent.max_history = 1
+  agent.open_timeout = 10
+  agent.cookies
+  #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
+  t=Time.now
+  h="%02d" % (t.hour/2)
+  d="%02d" % t.day
+  url = "http://ppcbook.hongen.com/eng/daily/sentence/#{h}#{d}sent.htm"
+  #p url
+  begin
+    page = agent.get_file(url)
+  rescue Exception => e
+    #p e.message
+    if $!.message == 'Connection reset by peer'
+      #p 'Connection reset by peer'
+      sleep 0.5
+      return Timeout.timeout(10){gettitle(url,true)}
+    else
+      return e.message[0,60] + ' . IN osod'
+    end
+  end
+  s = page.match(/span class="e2">(.*?)<select name='selectmonth'>/mi)[1]
+  s = s.gsub!(/\s+/,' ')
+  s.gsub!(/<.*?>/,'').unescapeHTML.gb_to_utf8
+end
+
+def ge name
+  agent = Mechanize.new
+  agent.user_agent_alias = 'Linux Mozilla'
+  agent.max_history = 1
+  agent.open_timeout = 10
+  agent.cookies
+  begin
+    url = 'http://packages.ubuntu.com/search?&searchon=names&suite=all&section=all&keywords=' + name.strip
+    #url = 'http://packages.debian.org/search?suite=all&arch=any&searchon=names&keywords=' + name.strip
+    p url
+    #page = agent.get(url)
+    page = agent.get_file(url)
+    #return nil if page.class != Mechanize::Page
+  rescue Exception => e
+    p e.message
+    if $!.message == 'Connection reset by peer'
+      sleep 0.5
+      return Timeout.timeout(10){gettitle(url,true)}
+    else
+      return e.message[0,60] + ' . IN getdeb'
+    end
+  end
+  s = page.match(/resultlink".+?:(.+?)<br>(.+?): /mi)[1..2].join ','
+  p s
+  s = s.gsub!(/\s+/,' ')
+  s.gsub!(/<.*?>/,'').unescapeHTML
+end
+alias get_deb_info ge
+
 

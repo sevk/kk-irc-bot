@@ -3,7 +3,7 @@
 #51070540@qq.com ; sevkme@gmail.com
 
 $maxfloodme = 71.0 #70
-$maxflood = 34.0   #37
+$maxflood = 33.3   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -61,7 +61,7 @@ class ALL_USER
 
   #记录nick库
   def add(nick,name,ip)
-    name.gsub!(/[in]=/i,'')
+    name.gsub!(/[in]=|~/i,'')
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     #puts '6 add ' +  nick if $debug
     return if nick == nil
