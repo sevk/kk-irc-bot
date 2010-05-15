@@ -37,7 +37,6 @@ class IRC
     @nick = nick
     @str_user= user
     @channel = channel
-    #@channel = Ch.new
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     puts "$saytitle = #{$saytitle}" #是否读取url title
@@ -47,7 +46,7 @@ class IRC
   
   #kick踢出
   def kick(s)
-    send "kick #@channel #{s} 大段内容请贴到http://pastebin.ca 或 http://paste.ubuntu.org.cn"
+    send "kick #@channel #{s} #$kick_info"
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
@@ -63,7 +62,7 @@ class IRC
 
   def ping
     $Lping = Time.now
-    send "PING LAG1982067890"
+    send "PING LAG1982067890",false
   end
   #发送notice消息
   def notice(who,sSay,delay=4)
@@ -83,7 +82,7 @@ class IRC
   end
 
   #发送tcp数据,如果长度大于460 就自动截断.
-  def send(s)
+  def send(s,add_tim_chr=true)
     s.gsub!(/\s+/,' ')
     if s.bytesize > 450
       s.chop!.chop! while s.bytesize > 450
@@ -97,9 +96,9 @@ class IRC
         #非utf-8的聊天室就直接截断了
         s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
       end
-      s+=' ...'
+      s += ' ...'
     else
-      s+= Time.now.ch
+      s += Time.now.ch if add_tim_chr
     end
     @irc.send("#{s.strip}\n", 0)
     $Lsay = Time.now
@@ -121,7 +120,7 @@ class IRC
     direction = ''
     tellSender = false
     pub =true #默认公共消息
-    pub =true if dic == 5
+    #pub =true if dic == 5
 
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
       words=$1;direction=$2;b7=$3
@@ -188,15 +187,14 @@ class IRC
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 then re = Help ;c=''
       when 101 then re = dictcn(c);c=''
-      #when 101 then re = getBaidu_tran(c);c=''
       end
       Thread.exit if re.bytesize < 2
 
       b7=from if b7
       if sto =~ /notice/i 
-        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",8)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",7)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
       end
       msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",0) if tellSender
 
@@ -282,8 +280,8 @@ class IRC
         else
           autoban to,"#{nick}!*@*"
         end
-        msg(a4,"#{a1}:KAO,谁说话这么快, 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",0)
-        notice(nick,"#{a1}: ... 大段内容请贴到 http://pastebin.ca 或 http://paste.ubuntu.org.cn",5)
+        msg(a4,"#{a1}:KAO,谁说话这么快,#$kick_info",0)
+        notice(nick,"#{a1}: ... #$kick_info",5)
         return nil
       end
 
@@ -431,18 +429,17 @@ class IRC
         @ti=Thread.start {
           $ti= gettitle(url)
           if $ti 
-            #if $ti =~ $tiList || url =~ $urlList
-              tmp = $ti.gsub(/_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
-              if s =~ /#{Regexp::escape tmp[tmp.size/2-4,8]}/i#已经发了就不说了
-                puts "已经发了标题 #{tmp[tmp.size/2-4,8]}"
-              else
-                $ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-                msg(to,"⇪ title: #{$ti}",0) 
-              end
-            #end
+            return if $ti !~ $tiList and url !~ $urlList
+            tmp = $ti.gsub(/_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
+            if s.include? tmp #已经发了就不说了
+              puts "已经发了标题 #{tmp}"
+            else
+              $ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
+              msg(to,"⇪ title: #{$ti}",0)
+            end
           end
         }
-        @ti.priority = 40
+        @ti.priority = 30
         #@ti.join
       when /ed2k/i
         msg(to,geted2kinfo(url),0)
@@ -464,14 +461,11 @@ class IRC
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w} |")
-    when /^(.*?)[\s:,](.+)是什么[\?？]?$/i #是什么
-      if $1 
-        return
-      else
-        w = $2.to_s.strip
-        return if w =~/这|那|的|哪/
-        sayDic(1,from,to,"define:#{w} |")
-      end
+    when /^(.*?)?[:,]?(.+)是什么(\?|...)?$/i #是什么
+      w = $1.delete '`'
+      return if w =~ /^(.+)[:,]/
+      return if w =~ /这|那|的|哪/
+      sayDic(1,from,to,"define:#{w} |")
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
       sayDic(21,from,to,$1)
@@ -538,7 +532,7 @@ class IRC
       @irc.send "PONG :#{$1}\n", 0
     when /LAG1982067890/i #LAG
       $lag=Time.now - $Lping
-      puts "LAG = #{$lag} 秒" if $lag > 3
+      puts "LAG = #{$lag} 秒" if $lag > 3 and $lag < 20
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
       if $ignore_nick =~ Regexp.new(from+'!',Regexp::IGNORECASE)
@@ -752,18 +746,18 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   def iSend()
     loop do
-      sleep 0.28
+      sleep 0.29
       s = Readline.readline('[' + @channel + '] ', true)
       #s = Readline.readline('', true)
       next if !s
       #lock.synchronize do
         case s
         when /^:q\s?(.*)?$/i #:q退出
+          myexit ;
+          @exit = true
           send 'quit optimize' + $1
           sleep 1
           p 'quit...'
-          @exit = true
-          myexit ;
           exit
         when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
@@ -854,9 +848,10 @@ class IRC
         timer_daily
         n+=1
         next if n%2 ==0
-        saveu if n%8 ==0
-        next unless (8..24) === Time.now.hour
-        say_new($channel) if $need_say_feed > 0
+        saveu if n%9 ==0
+        if (8..24).include? Time.now.hour
+          say_new($channel) if $need_say_feed > 0
+        end
       end
     end
   end

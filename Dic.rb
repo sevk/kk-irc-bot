@@ -73,6 +73,7 @@ require 'yaml'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=86400 if not defined?$_time
+$kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
@@ -91,12 +92,12 @@ $Lsay=Time.now; $Lping=Time.now
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
-$botlist=/bot|fity|badgirl|crazyghost|iphone|\^?[Ou]_[ou]|MadGirl/i
+$botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/GiGi|\^?[Ou]_[ou]/i
-$tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
-$urlList=$tiList
+#$tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
+$urlList=$tiList = /ub/i
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
@@ -200,7 +201,7 @@ end
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
-    Timeout.timeout(12) {
+    Timeout.timeout(15) {
       $tmp = RSS::Parser.parse(url)
     }
   #rescue Timeout::Error => e
@@ -340,7 +341,7 @@ def gettitle(url,proxy=nil)
         p e.message
         if $!.message == 'Connection reset by peer'
           sleep 0.5
-          return Timeout.timeout(10){gettitle(url,true)}
+          return Timeout.timeout(11){gettitle(url,true)}
         else
           return e.message[0,60] + ' . IN title'
         end
@@ -556,6 +557,7 @@ end
 #ed2k
 def geted2kinfo(url)
   url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
+  return if $1 == 'server'
   $ti = "#{URLDecode($2.to_s)} , #{ '%.2f' % ($3.to_f / 1024**3)} GB"
   $ti.gsub!(/.*\]\./,'')
   "⇪ #{unescapeHTML($ti)}"
@@ -749,13 +751,7 @@ def osod
     page = agent.get_file(url)
   rescue Exception => e
     #p e.message
-    if $!.message == 'Connection reset by peer'
-      #p 'Connection reset by peer'
-      sleep 0.5
-      return Timeout.timeout(10){gettitle(url,true)}
-    else
-      return e.message[0,60] + ' . IN osod'
-    end
+    return e.message[0,60] + ' . IN osod'
   end
   s = page.match(/span class="e2">(.*?)<select name='selectmonth'>/mi)[1]
   s = s.gsub!(/\s+/,' ')
@@ -777,12 +773,7 @@ def ge name
     #return nil if page.class != Mechanize::Page
   rescue Exception => e
     p e.message
-    if $!.message == 'Connection reset by peer'
-      sleep 0.5
-      return Timeout.timeout(10){gettitle(url,true)}
-    else
-      return e.message[0,60] + ' . IN getdeb'
-    end
+    return e.message[0,60] + ' . IN getdeb'
   end
   s = page.match(/resultlink".+?:(.+?)<br>(.+?): /mi)[1..2].join ','
   p s

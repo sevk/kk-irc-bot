@@ -2,8 +2,8 @@
 # coding: utf-8
 #51070540@qq.com ; sevkme@gmail.com
 
-$maxfloodme = 71.0 #70
-$maxflood = 33.3   #37
+$maxfloodme = 72.0 #70
+$maxflood = 33.4   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 

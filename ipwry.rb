@@ -10,7 +10,6 @@ require 'iconv'
 class IpLocationSeeker
   def initialize()
     fQQwry='./QQWry.Dat'
-
     #@datafile = File.open(fQQwry,"r:utf-8")
     @datafile = File.open(fQQwry,"rb")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
