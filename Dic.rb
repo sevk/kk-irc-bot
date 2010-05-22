@@ -75,7 +75,7 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=86400 if not defined?$_time
 $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
 Ver='v0.27' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
@@ -85,7 +85,7 @@ CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x
 
 Http_re= /http:\/\/\S+[^\s*]/
 
-Minsaytime= 4
+Minsaytime= 5
 puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -96,8 +96,8 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/GiGi|\^?[Ou]_[ou]/i
-#$tiList=/ub|deb|ux|ix|win|goo|beta|py|ja|lu|qq|dot|dn|li|pr|qt|tk|ed|re|rt/i
-$urlList=$tiList = /ub/i
+#$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
+$urlList=$tiList = /ub|linux/i
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
@@ -118,7 +118,7 @@ def guess_charset(str)
   s = str.gsub(/[\x0-\x7f]/,'')
   return nil if s.bytesize < 4
   while s.bytesize < 25
-    s = s + s
+    s << s
   end
   return guess(s)
 end
@@ -483,7 +483,7 @@ def getGoogle(word,flg)
           tmp = $2.to_s + " > " + $3.to_s.gsub(/&amp;.*/i,'')
           tmp += ' ⋙ SEE ALSO ' + $1.to_s if rand(10)>5 and $1.to_s.size > 2
         when /专业气象台|比价仅作信息参考/
-          tmp = html.match(/>网页<.+?(搜索用时|>网页<\/b>)(.*?)(搜索结果|Google 主页)/)[2]
+          tmp = html.match(/resultStats.*?\/nobr>(.*?)(class=hd>搜索结果|Google\s+主页)/i)[1]
         when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
           tmp = '<' +$1.to_s + ' Google 计算器' #(.*?)<li>
         else
@@ -492,9 +492,7 @@ def getGoogle(word,flg)
         #p;puts html.match(/搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i)[0]
         if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
-            #puts ' tmp=' + $2.to_s
             tmp =$2.gsub(/<cite>.+<\/cite>/,' ' + url_mini)
-            #puts ' tmp1=' + tmp1.to_s
             tmp1=$1
           end
           tmp.gsub!(/(.+?)您的广告/,'')
@@ -507,6 +505,7 @@ def getGoogle(word,flg)
           case word
           when /^tq|tq$|天气$|tianqi$/i
             #puts '天气过滤' + tmp.to_s
+            tmp.gsub!(/.*?<table class="ts std">/i,'')
             tmp.gsub!(/alt="/,'>')
             tmp.gsub!(/"?\s?title=|right/,'<')
             tmp.gsub!(/\s\/\s/,"\/")
@@ -514,13 +513,12 @@ def getGoogle(word,flg)
             tmp.gsub!(/今日\s+/, ' 今日' )
             tmp.gsub!(/<\/b>/, ' ')
             tmp.gsub!(/添加到(.*?)当前：/,' ')
-            tmp.gsub!(/相关搜索.*?\-/,'天气- ')
+            tmp.gsub!(/相关搜索.*?\-/,' ')
             #tmp.gsub!(/北京市专业气象台(.*)/, '' )
             tmp=tmp.match(/.+?°C.+?°C.+?°C/)[0]
-            tmp.gsub!(/°C/,'°C ')
+            tmp.gsub!(/°C/,'度 ')
           end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
-          #~ puts html
           if tmp.bytesize > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
             re=tmp
           else
@@ -767,18 +765,19 @@ def ge name
   begin
     url = 'http://packages.ubuntu.com/search?&searchon=names&suite=all&section=all&keywords=' + name.strip
     #url = 'http://packages.debian.org/search?suite=all&arch=any&searchon=names&keywords=' + name.strip
-    p url
+    #p url
     #page = agent.get(url)
     page = agent.get_file(url)
     #return nil if page.class != Mechanize::Page
   rescue Exception => e
-    p e.message
+    #p e.message
     return e.message[0,60] + ' . IN getdeb'
   end
-  s = page.match(/resultlink".+?:(.+?)<br>(.+?): /mi)[1..2].join ','
-  p s
+  s = page.split(/<\/h2>/im)[1]
+  s = s.match(/.*resultlink".+?:(.+?)<br>(.+?): .*<h2>/mi)[1..2].join ','
   s = s.gsub!(/\s+/,' ')
-  s.gsub!(/<.*?>/,'').unescapeHTML
+  s.gsub!(/<.*?>/,'')
+  s.unescapeHTML
 end
 alias get_deb_info ge
 

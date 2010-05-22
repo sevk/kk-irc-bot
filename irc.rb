@@ -190,13 +190,13 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
-      b7=from if b7
+      b7=from if not b7
       if sto =~ /notice/i 
-        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",10)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",9)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",10)
       end
-      msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",0) if tellSender
+      msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",9) if tellSender
 
     end #Thread
   end
@@ -215,9 +215,8 @@ class IRC
       p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
+        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{say} in #{tmp} ? But we use #{@charset} !" if $need_Check_code
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
-        return 'matched err charset, but not need check code' if $need_Check_code < 1
-        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:said #{say} in #{tmp} ? But we use #{@charset} !"
         return 'matched err charset'
       end
     end
@@ -439,7 +438,7 @@ class IRC
             end
           end
         }
-        @ti.priority = 30
+        @ti.priority = 50
         #@ti.join
       when /ed2k/i
         msg(to,geted2kinfo(url),0)
@@ -449,7 +448,7 @@ class IRC
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}",0
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #baidu_tran
       sayDic(101,from,to,$1)
-    when /^`deb\s(.*)$/i  #aptitude show
+    when /^`?deb\s(.*)$/i  #aptitude show
       sayDic('deb',from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
@@ -482,7 +481,7 @@ class IRC
       sayDic(40,from,to,$1)
     when /^`?d(ef(ine)?)?\s(.*?)$/i#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
-    when /^`?b\s(.*?)$/i  # 百度
+    when /^`b\s(.*?)$/i  # 百度
       sayDic(2,from,to,$1)
     when /^`?a\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
@@ -490,10 +489,10 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ', hi .',10,18) if rand(10) > 4
+      do_after_sec(to,from + ', 好 ',10,18) if rand(10) > 4
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,5})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', hello .',10,18)
+      do_after_sec(to,from + ', ...',10,18)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -559,25 +558,23 @@ class IRC
         $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
         puts Time.now.to_s.pink
       end
-      #if !@Motded
-        #376 End of /MOTD
-        if pos == 376
-          #@Motded = true
-          p 'Motded'
-          $min_next_say=Time.now 
-          File.open(ARGV[0]).each { |line|
-            if line =~ /pass/
-              eval line
-              break
-            end
-          }
-          send "PRIVMSG nickserv :id #{$pass}"
-          $pass = nil
-          $bot_on = $bot_on1
-          $min_next_say = Time.now
-          do_after_sec(@channel,nil,7,11)
-        end
-      #end
+      #376 End of /MOTD
+      if pos == 376
+        #@Motded = true
+        p 'Motded'
+        $min_next_say=Time.now
+        File.open(ARGV[0]).each { |line|
+          if line =~ /pass/
+            eval line
+            break
+          end
+        }
+        send "PRIVMSG nickserv :id #{$pass}"
+        $pass = nil
+        $bot_on = $bot_on1
+        $min_next_say = Time.now
+        do_after_sec(@channel,nil,7,11)
+      end
       if !@Named
         case pos
         when 353
