@@ -135,25 +135,15 @@ else
     s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
     s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
     puts s
-    puts $@
   end
   def guess(s)
     CharDet.detect(s)['encoding'].upcase
   end
 end
 
-#如果当前目录存在UBUNTU新手资料.txt就读取.
-def readDicA()
-  fi1= 'UBUNTU新手资料.txt'
-  if (File.exist?fi1 )
-    IO.read(fi1)
-  else
-    ''
-    #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
-  end
-end
+#'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
 def loadDic()
-  $str1 = readDicA
+  $str1 = IO.read('UBUNTU新手资料.txt') rescue ''
   puts 'Dic load [ok]'
 end
 

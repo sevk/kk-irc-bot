@@ -23,7 +23,7 @@ load 'log.rb'
 
 #irc类
 class IRC
-  def initialize(server, port, nick, channel, charset, pass, user)
+  def initialize(server, port, nick, channel, charset, pass, name="bot svn ver bot :svn Ver bot")
     $_hour = $_min = $_sec = 0
     @tmp = ''
     @exit = false
@@ -35,11 +35,10 @@ class IRC
     @server = server
     @port = port
     @nick = nick
-    @str_user= user
+    @str_user= name
     @channel = channel
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
-    puts "$saytitle = #{$saytitle}" #是否读取url title
     loadDic
     mystart
   end
@@ -593,8 +592,8 @@ class IRC
           Readline.completion_append_character = ', '
 
           puts "是否检测乱码= #{$need_Check_code}"
-          puts "feed功能= " + $need_say_feed.to_s
-          print 'saytitle= ' , $saytitle
+          print "feed功能= " , $need_say_feed, "\n"
+          print 'saytitle= ' , $saytitle, 10.chr
         end 
       end
       if pos == 901 #901 是 nick 验证完成.
@@ -881,7 +880,7 @@ if not defined? $u
   $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
 
-  irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$user)
+  irc = IRC.new($server,$port,$nick,$channel,$charset,$pass)
   irc.timer_start
 
   loop do

@@ -3,7 +3,7 @@
 #51070540@qq.com ; sevkme@gmail.com
 
 $maxfloodme = 72.0 #70
-$maxflood = 33.4   #37
+$maxflood = 33.3   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -70,9 +70,11 @@ class ALL_USER
       @addr[nick]= getaddr_fromip(ip)
       return false
     end
-    tmp = @index.key(@pos_write)
-    @index.delete(tmp)#删除原位置
-    @addr.delete(tmp) rescue nil
+    oldname = @index.key(@pos_write)
+    #删除原位置
+    @index.delete(oldname)
+    @addr.delete(oldname) rescue nil
+
     @addr[nick]= getaddr_fromip(ip)
     @index[nick] = @pos_write
     @name[@pos_write]= name
@@ -141,7 +143,7 @@ class ALL_USER
     index = getindex(nick)
     return false if index ==nil
     $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
-    p "~me #{$timelast6me[index]}" if $debug
+    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +15
     return $timelast6me[index] < $maxfloodme
   end
   def check_flood(nick)
@@ -269,3 +271,18 @@ class ALL_USER
   end
 end
 
+class ONE_USER
+  attr :name
+  def initialize name
+    @name = name
+  end
+  def ip
+    $u.getip @name
+  end
+end
+
+class SANBOX
+  def in
+    yield
+  end
+end
