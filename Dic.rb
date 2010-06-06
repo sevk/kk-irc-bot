@@ -45,7 +45,8 @@ rescue LoadError
   s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
   s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
   puts s
-  puts $@
+  puts $!.message
+  puts $@[0]
 end
 
 begin
@@ -81,7 +82,6 @@ Ver='v0.27' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
-#CN_re=/^(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+$/n
 
 Http_re= /http:\/\/\S+[^\s*]/
 
@@ -97,7 +97,7 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/GiGi|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList=$tiList = /ub|linux/i
+$urlList=$tiList = /ubuntu|linux/i
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
@@ -723,6 +723,7 @@ def b
   `uptime`
 end
 
+#每日一句英语学习
 def osod
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
@@ -746,6 +747,7 @@ def osod
   s.gsub!(/<.*?>/,'').unescapeHTML.gb_to_utf8
 end
 
+#get deb info
 def ge name
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
