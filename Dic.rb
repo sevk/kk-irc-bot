@@ -277,29 +277,26 @@ def dictcn(word)
   word = word.utf8_to_gb
   url = 'http://dict.cn/mini.php?q=' + word
   url = URI.escape(url)
-  puts url
   uri = URI.parse(url)
-  begin #加入错误处理
-    res = nil
-    uri.open(
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Accept'=>'text/html',
-    'Referer'=> URI.escape(url),
-    'Accept-Language'=>'zh-cn',
-    #'Cookie' => cookie,
-    'Range' => 'bytes=0-9000',
-    'User-Agent'=> UserAgent
-    ){ |f|
-      re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
-      re.gsub!(/<script.*?<\/script>/i,'')
-      re.gsub!(/<.*?>/i,'')
-      re.gsub!(/.*?Define /i,'')
-      re.gsub!(/加入生词本.*/,'')
-      re.unescapeHTML + ' << Dict.cn'
-    }
-  rescue 
-    return $!
-  end
+  res = nil
+  uri.open(
+  'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+  'Accept'=>'text/html',
+  'Referer'=> URI.escape(url),
+  'Accept-Language'=>'zh-cn',
+  #'Cookie' => cookie,
+  'Range' => 'bytes=0-9000',
+  'User-Agent'=> UserAgent
+  ){ |f|
+    re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
+    re.gsub!(/<script.*?<\/script>/i,'')
+    re.gsub!(/<.*?>/i,'')
+    re.gsub!(/.*?Define /i,'')
+    re.gsub!(/加入生词本.*/,'')
+    return re.unescapeHTML + ' << Dict.cn'
+  }
+rescue
+  return $!.message
 end
 
 #取标题,参数是url.
@@ -358,7 +355,7 @@ def gettitle(url,proxy=nil)
       }
     rescue Exception => e
       p e.message
-      p $@
+      p $@[0]
       return nil
       #return e.message[0,60] + ' . IN title'
     end
@@ -682,16 +679,13 @@ end
 #eval
 def evaluate(s)
   result = nil
-  begin
-    l=4
-    l=0 if s =~ /^(`uptime`|b)$/i
-    Timeout.timeout(4){
-      result = safe(l){eval(s).to_s[0,400]}
-    }
-  rescue Exception => detail
-    result = detail.message()
-  end
-  return result
+  l=4
+  l=0 if s =~ /^(`uptime`|b)$/i
+  Timeout.timeout(4){
+    return safe(l){eval(s).to_s[0,400]}
+  }
+rescue Exception => detail
+  return detail.message()
 end
 
 def onemin
@@ -772,5 +766,9 @@ def ge name
   s.unescapeHTML
 end
 alias get_deb_info ge
+
+def restart #Hard Reset
+  exec "./#{$0} #{ARGV[0]}"
+end
 
 

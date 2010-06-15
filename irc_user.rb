@@ -117,7 +117,7 @@ class ALL_USER
     $ban_time[getindex(nick)] = Time.now
   end
   def get_ban_time(nick)
-    $ban_time[getindex(nick)] rescue Time.now - 3600
+    $ban_time[getindex(nick)] ||= Time.now - 3600
   end
   def lastSay=(nick,w)
     $lastsay[getindex(nick)]=w

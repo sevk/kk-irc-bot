@@ -71,10 +71,12 @@ class IRC
 
   #发送msg消息,随机 delay 秒数.
   def msg(who,sSay='',delay=10)
-    return if sSay.size == 0
+    return if sSay.empty?
     $otherbot_said=false
     do_after_sec(who,sSay,0,delay)
   end
+
+  #发送到频道$channel
   def say(s)
     send "PRIVMSG #{@channel} :#{s}"
     isaid()
@@ -233,7 +235,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"...玩机器人去#Sevk频道... ",11 if rand(10) > 6
+        msg from,"...不要玩机器人... ",11 if rand(10) > 6
         return nil
       end
 
@@ -313,7 +315,7 @@ class IRC
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
             $otherbot_said=true
-            msg to ,"#{from}, 玩机器人? ? ... 去 #Sevk or #{to}-ot ",0 if rand(10) > 5
+            msg to ,"#{from}, 不要玩机器人 ...",0 if rand(10) > 5
             return nil
           end
         end
@@ -349,7 +351,7 @@ class IRC
           #$u.floodmereset(a1)
           $otherbot_said=true
           send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
-          msg to ,"#{from}, play ? ...玩机器人请私聊或去 #Sevk or #{to}-ot ",0 if rand(10) > 4
+          msg to ,"#{from}, 不要玩机器人",0 if rand(10) > 4
           return nil
         end
       end
@@ -370,7 +372,7 @@ class IRC
         #$u.add(nick,name,ip)
       #end
       renew_Readline_complete($u.all_nick)
-    when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)$/i #quit|part
+    when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)?\s?$/i #quit|part
       #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
       from=$1;name=$2;ip=$3;chan=$5.to_s
       return if chan =~ /#sevk/i
@@ -406,6 +408,8 @@ class IRC
     else
       return 1 # not match
     end
+  rescue
+    print $!.message, $@[0], 10.chr
   end
 
   #检测消息是不是敏感或字典消息
@@ -443,7 +447,7 @@ class IRC
             end
           end
         }
-        @ti.priority = 50
+        @ti.priority = 30
         #@ti.join
       when /ed2k/i
         msg(to,geted2kinfo(url),0)
@@ -459,7 +463,7 @@ class IRC
       sayDic(6,from,to,$1)
     when /^[`']help$/i #`help
       sayDic(99,from,to,$2)
-    when /^`?(new|论坛新帖|来个新帖|新帖)$/i
+    when /^`?(new|论坛新帖|新帖)$/i
       sayDic('new',from,to,$1)
     when /^`?(什么是)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
@@ -585,8 +589,7 @@ class IRC
       when 353
         @tmp += " #{tmp}"
       when 366#End of /NAMES list.
-        from = @tmp
-        @count = @tmp.split(' ').size
+        @count = @tmp.count(' ') + 1
         puts "nick list: #@tmp , #@count ".red
 
         renew_Readline_complete(@tmp.gsub('@','').split(' '))
@@ -656,7 +659,7 @@ class IRC
     s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i
     case s
-    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s:(.+)$/i
+    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s:?(.+)$/i
       from=$1;name=$2;ip=$3;mt=msgto=$4;sy=$5
       if mt =~ /^priv/i
         mt= ''
@@ -740,13 +743,61 @@ class IRC
     Readline.completion_case_fold=true
   end
 
+  def mystart
+    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue (p $!.message)
+    p $u.class
+    $u = ALL_USER.new if $u.class != ALL_USER
+    $u.init_pp
+    puts $u.all_nick.size.to_s + ' nicks loaded from yaml file.'.red
+  end
+
+  def exited?
+    @exit
+  end
+
+  #自定义退出
+  def myexit
+    saveu
+    sleep 1
+    puts 'exiting...'.yellow
+  end
+
+  #说新帖
+  def say_new(to)
+    s=Thread.start{
+      tmp = get_feed
+      msg(to,tmp,0) if tmp.bytesize > 4
+    }.join
+  end
+
+  #每天一次
+  def timer_daily
+    if Time.now.hour == 4
+      if Time.now.min < 30
+        send 'join ' + @channel
+        sleep 1
+        send('time')
+        msg(@channel,osod,20)
+      end
+    else
+      puts Time.now.to_s.blue
+    end
+  end
+
   #检测用户输入,实现IRC客户端功能.
+  #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
   def iSend()
     loop do
       sleep 0.3
-      s = Readline.readline('[' + @channel + '] ', true)
-      #s = Readline.readline('', true)
-      next if !s
+      #windows 好像不支持Readline
+      if PLATFORM =~ /win/ and RUBY_VERSION < '1.9'
+        s = IO.select([$stdin])
+        next if !s
+        #next if s[0][0] != IO
+        s = $stdin.gets
+      else
+        s = Readline.readline('[' + @channel + '] ', false)
+      end
       #lock.synchronize do
         case s
         when /^:q\s?(.*)?$/i #:q退出
@@ -786,52 +837,14 @@ class IRC
         end
       #end
     end
-  end
-
-  def mystart
-    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue (p $!.message)
-    p $u.class
-    $u = ALL_USER.new if $u.class != ALL_USER
-    $u.init_pp
-    puts $u.all_nick.size.to_s + ' nicks loaded from yaml file.'.red
-  end
-
-  def exited?
-    @exit
-  end
-
-  #自定义退出
-  def myexit
-    saveu
-    sleep 1
-    puts 'exiting...'.yellow
-  end
-  
-  #说新帖
-  def say_new(to)
-    s=Thread.start{
-      tmp = get_feed
-      msg(to,tmp,0) if tmp.bytesize > 4
-    }.join
-  end
-
-  #每天一次
-  def timer_daily
-    if Time.now.hour == 4
-      if Time.now.min < 30
-        send 'join ' + @channel
-        sleep 1
-        send('time')
-        msg(@channel,osod,20)
-      end
-    else
-      puts Time.now.to_s.blue
-    end
+  rescue
+    print $!.message, $@[0], "\n"
   end
 
   #客户端输入并发送.
   def input_start
     i1=Thread.new{ iSend }
+    i1.priority = -30
   end
 
   #主定时器
@@ -855,7 +868,7 @@ class IRC
   #主循环
   def main_loop()
     loop do
-      sleep 0.0001
+      sleep 0.001
       #ready = select([@irc, $stdin], nil, nil, nil)
       return if @exit
       ready = select([@irc], nil, nil, nil) rescue log
@@ -895,10 +908,6 @@ if not defined? $u
       restart
     end
   end
-end
-
-def restart #Hard Reset
-  exec "./#{$0} #{ARGV[0]}"
 end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
