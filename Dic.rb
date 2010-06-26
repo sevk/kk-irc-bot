@@ -73,7 +73,7 @@ require 'yaml'
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
-$_time=86400 if not defined?$_time
+$_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
@@ -374,14 +374,12 @@ def gettitle(url,proxy=nil)
 
     return nil if title =~ /index of/i
 
-    #puts "1=" + charset.to_s
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
     end
     if charset =~ /^gb/i
       charset='gb18030' 
     end
-    #puts '2=' + charset.to_s
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
@@ -680,7 +678,7 @@ end
 def evaluate(s)
   result = nil
   l=4
-  l=0 if s =~ /^(`uptime`|b)$/i
+  l=0 if s =~ /^(`uptime`|b|gg)$/i
   Timeout.timeout(4){
     return safe(l){eval(s).to_s[0,400]}
   }
@@ -771,4 +769,15 @@ def restart #Hard Reset
   exec "./#{$0} #{ARGV[0]}"
 end
 
+#公告
+def gg
+  t=Time.now
+"
+⿻ 本频道#ubuntu-cn当前log地址是 ,
+http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
+有需要请浏览 ,
+现在时间 #{t.strftime('%H:%M:%S')}
+"
+end
+#alias say_公告 say_gg
 

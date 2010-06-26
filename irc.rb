@@ -438,6 +438,7 @@ class IRC
           $ti= gettitle(url)
           if $ti 
             return if $ti !~ $tiList and url !~ $urlList
+            return if $ti =~ /\.log$/i
             tmp = $ti.gsub(/-|_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
             if s =~ /#{Regexp::escape tmp}/i#已经发了就不说了
               puts "已经发了标题 #{tmp}"
@@ -575,7 +576,6 @@ class IRC
         File.open(ARGV[0]).each { |line|
           if line =~ /pass/
             eval line
-            break
           end
         }
         send "PRIVMSG nickserv :id #{$pass}"
@@ -816,9 +816,9 @@ class IRC
           @nick = $1
           send s.gsub(/^[\/]/,'')
         when /^[\/\:]/ # 发送 RAW命令
-          if s[0..2] =~ /\/me/i then
+          if s[0..2] =~ /\/me/i
             say s.gsub(/me/i,"\001ACTION") + "\001"
-          elsif s[0..5] =~ /\/ctcp/i then
+          elsif s[0..5] =~ /\/ctcp/i
             say s.gsub(/ctcp/i,"\001") + "\001"
           else
             send s.gsub(/^[\/\:]/,'')
@@ -862,6 +862,11 @@ class IRC
           say_new($channel) if $need_say_feed > 0
         end
       end
+    end
+    timer2 = Thread.new do
+      sleep 86350
+      sleep 50
+      #say gg
     end
   end
 
