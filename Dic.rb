@@ -78,7 +78,7 @@ $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
-Ver='v0.27' unless defined?(Ver)
+Ver='v0.28' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n

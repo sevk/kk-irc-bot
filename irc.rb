@@ -274,15 +274,18 @@ class IRC
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         $u.set_ban_time(nick)
-        if tmp < 300 #n分钟之前ban过
+        case tmp
+        when 0..30
+          return
+        when 31..300 #n分钟之前ban过
           autoban to,"#{nick}!*@*",240 if tmp > 30
           kick a1
         else
           autoban to,"#{nick}!*@*"
+          msg(a4,"#{a1}:...,谁说话这么快,#$kick_info",0)
         end
-        msg(a4,"#{a1}:...,谁说话这么快,#$kick_info",0)
         notice(nick,"#{a1}: ... #$kick_info",5)
-        return nil
+        return
       end
 
       #ban ctcp but not /me
@@ -790,7 +793,7 @@ class IRC
     loop do
       sleep 0.3
       #windows 好像不支持Readline
-      if PLATFORM =~ /win/ and RUBY_VERSION < '1.9'
+      if RUBY_PLATFORM =~ /win/ and RUBY_VERSION < '1.9'
         s = IO.select([$stdin])
         next if !s
         #next if s[0][0] != IO
