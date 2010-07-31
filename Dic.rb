@@ -76,7 +76,7 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 `b baidu tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 `a 查某人地址 `f 查老乡 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 > gg 公告 > b 服务器状态 `a 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
 Ver='v0.28' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
@@ -308,7 +308,7 @@ def gettitle(url,proxy=nil)
     if url =~ /[\u4E00-\u9FA5]/
       url = URI.encode(url)
     end
-    puts url.yellow
+    #puts url.yellow
     if url =~ /^http:\/\/(www\.)?youtube.com/i
       p 'xx oo xx'
     end
@@ -678,7 +678,7 @@ end
 def evaluate(s)
   result = nil
   l=4
-  l=0 if s =~ /^(`uptime`|b|gg)$/i
+  l=0 if s =~ /^(b|gg)$/i
   Timeout.timeout(4){
     return safe(l){eval(s).to_s[0,400]}
   }
@@ -708,9 +708,12 @@ unless defined?Time._now
   end
 end
 
+#返回roll
 def roll
   "掷出了随机数: #{rand(101)} "
 end
+
+#返回uptime
 def b
   `uptime`
 end
@@ -766,7 +769,7 @@ end
 alias get_deb_info ge
 
 def restart #Hard Reset
-  exec "./#{$0} #{ARGV[0]}"
+  exec "#{__FILE__} #$argv0"
 end
 
 #公告

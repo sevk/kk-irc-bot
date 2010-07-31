@@ -275,10 +275,13 @@ class IRC
         tmp = Time.now - $u.get_ban_time(nick)
         $u.set_ban_time(nick)
         case tmp
-        when 0..30
+        when 0..40
           return
-        when 31..300 #n分钟之前ban过
-          autoban to,"#{nick}!*@*",240 if tmp > 30
+        when 40..300 #n分钟之前ban过
+          autoban to,"#{nick}!*@*",300
+          kick a1
+        when 300..900 #n分钟之前ban过
+          autoban to,"#{nick}!*@*",900
           kick a1
         else
           autoban to,"#{nick}!*@*"
@@ -566,7 +569,7 @@ class IRC
       if pos ==391#对时
         $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
         $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
-        $_hour = $_hour % 24
+        $_hour %= 24
         t = Time.new
         $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
         puts Time.now.to_s.pink
@@ -653,7 +656,6 @@ class IRC
     pr_highlighted(s) rescue nil #if not $client #简单显示消息
     save_log(s)
     return if not $bot_on #bot 功能
-    #s=s.force_encoding("UTF-8")
     return if check_msg(s).class != Fixnum #字典消息
   end
 
@@ -686,8 +688,8 @@ class IRC
     $min_next_say=Time.now + Minsaytime + second
   end
 
-  #延时发送
-  def do_after_sec(to,sSay,flg,second=10)
+  #延时发送,默认15秒
+  def do_after_sec(to,sSay,flg,second=15)
     #puts "need_do #{flg} #{second}"
     da=Thread.new do
       flag=flg
@@ -751,7 +753,7 @@ class IRC
     p $u.class
     $u = ALL_USER.new if $u.class != ALL_USER
     $u.init_pp
-    puts $u.all_nick.size.to_s + ' nicks loaded from yaml file.'.red
+    puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
   end
 
   def exited?
@@ -780,7 +782,7 @@ class IRC
         send 'join ' + @channel
         sleep 1
         send('time')
-        msg(@channel,osod,20)
+        msg(@channel,osod,40)
       end
     else
       puts Time.now.to_s.blue
@@ -868,8 +870,8 @@ class IRC
     end
     timer2 = Thread.new do
       sleep 86350
-      sleep 50
       #say gg
+      sleep 50
     end
   end
 
@@ -884,7 +886,7 @@ class IRC
       next if not ready
       for s in ready[0]
         next if s != @irc
-        next if @irc.eof
+        #next if @irc.eof
         handle_server_input(@irc.gets.strip) rescue log
       end
     end
@@ -895,6 +897,7 @@ end
 if not defined? $u
   ARGV[0] = 'default.conf' if not ARGV[0]
   p 'ARGV[0] :' +  ARGV[0]
+  $argv0 = ARGV[0]
   load ARGV[0]
   $bot_on1 = $bot_on
   $bot_on = false
@@ -912,7 +915,7 @@ if not defined? $u
     rescue
       log
       p "re-connection..."
-      sleep 300
+      sleep 600
       restart
     end
   end
