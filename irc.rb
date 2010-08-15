@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.6以上 或 ruby1.9.1 以上
+# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上
 
 =begin
    * Name: irc.rb
@@ -11,6 +11,7 @@
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
 =end
 
+require 'platform.rb'
 load 'Dic.rb'
 include Math
 require "monitor"
@@ -70,7 +71,7 @@ class IRC
   end
 
   #发送msg消息,随机 delay 秒数.
-  def msg(who,sSay='',delay=10)
+  def msg(who,sSay='',delay=20)
     return if sSay.empty?
     $otherbot_said=false
     do_after_sec(who,sSay,0,delay)
@@ -99,7 +100,7 @@ class IRC
       end
       s += ' ...'
     else
-      s += Time.now.ch if add_tim_chr
+      s.addTimCh if add_tim_chr
     end
     @irc.send("#{s.strip}\n", 0)
     $Lsay = Time.now
@@ -114,6 +115,8 @@ class IRC
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
+    sleep 1
+    send "PRIVMSG nickserv :id #{$pass}"
   end
 
   #发送字典结果 ,取字典,可以用>之类的重定向,向某人提供字典数据
@@ -172,7 +175,7 @@ class IRC
           $from_whois = from
           $to_whois = to
           $s_whois = s
-          send('whois ' + c)
+          send('whois ' + c,false)
           return
         end
         re = "#{$u.getname(c)} #{hostA(ip)}"
@@ -506,9 +509,9 @@ class IRC
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ', 好 ',10,18) if rand(10) > 4
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,6}|测试(中)?(.{1,5})?)$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(中)?(.{1,5})?)$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', ...',10,18)
+      do_after_sec(to,from + ', ...',10,22)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -584,7 +587,7 @@ class IRC
             eval line
           end
         }
-        send "PRIVMSG nickserv :id #{$pass}"
+        #send "PRIVMSG nickserv :id #{$pass}"
         $pass = nil
         $bot_on = $bot_on1
         $min_next_say = Time.now
@@ -689,12 +692,12 @@ class IRC
   end
 
   #延时发送,默认15秒
-  def do_after_sec(to,sSay,flg,second=15)
+  def do_after_sec(to,sSay,flg,second=18)
     #puts "need_do #{flg} #{second}"
     da=Thread.new do
       flag=flg
       if Time.now < $min_next_say
-        puts '还没到下次说话的时间'
+        print '还没到下次说话的时间:',sSay,"\n"
         Thread.exit
       else
         isaid(second)
@@ -716,7 +719,10 @@ class IRC
         sleep 1
         send "JOIN #{@channel}"
         p 'get osod'
-        g1=Thread.new do send "privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} " end
+        g1=Thread.new do
+          sleep 10
+          send("privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} ",false)
+        end
       when 10#打招呼回复
         tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
         if tmp < 0 #不用显示倒计时
@@ -775,14 +781,15 @@ class IRC
     }.join
   end
 
-  #每天一次
+  #大约每天一次
   def timer_daily
     if Time.now.hour == 4
       if Time.now.min < 30
         send 'join ' + @channel
         sleep 1
         send('time')
-        msg(@channel,osod,40)
+        sleep 30
+        msg(@channel,osod,30)
       end
     else
       puts Time.now.to_s.blue
@@ -791,17 +798,18 @@ class IRC
 
   #检测用户输入,实现IRC客户端功能.
   #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
+  #退出软件请输入 :q
   def iSend()
     loop do
-      sleep 0.3
+      sleep 0.8
       #windows 好像不支持Readline
-      if RUBY_PLATFORM =~ /win/ and RUBY_VERSION < '1.9'
+      if os_family == 'windows'
         s = IO.select([$stdin])
         next if !s
         #next if s[0][0] != IO
         s = $stdin.gets
       else
-        s = Readline.readline('[' + @channel + '] ', false)
+        s = Readline.readline('[' + @channel + '] ')
       end
       #lock.synchronize do
         case s
@@ -828,7 +836,7 @@ class IRC
           else
             send s.gsub(/^[\/\:]/,'')
           end
-        when /^`/
+        when /^`/ #直接执行eval
           p s
           if s[1..-1] =~ />\s(.*)/
             tmp=eval($1.to_s) rescue nil
@@ -849,7 +857,7 @@ class IRC
   #客户端输入并发送.
   def input_start
     i1=Thread.new{ iSend }
-    i1.priority = -30
+    i1.priority = -20
   end
 
   #主定时器
@@ -857,12 +865,12 @@ class IRC
     timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep 660 + rand(900)  #间隔17分钟
+        sleep 60*10 + rand(60*15)  #间隔10+7分钟
         ping
-        timer_daily
         n+=1
         next if n%2 ==0
         saveu if n%9 ==0
+        timer_daily
         if (8..24).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end
@@ -878,19 +886,23 @@ class IRC
   #主循环
   def main_loop()
     loop do
-      sleep 0.001
-      #ready = select([@irc, $stdin], nil, nil, nil)
-      return if @exit
-      ready = select([@irc], nil, nil, nil) rescue log
-      break if $need_reconn
-      next if not ready
-      for s in ready[0]
-        next if s != @irc
-        #next if @irc.eof
-        handle_server_input(@irc.gets.strip) rescue log
+      begin
+        sleep 0.001
+        return if @exit
+        ready = select([@irc], nil, nil, nil)
+        break if $need_reconn
+        next if not ready
+        for s in ready[0]
+          next if s != @irc
+          next if @irc.eof
+          handle_server_input(@irc.gets)
+        end
+      rescue
+        log if rand < 0.3
+        sleep 0.5
+        puts "#{$!.message} #{$@[0]}"
       end
     end
-
   end
 end
 

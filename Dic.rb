@@ -26,6 +26,9 @@ class String
   def ii(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
+  def addTimCh
+    self + Time.now.ch.to_s
+  end
 
   #整理html里的 &nbsp; 等转义串，需要安装
   def unescapeHTML
@@ -42,8 +45,8 @@ begin
   require 'mechanize'
 
 rescue LoadError
-  s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
-  s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
+  s="载入库错误,命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
+  s = s.utf8_to_gb if os_family == 'windows'
   puts s
   puts $!.message
   puts $@[0]
@@ -100,18 +103,18 @@ $botlist_title=/GiGi|\^?[Ou]_[ou]/i
 $urlList=$tiList = /ubuntu|linux/i
 
 def URLDecode(str)
-  #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }  
+  #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }
   URI.unescape(str)
 end
 
 def URLEncode(str)
-  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }  
+  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }
   URI.escape(str)
 end
 
 def unescapeHTML(str)
   HTMLEntities.new.decode(str) rescue str
-end 
+end
 
 #字符串编码集猜测,只取参数的中文部分
 def guess_charset(str)
@@ -132,9 +135,12 @@ else
   begin
     require 'rchardet'
   rescue LoadError
-    s="载入相关的库时错误,应该在终端下执行以下命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
-    s = s.utf8_to_gb if RUBY_PLATFORM =~ /win/i
+    s="载入库错误,命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
+    s = s.utf8_to_gb if os_family == 'windows'
     puts s
+    puts $!.message
+    puts $@[0]
+    exit
   end
   def guess(s)
     CharDet.detect(s)['encoding'].upcase
@@ -227,7 +233,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     #des = feed.items[0].content
     #$ub = "新⇨ #{ti} #{link} #{des}"
     $ub = "呵呵,逛了一下论坛,暂时无新贴.只有Re: ."
-    $ub = '' if rand(10) > 5
+    $ub = '' if rand > 0.2
   else
     $old_feed_date = $date
   end
@@ -237,7 +243,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 end
 
 #google 全文翻译,参数可以是中文,也可以是英文.
-def getGoogle_tran(word) 
+def getGoogle_tran(word)
   if word.force_encoding("ASCII-8BIT") =~ CN_re #有中文
     flg = 'zh-CN%7cen'
     #flg = '#auto|en|' + word ; puts '中文>英文'
@@ -378,14 +384,14 @@ def gettitle(url,proxy=nil)
       charset=$1 if $1
     end
     if charset =~ /^gb/i
-      charset='gb18030' 
+      charset='gb18030'
     end
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
     #charset = tmp if tmp != ''
     #return title.force_encoding(charset)
-    
+
     title = Iconv.conv("UTF-8","#{charset}//IGNORE",title).to_s rescue title
     title = unescapeHTML(title) rescue title
     #puts title.blue
@@ -607,37 +613,27 @@ end
 
 #为Time类加入hm方法,返回格式化后的时和分
 class Time
-  def hm()
-    "#{Time.now.strftime('[%H:%M]')}"
+  $last_time_min = Time.now
+  def hm
+    if Time.now - $last_time_min > 900
+      $last_time_min = Time.now
+      Time.now.strftime(' %H:%M')
+    end
   end
-  def ch()
-    ' ' + chr_hour.to_s
-  end
-end
-
-$last_time_min = Time.now
-def time_min_ai()
-  if Time.now - $last_time_min > 900
-    $last_time_min = Time.now
-    return " #{Time.hm}"
-  end
-end
-
-def time_min()
-  " #{Time.now.strftime('[%H:%M]')}"
-end
-
-#ch,小时字符. '㍘' = 0x3358
-def chr_hour()
-  if Time.now - $last_time_min > 1800
-    $last_time_min = Time.now
-    if RUBY_VERSION < '1.9'
-      "\xE3\x8D"+ (Time.now.hour + 0x98).chr
-    else
-      (Time.now.hour + 0x3358).chr("UTF-8")
+  #ch,小时字符. '㍘' = 0x3358
+  def ch
+    if Time.now - $last_time_min > 900
+      $last_time_min = Time.now
+      ' ' +
+      if RUBY_VERSION < '1.9'
+        "\xE3\x8D"+ (Time.now.hour + 0x98).chr
+      else
+        (Time.now.hour + 0x3358).chr("UTF-8")
+      end
     end
   end
 end
+
 
 #取IP地址的具体位置,参数是IP
 def getaddr_fromip(ip)
@@ -664,7 +660,7 @@ def hostA(domain,hideip=false)#处理IP 或域名
   else
     tmp = host(domain)
   end
-  if hideip 
+  if hideip
     tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
   else
     tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
