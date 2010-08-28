@@ -197,7 +197,7 @@ end
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
-    Timeout.timeout(15) {
+    Timeout.timeout(18) {
       $tmp = RSS::Parser.parse(url)
     }
   #rescue Timeout::Error => e
@@ -222,7 +222,8 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       break
     }
   rescue
-    p $!.message;p $@
+    p $!.message
+    p $@[0]
   end
 
   if $old_feed_date == $date || (!$ub)
@@ -307,6 +308,7 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=nil)
+  url.gsub(/>+$/,'')
     title = $tmp = ''
     charset = ''
     flag = 0
@@ -314,34 +316,29 @@ def gettitle(url,proxy=nil)
     if url =~ /[\u4E00-\u9FA5]/
       url = URI.encode(url)
     end
-    #puts url.yellow
-    if url =~ /^http:\/\/(www\.)?youtube.com/i
-      p 'xx oo xx'
-    end
-
-    if false
-      agent = Mechanize.new
-      agent.user_agent_alias = 'Linux Mozilla'
-      #agent.set_proxy('ip',port) if proxy
-      agent.max_history = 1
-      agent.open_timeout = 10
-      agent.cookies
-      #agent.auth('username', 'password')
-      begin
-        page = agent.get(url)
-        return nil if page.class != Mechanize::Page
-      rescue Exception => e
-        p e.message
-        if $!.message == 'Connection reset by peer'
-          sleep 0.5
-          return Timeout.timeout(11){gettitle(url,true)}
-        else
-          return e.message[0,60] + ' . IN title'
-        end
-      end
-      title = page.title
-      return title
-    end
+    #if false
+    #  agent = Mechanize.new
+    #  agent.user_agent_alias = 'Linux Mozilla'
+    #  #agent.set_proxy('ip',port) if proxy
+    #  agent.max_history = 1
+    #  agent.open_timeout = 10
+    #  agent.cookies
+    #  #agent.auth('username', 'password')
+    #  begin
+    #    page = agent.get(url)
+    #    return nil if page.class != Mechanize::Page
+    #  rescue Exception => e
+    #    p e.message
+    #    if $!.message == 'Connection reset by peer'
+    #      sleep 0.5
+    #      return Timeout.timeout(11){gettitle(url,true)}
+    #    else
+    #      return e.message[0,60] + ' . IN title'
+    #    end
+    #  end
+    #  title = page.title
+    #  return title
+    #end
 
     begin #加入错误处理
       Timeout.timeout(13) {
@@ -356,16 +353,15 @@ def gettitle(url,proxy=nil)
         ){ |f|
           istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
           charset= f.charset          # "iso-8859-1"
-          $tmp = f.read[0,9999].gsub(/\s+/,' ')
+          $tmp = f.read[0,8000].gsub(/\s+/,' ')
         }
       }
     rescue Exception => e
-      p e.message
-      p $@[0]
-      return nil
+      p e.message + $@[0]
+      return
       #return e.message[0,60] + ' . IN title'
     end
-    return nil unless istxthtml
+    return unless istxthtml
 
     tmp = $tmp
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
@@ -378,13 +374,13 @@ def gettitle(url,proxy=nil)
       end
     end
 
-    return nil if title =~ /index of/i
+    return if title =~ /index of/i
 
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
     end
     if charset =~ /^gb/i
-      charset='gb18030'
+      charset='GB18030'
     end
 
     #tmp = guess_charset(title * 2).to_s
@@ -571,8 +567,8 @@ def getBaidu(word)
       re = html.match(/ScriptDiv(.*?)(http:\/\/\S+[^\s*])(.*?)size=-1>(.*?)<br><font color=#008000>(.*?)<a\ href(.*?)(http:\/\/\S+[^\s*])/i).to_s
       re = $4 ; a2=$2[0,120]
       re= re.unescapeHTML.gsub(/<.*?>/i,'')[0,330]
-      $re =  a2 + ' ' +  re
-      $re =  Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
+      $re = a2 + ' ' +  re
+      $re = Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
   }
   $re
 end
@@ -772,10 +768,10 @@ end
 def gg
   t=Time.now
 "
-⿻ 本频道#ubuntu-cn当前log地址是 ,
+⿻ 本频道#ubuntu-cn当前log地址是 :
 http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
 有需要请浏览 ,
-现在时间 #{t.strftime('%H:%M:%S')}
+. #{t.strftime('%H:%M:%S')}
 "
 end
 #alias say_公告 say_gg

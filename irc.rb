@@ -3,12 +3,10 @@
 # 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上
 
 =begin
-   * Name: irc.rb
    * Description:
    * Author: Sevkme@gmail.com
-   * Date:  
-   * License: GPLV3 
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
+
 =end
 
 require 'platform.rb'
@@ -22,7 +20,6 @@ load 'irc_user.rb'
 load 'plugin.rb'
 load 'log.rb'
 
-#irc类
 class IRC
   def initialize(server, port, nick, channel, charset, pass, name="bot kk ver bot :svn Ver bot")
     $_hour = $_min = $_sec = 0
@@ -50,8 +47,10 @@ class IRC
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
-  def autoban(chan,s,time=50)
+  def autoban(chan,nick,time=50)
+    s="#{nick}!*@*"
     send "mode #{chan} +q #{s}"
+    $u.set_ban_time(nick)
     ab=Thread.new do
       tmp = s
       sleep time
@@ -89,7 +88,6 @@ class IRC
     if s.bytesize > 450
       s.chop!.chop! while s.bytesize > 450
       if @charset == 'UTF-8'
-        #str.bytes.each_slice(100).map {|s| s.map(&:chr).join }
         #s.scan(/./u)[0,150].join # 也可以用//u
         while not s[-3,1].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
           s.chop!
@@ -276,21 +274,17 @@ class IRC
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
-        $u.set_ban_time(nick)
         case tmp
-        when 0..40
+        when 0..55
           return
-        when 40..300 #n分钟之前ban过
-          autoban to,"#{nick}!*@*",300
-          kick a1
-        when 300..900 #n分钟之前ban过
-          autoban to,"#{nick}!*@*",900
+        when 55..60 #n分钟之前ban过
+          autoban to,nick,400
           kick a1
         else
-          autoban to,"#{nick}!*@*"
+          autoban to,nick
           msg(a4,"#{a1}:...,谁说话这么快,#$kick_info",0)
         end
-        notice(nick,"#{a1}: ... #$kick_info",5)
+        notice(nick,"#{a1}: ... #$kick_info",7)
         return
       end
 
@@ -299,7 +293,7 @@ class IRC
         if sSay[1,6] != /ACTION/i then
           #$u.saidAndCheckFlood(nick,name,ip,sSay)
         end
-        return nil
+        return
       end
 
       #有BOT说话
@@ -429,7 +423,7 @@ class IRC
       msg to,"#{from}, #{tmp}" if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    when /(....)(:\/\/\S+[^\s*])/#类似 http://
+    when /(....)(:\/\/\S+[^\s])/#类似 http://
       url = $2
       case $1
       when /http/i
@@ -654,6 +648,7 @@ class IRC
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     p s if $debug
+    #return if s.strip.size == 0
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue nil #if not $client #简单显示消息
@@ -721,7 +716,8 @@ class IRC
         p 'get osod'
         g1=Thread.new do
           sleep 10
-          send("privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} ",false)
+          #send("privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} ",false)
+          send("privmsg #{@channel}  :\001ACTION #{get_feed} \x01",false)
         end
       when 10#打招呼回复
         tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
@@ -801,7 +797,7 @@ class IRC
   #退出软件请输入 :q
   def iSend()
     loop do
-      sleep 0.8
+      sleep 1
       #windows 好像不支持Readline
       if os_family == 'windows'
         s = IO.select([$stdin])
@@ -856,8 +852,8 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-    i1=Thread.new{ iSend }
-    i1.priority = -20
+    @input=Thread.start{ iSend }
+    @input.priority = -20
   end
 
   #主定时器
@@ -887,7 +883,7 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.001
+        sleep 0.006
         return if @exit
         ready = select([@irc], nil, nil, nil)
         break if $need_reconn
