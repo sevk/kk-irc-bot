@@ -110,11 +110,18 @@ class IRC
     $need_reconn = false
     @irc.close if @irc
     @irc = TCPSocket.open(@server, @port)
+    sleep 2
     send "NICK #{@nick}"
-    sleep 1
+    sleep 2
     send "USER #@str_user"
-    sleep 1
+    sleep 2
     send "PRIVMSG nickserv :id #{$pass}"
+    do_after_sec(@channel,nil,7,24)
+    Thread.new do
+      sleep 30
+      #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
+      send("privmsg #{@channel} :\001ACTION #{get_feed} \x01",false)
+    end
   end
 
   #发送字典结果 ,取字典,可以用>之类的重定向,向某人提供字典数据
@@ -270,7 +277,7 @@ class IRC
         $u.add(nick,name,ip)
         return
       end
-      #'flood检测'
+      #p 'check flood'
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
@@ -503,7 +510,7 @@ class IRC
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ', 好 ',10,18) if rand(10) > 4
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(中)?(.{1,5})?)$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(中)?.{0,5})$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ...',10,22)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
@@ -581,7 +588,6 @@ class IRC
             eval line
           end
         }
-        #send "PRIVMSG nickserv :id #{$pass}"
         $pass = nil
         $bot_on = $bot_on1
         $min_next_say = Time.now
@@ -630,9 +636,10 @@ class IRC
 
       puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
+      sleep 2
+      return if @exit
       puts s.red
       $need_reconn=true if s =~ /:Closing/i
-
     else
       return nil #not matched, go on
     end #end case
@@ -708,17 +715,11 @@ class IRC
       when 0
         send "PRIVMSG #{to} :#{sSay}"
       when 7
+        sleep 2
+        send "JOIN #sevk"
+        sleep 1
         send 'time'
-        sleep 1
-        send "JOIN #sevk" if @channel != '#sevk'
-        sleep 1
-        send "JOIN #{@channel}"
-        p 'get osod'
-        g1=Thread.new do
-          sleep 10
-          #send("privmsg #{@channel}  :\001ACTION #{osod} #{1.chr} ",false)
-          send("privmsg #{@channel}  :\001ACTION #{get_feed} \x01",false)
-        end
+        send "JOIN #{@channel}" if @channel != '#sevk'
       when 10#打招呼回复
         tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
         if tmp < 0 #不用显示倒计时
@@ -763,10 +764,13 @@ class IRC
   end
 
   #自定义退出
-  def myexit
+  def myexit(exit_msg = 'optimize')
     saveu
-    sleep 1
+    send 'quit ' + exit_msg#.gsub(/\s+/,'_')
+    sleep 3
+    @exit = true
     puts 'exiting...'.yellow
+    exit
   end
 
   #说新帖
@@ -782,7 +786,7 @@ class IRC
     if Time.now.hour == 4
       if Time.now.min < 30
         send 'join ' + @channel
-        sleep 1
+        sleep 2
         send('time')
         sleep 30
         msg(@channel,osod,30)
@@ -797,10 +801,10 @@ class IRC
   #退出软件请输入 :q
   def iSend()
     loop do
-      sleep 1
+      sleep 0.8
       #windows 好像不支持Readline
       if os_family == 'windows'
-        s = IO.select([$stdin])
+        s = IO.select([$stdin],nil,nil,5)
         next if !s
         #next if s[0][0] != IO
         s = $stdin.gets
@@ -809,13 +813,8 @@ class IRC
       end
       #lock.synchronize do
         case s
-        when /^:q\s?(.*)?$/i #:q退出
-          myexit ;
-          @exit = true
-          send 'quit optimize' + $1
-          sleep 1
-          p 'quit...'
-          exit
+        when /^[:\/]q(uit)?\s?(.*)?$/i #:q退出
+          myexit $2
         when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
           send "privmsg #{who} :#{s.strip}"
@@ -883,15 +882,16 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.006
+        sleep 0.004
         return if @exit
-        ready = select([@irc], nil, nil, nil)
+        ready = select([@irc], nil, nil, 1)
         break if $need_reconn
         next if not ready
         for s in ready[0]
           next if s != @irc
-          next if @irc.eof
-          handle_server_input(@irc.gets)
+          handle_server_input(@irc.recvfrom(2048)[0])
+          #next if @irc.eof
+          #handle_server_input(@irc.gets)
         end
       rescue
         log if rand < 0.3
@@ -909,23 +909,25 @@ if not defined? $u
   load ARGV[0]
   $bot_on1 = $bot_on
   $bot_on = false
+  p '$bot_on = false'
   $ignore_nick.gsub!(/\s+/,'!')
 
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass)
   irc.timer_start
+  trap('INT'){irc.myexit 'int'}
 
   loop do
     irc.connect()
     irc.input_start if $client
     begin
       irc.main_loop()
-      exit if irc.exited?
     rescue
       log
       p "re-connection..."
       sleep 600
       restart
     end
+    sleep 5
   end
 end
 

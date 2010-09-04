@@ -3,7 +3,7 @@
 #51070540@qq.com ; sevkme@gmail.com
 
 $maxfloodme = 72.0 #70
-$maxflood = 32.6   #37
+$maxflood = 33.3   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -63,10 +63,10 @@ class ALL_USER
   def add(nick,name,ip)
     name.gsub!(/[in]=|~/i,'')
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
-    #puts '6 add ' +  nick if $debug
+    puts '6 add ' +  nick if $debug
     return if nick == nil
     if @index.include?(nick)
-      #~ puts nick + '已经存在'
+      puts nick + '已经存在'
       @addr[nick]= getaddr_fromip(ip)
       return false
     end
@@ -80,7 +80,7 @@ class ALL_USER
     @name[@pos_write]= name
     @ip[@pos_write]= ip
     #@count_said[@pos_write] = @count_said[@pos_write].to_i + 1
-    #puts @addr[nick]
+    puts @addr[nick]
     t = Time.now
     $time_in[@pos_write]= t
     $timelastsay[@pos_write]= t
@@ -143,14 +143,14 @@ class ALL_USER
     index = getindex(nick)
     return false if index ==nil
     $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
-    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +15
+    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +20
     return $timelast6me[index] < $maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
     return false if index ==nil
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
-    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +15
+    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +20
     return $timelast6say[index] < $maxflood
   end
 
@@ -193,6 +193,7 @@ class ALL_USER
   end
 
   def saidAndCheckFlood(nick,name,ip,w)
+    #p 'saidAndCheckFlood'
     said(nick,name,ip)
     setLastSay(nick,w)
     return check_flood(nick)

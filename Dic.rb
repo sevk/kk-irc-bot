@@ -92,6 +92,7 @@ Minsaytime= 5
 puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
+$last_save = Time.now - 110
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
@@ -196,16 +197,15 @@ end
 
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  begin
+  feed = begin
     Timeout.timeout(18) {
-      $tmp = RSS::Parser.parse(url)
+      RSS::Parser.parse(url)
     }
   #rescue Timeout::Error => e
   rescue Exception => e
     p e.message
     return e.message[0,60] + ' . IN `new '
   end
-  feed = $tmp
 
   $ub=nil
   begin
@@ -309,7 +309,7 @@ end
 #取标题,参数是url.
 def gettitle(url,proxy=nil)
   url.gsub(/>+$/,'')
-    title = $tmp = ''
+    title = ''
     charset = ''
     flag = 0
     istxthtml = false
@@ -340,7 +340,7 @@ def gettitle(url,proxy=nil)
     #  return title
     #end
 
-    begin #加入错误处理
+    tmp = begin #加入错误处理
       Timeout.timeout(13) {
       $uri = URI.parse(url)
         $uri.open(
@@ -353,7 +353,7 @@ def gettitle(url,proxy=nil)
         ){ |f|
           istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
           charset= f.charset          # "iso-8859-1"
-          $tmp = f.read[0,8000].gsub(/\s+/,' ')
+          f.read[0,8000].gsub(/\s+/,' ')
         }
       }
     rescue Exception => e
@@ -363,7 +363,6 @@ def gettitle(url,proxy=nil)
     end
     return unless istxthtml
 
-    tmp = $tmp
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
 
@@ -388,7 +387,7 @@ def gettitle(url,proxy=nil)
     #charset = tmp if tmp != ''
     #return title.force_encoding(charset)
 
-    title = Iconv.conv("UTF-8","#{charset}//IGNORE",title).to_s rescue title
+    title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
     title = unescapeHTML(title) rescue title
     #puts title.blue
     title
