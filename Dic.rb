@@ -27,7 +27,7 @@ class String
     self.split(//u).join(s)
   end
   def addTimCh
-    self + Time.now.ch.to_s
+    self + Time.now.hm.to_s
   end
 
   #整理html里的 &nbsp; 等转义串，需要安装
@@ -37,15 +37,15 @@ class String
 end
 
 begin
-  #sudo apt-get install rubygems
+  #apt-get install rubygems
   require 'rubygems' #以便引用相关的库
   #gem install htmlentities
   require 'htmlentities'
-  #sudo gem install mechanize
+  #gem install mechanize
   require 'mechanize'
 
 rescue LoadError
-  s="载入库错误,命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
+  s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
   s = s.utf8_to_gb if os_family == 'windows'
   puts s
   puts $!.message
@@ -61,13 +61,8 @@ require 'time'
 require 'open-uri'
 require 'uri'
 require 'net/http'
-#require 'rexml/document'
-#include REXML
-#require 'nokogiri'
 require 'rss'
-#require 'cgi'
 require 'base64'
-#require 'md5'
 require 'resolv'
 load 'do_as_rb19.rb'
 load 'color.rb'
@@ -81,7 +76,7 @@ $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 > gg 公告 > b 服务器状态 `a 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
 Delay_do_after = 4 unless defined? Delay_do_after
-Ver='v0.28' unless defined?(Ver)
+Ver='v0.29' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
@@ -99,7 +94,7 @@ NoFloodAndPlay=/\-ot|arch|fire/i
 $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
-$botlist_title=/GiGi|\^?[Ou]_[ou]/i
+$botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
 $urlList=$tiList = /ubuntu|linux/i
 
@@ -136,7 +131,7 @@ else
   begin
     require 'rchardet'
   rescue LoadError
-    s="载入库错误,命令:\nsudo apt-get install rubygems; #安装ruby库管理器 \nsudo gem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
+    s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
     s = s.utf8_to_gb if os_family == 'windows'
     puts s
     puts $!.message
@@ -169,11 +164,7 @@ def safe(level)
   result = nil
   Thread.start {
     $SAFE = level
-    begin
-      result = yield
-    rescue Exception => detail
-      result = detail.message()
-    end
+    result = yield rescue $!.message
   }.join
   result
 end
@@ -356,8 +347,11 @@ def gettitle(url,proxy=nil)
           f.read[0,8000].gsub(/\s+/,' ')
         }
       }
-    rescue Exception => e
-      p e.message + $@[0]
+    rescue Timeout::Error
+      p 'time out IN. gettitle '
+      return
+    rescue
+      p $!.message + $@[0]
       return
       #return e.message[0,60] + ' . IN title'
     end
@@ -667,14 +661,15 @@ end
 
 #eval
 def evaluate(s)
-  result = nil
   l=4
   l=0 if s =~ /^(b|gg)$/i
   Timeout.timeout(4){
     return safe(l){eval(s).to_s[0,400]}
   }
+rescue Timeout::Error
+  return 'Timeout Error'
 rescue Exception => detail
-  return detail.message()
+  return detail.message
 end
 
 def onemin
@@ -711,6 +706,7 @@ end
 
 #每日一句英语学习
 def osod
+  return
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 1
@@ -718,14 +714,12 @@ def osod
   agent.cookies
   #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
   t=Time.now
-  h="%02d" % (t.hour/2)
+  m="%02d" % (t.sec%10+3)
   d="%02d" % t.day
-  url = "http://ppcbook.hongen.com/eng/daily/sentence/#{h}#{d}sent.htm"
-  #p url
+  url = "http://ppcbook.hongen.com/eng/daily/sentence/#{m}#{d}sent.htm"
   begin
     page = agent.get_file(url)
   rescue Exception => e
-    #p e.message
     return e.message[0,60] + ' . IN osod'
   end
   s = page.match(/span class="e2">(.*?)<select name='selectmonth'>/mi)[1]

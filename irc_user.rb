@@ -1,9 +1,9 @@
-#!/usr/bin/env ruby1.9
+#!/usr/bin/env ruby
 # coding: utf-8
-#51070540@qq.com ; sevkme@gmail.com
+# sevkme@gmail.com
 
-$maxfloodme = 72.0 #70
-$maxflood = 33.3   #37
+$maxfloodme = 71.0 #70
+$maxflood = 35.7   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -17,15 +17,14 @@ class ALL_USER
     @addr=Hash.new
     #@count_said=Array.new
     @sex=Array.new
-    @RP=Array.new
+
+    #[1]=>重复次数,[2]=>玩机器人次数
+    @RP=Array.new(3,[])
     init_pp
     puts 'users class start' if $debug
   end
   def init_pp
-    if not defined?@RP
-      puts 'init_pp: not define @RP'.red if not defined?@RP
-      @RP=Array.new
-    end
+    @RP=Array.new(3,[])
     $mode=Array.new
     $ban_time=Array.new
     $time_in=Array.new
@@ -63,10 +62,10 @@ class ALL_USER
   def add(nick,name,ip)
     name.gsub!(/[in]=|~/i,'')
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
-    puts '6 add ' +  nick if $debug
-    return if nick == nil
+    puts '6 add ' + nick if $debug
+    return unless nick
     if @index.include?(nick)
-      puts nick + '已经存在'
+      #puts nick + '已经存在'
       @addr[nick]= getaddr_fromip(ip)
       return false
     end
@@ -80,7 +79,7 @@ class ALL_USER
     @name[@pos_write]= name
     @ip[@pos_write]= ip
     #@count_said[@pos_write] = @count_said[@pos_write].to_i + 1
-    puts @addr[nick]
+    #puts @addr[nick]
     t = Time.now
     $time_in[@pos_write]= t
     $timelastsay[@pos_write]= t
@@ -100,15 +99,15 @@ class ALL_USER
     else
       @pos_write += 1
     end
-    return nil
   end
 
   def isBlocked?(nick)
     index = getindex(nick)
-    return false if index == nil
+    return unless index
     $timelastsayme[index] = Time.now - 20 if ! $timelastsayme[index]
     return Time.now - $timelastsayme[index] < 5 #10秒之内就Block
   end
+
   def sayorder()
      
   end
@@ -119,38 +118,57 @@ class ALL_USER
   def get_ban_time(nick)
     $ban_time[getindex(nick)] ||= Time.now - 3600
   end
-  def lastSay=(nick,w)
-    $lastsay[getindex(nick)]=w
-  end
   def setLastSay(nick,w)
-    $lastsay[getindex(nick)]=w
+    i=getindex(nick)
+    if w == $lastsay[i]
+      @RP[1][i] +=1
+    else
+      @RP[1][i] =0
+      $lastsay[i] =w
+    end
   end
-  def sGetLastSay(nick)
+
+  def has_said?(s)
+    return if s.size < 3
+    $lastsay.select{|x| x =~ /#{Regexp::escape s[1..-2]}/}.size > 0
+  end
+
+  #rep?
+  def rep(nick)
+    i=getindex(nick)
+    if @RP[1][i] > 2
+      #print nick , ' 重复 rep . ' , @RP[1][i] , getLastSay(nick), 10.chr
+      @RP[1][i]=0
+      return true
+    end
+  end
+
+  def getLastSay(nick)
     $lastsay[getindex(nick)]
   end
   
   def floodreset(nick)
     index = getindex(nick)
-    return if index == nil
+    return unless index
     $timelast6say[index] = $initFlood
   end
   def floodmereset(nick)
     index = getindex(nick)
-    return if index == nil
+    return unless index
     $timelast6me[index] = $initFlood
   end
   def check_flood_me(nick)#更严格
     index = getindex(nick)
-    return false if index ==nil
+    return unless index
     $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
-    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +20
+    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +10
     return $timelast6me[index] < $maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
-    return false if index ==nil
+    return unless index
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
-    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +20
+    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +10
     return $timelast6say[index] < $maxflood
   end
 
@@ -265,11 +283,6 @@ class ALL_USER
     index = getindex(nick)
     return $timelast6say[index]
   end
-  def igetlastsay(nick)
-    p '60 getlastsay nick: ' , nick
-    index = getindex(nick)
-    return $timelast6say[index]
-  end
 end
 
 class ONE_USER
@@ -282,8 +295,3 @@ class ONE_USER
   end
 end
 
-class SANBOX
-  def in
-    yield
-  end
-end
