@@ -130,7 +130,7 @@ class ALL_USER
 
   def has_said?(s)
     return if s.size < 3
-    $lastsay.select{|x| x =~ /#{Regexp::escape s[1..-2]}/}.size > 0
+    $lastsay.select{|x| x.include? s[1..-2]}.size > 0
   end
 
   #rep?

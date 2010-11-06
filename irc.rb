@@ -47,15 +47,13 @@ class IRC
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
-  def autoban(chan,nick,time=50)
+  def autoban(chan,nick,time=65,mode='q')
     s="#{nick}!*@*"
-    send "mode #{chan} +q #{s}"
+    send "mode #{chan} +#{mode} #{s}"
     $u.set_ban_time(nick)
-    ab=Thread.new do
-      tmp = s
+    Thread.new do
       sleep time
-      puts 'unban: ' + tmp
-      send "mode #{chan} -q #{tmp}"
+      send "mode #{chan} -#{mode} #{s}"
     end
   end
 
@@ -224,10 +222,10 @@ class IRC
       if tmp =~ /^gb./i
         s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
       else
-        p tmp
+        #p tmp
         s=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",s).strip
       end
-      p s
+      #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{say} in #{tmp} ? But we use #{@charset} !" if $need_Check_code
@@ -288,16 +286,16 @@ class IRC
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
-        when 0..55
+        when 0..65
           return
-        when 54..80 #n分钟之前ban过
-          autoban to,nick,400
+        when 65..110 #n分钟之前ban过
+          autoban to,nick,300,'q'
           kick a1
         else
           autoban to,nick
           msg(a4,"#{a1}:...,谁说话这么快,#$kick_info",0)
         end
-        notice(nick,"#{a1}: ... #$kick_info",7)
+        notice(nick,"#{a1}: ... #$kick_info",14)
         return
       elsif $u.rep nick
         msg(a4,"#{a1}: .. ..",13)
@@ -456,9 +454,11 @@ class IRC
         $ti = nil
         @ti=Thread.start {
           $ti= gettitle(url)
+          return 2 if $ti =~ /\.log$/i
+          return 2 if $ti !~ $tiList and url !~ $urlList
           Thread.new do
             myti = $ti
-            sleep 10
+            sleep 12
             if $u.has_said?(myti)
               p 'has_said = true'
               $saytitle -=1 if $saytitle > 0
@@ -469,12 +469,10 @@ class IRC
           end
           return 2 if $saytitle < 1
           if $ti 
-            return 2 if $ti !~ $tiList and url !~ $urlList
-            return 2 if $ti =~ /\.log$/i
             tmp = $ti.gsub(/-|_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
             if s.gsub(/-|_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'') =~ /#{Regexp::escape tmp}/i#已经发了就不说了
-              puts "已经发了标题 #{tmp}"
               msg(to,"⇪ 已经发了标题")
+              puts "已经发了标题 #{tmp}"
             else
               $ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
               msg(to,"⇪ title: #{$ti}",0)
@@ -529,10 +527,10 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ', 好 ',10,18) if rand(10) > 4
+      do_after_sec(to,from + ',  好',10,18)
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(中)?.{0,5})$/i #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', ...',10,22)
+      do_after_sec(to,from + ', ....',10,12)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
@@ -574,7 +572,7 @@ class IRC
       puts "LAG = #{$lag} 秒" if $lag > 3 and $lag < 20
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
-      if $ignore_nick =~ Regexp.new(from+'!',Regexp::IGNORECASE)
+      if $ignore_nick =~ Regexp.new('^'+from+'$',Regexp::IGNORECASE)
         print 'ignore_nick ' , from,"\n" if $debug
         return 'ignore_nick'
       end
@@ -714,10 +712,10 @@ class IRC
       else
         isaid(second)
       end
-      if second < Delay_do_after
+      if second < Minsaytime
         sleep second
       else
-        sleep rand(second-Delay_do_after) + Delay_do_after
+        sleep rand(second-Minsaytime) + Minsaytime
       end
       Thread.exit if $otherbot_said
 
@@ -878,10 +876,11 @@ class IRC
         ping
         timer_daily
         n+=1
-        next if n%2 ==0
+        next if n%3 ==0
         if (8..24).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end
+        check_proxy_status
       end
     end
     @timer2 = Thread.new do
@@ -929,6 +928,7 @@ if not defined? $u
   loop do
     irc.connect()
     irc.input_start if $client
+    check_proxy_status
     begin
       irc.main_loop()
     rescue

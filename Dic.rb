@@ -64,9 +64,9 @@ require 'net/http'
 require 'rss'
 require 'base64'
 require 'resolv'
+require 'yaml'
 load 'do_as_rb19.rb'
 load 'color.rb'
-require 'yaml'
 
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
@@ -75,19 +75,19 @@ $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 > gg 公告 > b 服务器状态 `a 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
-Delay_do_after = 4 unless defined? Delay_do_after
-Ver='v0.29' unless defined?(Ver)
+Ver='v0.31' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
 
 Http_re= /http:\/\/\S+[^\s*]/
 
-Minsaytime= 5
+Minsaytime= 6
 puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 $last_save = Time.now - 110
+$proxy_status_ok = false
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
@@ -96,7 +96,9 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList=$tiList = /ubuntu|linux/i
+$urlList=$tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
+$urlProxy=/forum\.ubuntu\.org\.cn|http:\/\/youtube\.com/i
+
 
 def URLDecode(str)
   #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }
@@ -112,9 +114,9 @@ def unescapeHTML(str)
   HTMLEntities.new.decode(str) rescue str
 end
 
-#字符串编码集猜测,只取参数的中文部分
+#字符串编码集猜测
 def guess_charset(str)
-  s = str.gsub(/[\x0-\x7f]/,'')
+  s = str.gsub(/[\x0-\x7f]/,'')#只取参数的中文部分
   return nil if s.bytesize < 4
   while s.bytesize < 25
     s << s
@@ -189,13 +191,13 @@ end
 #取ubuntu.org.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   feed = begin
-    Timeout.timeout(18) {
+    Timeout.timeout(20) {
       RSS::Parser.parse(url)
     }
-  #rescue Timeout::Error => e
-  rescue Exception => e
+  rescue Timeout::Error => e
     p e.message
-    return e.message[0,60] + ' . IN `new '
+    #return e.message[0,60] + ' . IN `new '
+    return
   end
 
   $ub=nil
@@ -299,40 +301,45 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=nil)
-  url.gsub(/>+$/,'')
-    title = ''
-    charset = ''
-    flag = 0
-    istxthtml = false
-    if url =~ /[\u4E00-\u9FA5]/
-      url = URI.encode(url)
+  url.gsub!(/>+$/,'')
+  title = ''
+  charset = ''
+  flag = 0
+  istxthtml = false
+  if url =~ /[\u4E00-\u9FA5]/
+    url = URI.encode(url)
+  end
+
+  proxy = true if url =~ $urlProxy
+  proxy = false if ! $proxy_status_ok
+  #p url
+  #p proxy
+  #p $proxy_status_ok
+  #p url =~ $urlProxy
+  #用代理加快速度
+  if proxy
+    print 'use proxy in gettitle',$proxy_addr,$proxy_port,10.chr
+    agent = Mechanize.new
+    agent.user_agent_alias = 'Linux Mozilla'
+    agent.set_proxy($proxy_addr,$proxy_port)
+    agent.max_history = 1
+    agent.open_timeout = 14
+    agent.cookies
+    #agent.auth('^k^', 'password')
+    begin
+      page = agent.get(url)
+      return nil if page.class != Mechanize::Page
+      title = page.title
+      agent = nil
+      return title
+    rescue Exception => e
+      p $!.message + $@[0]
+      return $!.message[0,60] + ' . IN gettitle'
     end
-    #if false
-    #  agent = Mechanize.new
-    #  agent.user_agent_alias = 'Linux Mozilla'
-    #  #agent.set_proxy('ip',port) if proxy
-    #  agent.max_history = 1
-    #  agent.open_timeout = 10
-    #  agent.cookies
-    #  #agent.auth('username', 'password')
-    #  begin
-    #    page = agent.get(url)
-    #    return nil if page.class != Mechanize::Page
-    #  rescue Exception => e
-    #    p e.message
-    #    if $!.message == 'Connection reset by peer'
-    #      sleep 0.5
-    #      return Timeout.timeout(11){gettitle(url,true)}
-    #    else
-    #      return e.message[0,60] + ' . IN title'
-    #    end
-    #  end
-    #  title = page.title
-    #  return title
-    #end
+  end
 
     tmp = begin #加入错误处理
-      Timeout.timeout(13) {
+      Timeout.timeout(15) {
       $uri = URI.parse(url)
         $uri.open(
         'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
@@ -348,13 +355,16 @@ def gettitle(url,proxy=nil)
         }
       }
     rescue Timeout::Error
-      p 'time out IN. gettitle '
-      return
+      return 'time out . IN gettitle '
     rescue
       p $!.message + $@[0]
-      return
-      #return e.message[0,60] + ' . IN title'
+      #if $!.message == 'Connection reset by peer' && $proxy_status_ok
+        #return Timeout.timeout(12){gettitle(url,true)}
+      #end
+      return $!.message[0,60] + ' . IN gettitle'
     end
+    $uri.close
+
     return unless istxthtml
 
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
@@ -768,4 +778,21 @@ http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
 "
 end
 #alias say_公告 say_gg
+
+#简单检测代理是否可用
+def check_proxy_status
+  Thread.new do
+    begin
+      a=Timeout.timeout(15){TCPSocket.open $proxy_addr,$proxy_port}
+    rescue Timeout::Error
+      print $proxy_addr,':',$proxy_port,' ',false
+      $proxy_status_ok = false
+      return
+    end
+    print $proxy_addr,':',$proxy_port,' ',true
+    $proxy_status_ok = true
+    a.close
+  end
+end
+check_proxy_status
 
