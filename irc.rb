@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上
+# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上
 
 =begin
    * Description:
@@ -9,6 +9,7 @@
 
 =end
 
+$: << 'lib'
 require 'platform.rb'
 load 'Dic.rb'
 include Math
@@ -68,7 +69,9 @@ class IRC
   end
 
   #发送msg消息,随机 delay 秒数.
-  def msg(who,sSay='',delay=20)
+  #sSay 不能为空
+  def msg(who,sSay,delay=20)
+    return if sSay.class != String
     return if sSay.empty?
     $otherbot_said=false
     do_after_sec(who,sSay,0,delay)
@@ -94,7 +97,7 @@ class IRC
         #非utf-8的聊天室就直接截断了
         s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
       end
-      s += ' ...'
+      s << ' ...'
     else
       s.addTimCh if add_tim_chr
     end
@@ -439,47 +442,11 @@ class IRC
       msg to,"#{from}, #{tmp}" if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    when /(....)(:\/\/\S+[^\s])/#类似 http://
+    when /(....)(:\/\/\S*?[^\s<>\\[\]\{\}\^\`\~\|#"%])/#类似 http://
       url = $2
       case $1
       when /http/i
-        #when  /^(.*)(http:\/\/\S+[^\s*])/i #url_title查询
-        #url = $2.match(/http:\/\/\S+[^\s*]/i)[0]
-        url = "http#{url}"
-        return 2 if from =~ $botlist
-        return 2 if url =~ /past|imagebin\.org/i
-        return 2 if $last_ti == url
-        $last_ti = url
-
-        $ti = nil
-        @ti=Thread.start {
-          $ti= gettitle(url)
-          return 2 if $ti =~ /\.log$/i
-          return 2 if $ti !~ $tiList and url !~ $urlList
-          Thread.new do
-            myti = $ti
-            sleep 12
-            if $u.has_said?(myti)
-              p 'has_said = true'
-              $saytitle -=1 if $saytitle > 0
-            else
-              p 'has_said = false'
-              $saytitle +=0.4 if $saytitle < 1
-            end
-          end
-          return 2 if $saytitle < 1
-          if $ti 
-            tmp = $ti.gsub(/-|_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'')
-            if s.gsub(/-|_|\.|\s+|Ubuntu中文论坛.+?查看主题/,'') =~ /#{Regexp::escape tmp}/i#已经发了就不说了
-              msg(to,"⇪ 已经发了标题")
-              puts "已经发了标题 #{tmp}"
-            else
-              $ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-              msg(to,"⇪ title: #{$ti}",0)
-            end
-          end
-        }
-        #@ti.priority = 20
+        msg(to,gettitleA(url,from),0)
       when /ed2k/i
         msg(to,geted2kinfo(url),0)
       end
@@ -876,7 +843,7 @@ class IRC
         ping
         timer_daily
         n+=1
-        next if n%3 ==0
+        next if n%5 ==0
         if (8..24).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end

@@ -1,10 +1,14 @@
-运行方法:
-ruby irc.rb 或 ./irc.rb 或双击 irc.rb
+需要安装ruby,
+安装ruby : http://rubyforge.org/frs/download.php/72075/rubyinstaller-1.9.1-p430.exe
+linux下面一般是 apt-get install ruby-full 之类的。
+
+装完ruby后升级 gem, 命令是: gem update --system
+然后安装3个库: gem install htmlentities rchardet mechanize
+
+运行:
+ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
 
-注意：
-windows下面需要安装 One-Click Installer 一步安装包。因为需要iconv.dll 等标准库的支持. 例如: http://rubyforge.org/frs/download.php/47082/ruby186-27_rc2.exe
-linux下面无所谓，比如 ubuntu9.10 就行。
 
 生成文档：
 rdoc --charset utf-8 *.rb

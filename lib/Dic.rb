@@ -58,6 +58,7 @@ rescue LoadError
   p 'charguess.so not found'
 end
 require 'time'
+require 'timeout'
 require 'open-uri'
 require 'uri'
 require 'net/http'
@@ -80,9 +81,9 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
 
-Http_re= /http:\/\/\S+[^\s*]/
+Http_re= /http:\/\/\S*?[^\s<>\\[\]\{\}\^\`\~\|#"%]/
 
-Minsaytime= 6
+Minsaytime= 5
 puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -96,8 +97,9 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList=$tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
-$urlProxy=/forum\.ubuntu\.org\.cn|http:\/\/youtube\.com/i
+$urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
+$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.youtube\.com/i
+$urlNoMechanize=/google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 
 
 def URLDecode(str)
@@ -116,8 +118,8 @@ end
 
 #字符串编码集猜测
 def guess_charset(str)
-  s = str.gsub(/[\x0-\x7f]/,'')#只取参数的中文部分
-  return nil if s.bytesize < 4
+  s=str.force_encoding("ASCII-8BIT").gsub(/[\x0-\x7f]/,'')
+  return if s.bytesize < 4
   while s.bytesize < 25
     s << s
   end
@@ -299,9 +301,22 @@ rescue
   return $!.message
 end
 
+def url_fetch(uri_str, limit = 3)
+  # You should choose better exception.
+  raise ArgumentError, 'HTTP redirect too deep' if limit == 0
+
+  response = Net::HTTP.get_response(URI.parse(uri_str))
+  case response
+  when Net::HTTPSuccess     then response
+  when Net::HTTPRedirection then fetch(response['location'], limit - 1)
+  else
+    response.error!
+  end
+end
+
 #取标题,参数是url.
-def gettitle(url,proxy=nil)
-  url.gsub!(/>+$/,'')
+def gettitle(url,proxy=nil,mechanize=true)
+  url.gsub!(/>+$|,+$/,'')
   title = ''
   charset = ''
   flag = 0
@@ -310,28 +325,51 @@ def gettitle(url,proxy=nil)
     url = URI.encode(url)
   end
 
+  mechanize = false if url =~ $urlNoMechanize
   proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
-  #p url
-  #p proxy
+  print 'mechanize:' , mechanize , ' ' , url ,10.chr
+
   #p $proxy_status_ok
   #p url =~ $urlProxy
+
   #用代理加快速度
-  if proxy
-    print 'use proxy in gettitle',$proxy_addr,$proxy_port,10.chr
+  if mechanize
+    if url =~ /%[A-F0-9]/
+      url = URI.decode(url)
+      puts url
+    end
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
-    agent.set_proxy($proxy_addr,$proxy_port)
+    #agent.user_agent_alias = 'Windows IE 7'
+    if proxy
+      print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
+      agent.set_proxy($proxy_addr,$proxy_port)
+    end
     agent.max_history = 1
-    agent.open_timeout = 14
-    agent.cookies
+    agent.open_timeout = 6
+    #agent.cookies
     #agent.auth('^k^', 'password')
     begin
       page = agent.get(url)
-      return nil if page.class != Mechanize::Page
+      #p page.header['content-type'].match(/charset=(.+)/)[1] rescue (p $!.message + $@[0])
+      #Content-Type
+      if page.class != Mechanize::Page
+	puts 'no page'
+	return
+      end
       title = page.title
-      agent = nil
+      charset= guess_charset(title)
+      if charset and charset != 'UTF-8'
+        #p charset
+        charset='GB18030' if charset =~ /^gb/i
+        title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
+      end
+      title = unescapeHTML(title)# rescue title
+      title = URI.decode(title)
       return title
+    rescue Timeout::Error
+      return 'time out . IN gettitle '
     rescue Exception => e
       p $!.message + $@[0]
       return $!.message[0,60] + ' . IN gettitle'
@@ -339,19 +377,18 @@ def gettitle(url,proxy=nil)
   end
 
     tmp = begin #加入错误处理
-      Timeout.timeout(15) {
-      $uri = URI.parse(url)
+      Timeout.timeout(13){
+        $uri = URI.parse(url)
+        #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
-        'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-        'Referer'=> url,
-        'Accept-Language'=>'zh-cn',
-        #'Cookie' => cookie,
-        #'Range' => 'bytes=0-9999',
+        'Accept'=>'text/html , application/*',
+        #'Cookie' => 'a',
+        'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
-          istxthtml= f.content_type =~ /text\/html|application\/octet-stream/i
+          istxthtml= f.content_type =~ /text\/html/i
           charset= f.charset          # "iso-8859-1"
-          f.read[0,8000].gsub(/\s+/,' ')
+          f.read[0,4000].gsub(/\s+/,' ')
         }
       }
     rescue Timeout::Error
@@ -363,7 +400,6 @@ def gettitle(url,proxy=nil)
       #end
       return $!.message[0,60] + ' . IN gettitle'
     end
-    $uri.close
 
     return unless istxthtml
 
@@ -382,19 +418,50 @@ def gettitle(url,proxy=nil)
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
     end
-    if charset =~ /^gb/i
-      charset='GB18030'
-    end
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
     #charset = tmp if tmp != ''
     #return title.force_encoding(charset)
 
-    title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
+    if charset != 'UTF-8'
+      charset='GB18030' if charset =~ /^gb/i
+      title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
+    end
     title = unescapeHTML(title) rescue title
-    #puts title.blue
+    puts title.blue
     title
+end
+
+def gettitleA(url,from)
+      url = "http#{url}"
+      return if from =~ $botlist
+      return if url =~ /past|imagebin\.org|\.iso$/i
+      return if $last_ti == url
+      $last_ti = url
+
+      @ti=Thread.start {
+        ti= gettitle(url)
+        return if ti =~ /\.log$/i
+        return if ti !~ $tiList and url !~ $urlList
+        Thread.new do
+          myti = ti
+          sleep 12
+          if $u.has_said?(myti)
+            p 'has_said = true'
+            $saytitle -=1 if $saytitle > 0
+          else
+            p 'has_said = false'
+            $saytitle +=0.4 if $saytitle < 1
+          end
+        end
+        return if $saytitle < 1
+        if ti
+          ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
+          return "⇪ title: #{ti}"
+        end
+      }
+      @ti.priority = 10
 end
 
 def getPY(c)
@@ -794,5 +861,4 @@ def check_proxy_status
     a.close
   end
 end
-check_proxy_status
 

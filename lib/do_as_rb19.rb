@@ -16,7 +16,7 @@ if RUBY_VERSION < '1.9'
       self[0]
     end
   end
-  #为Hash类添加key方法
+  #为Hash类添加key方法,1.8里面是 index 方法
   class Hash
     def key(k)
       self.index(k)

@@ -11,8 +11,8 @@ class ALL_USER
   #attr :nick, true
   def initialize
     @pos_write = 0
-    @index=Hash.new
-    @name=Array.new
+    @index=Hash.new # name => pos
+    @name=Array.new # index => name
     @ip=Array.new
     @addr=Hash.new
     #@count_said=Array.new
