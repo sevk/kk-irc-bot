@@ -10,6 +10,7 @@
 =end
 
 $: << 'lib'
+$: << '.'
 require 'platform.rb'
 load 'Dic.rb'
 include Math
@@ -442,7 +443,7 @@ class IRC
       msg to,"#{from}, #{tmp}" if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    when /(....)(:\/\/\S*?[^\s<>\\[\]\{\}\^\`\~\|#"%])/#类似 http://
+    when /(....)(:\/\/\S*?[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
       url = $2
       case $1
       when /http/i

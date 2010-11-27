@@ -81,7 +81,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
 
-Http_re= /http:\/\/\S*?[^\s<>\\[\]\{\}\^\`\~\|#"%]/
+Http_re= /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"%]/
 
 Minsaytime= 5
 puts "Min say time=#{Minsaytime}"
@@ -316,12 +316,12 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=nil,mechanize=true)
-  url.gsub!(/>+$|,+$/,'')
+  url.force_encoding('utf-8')
   title = ''
   charset = ''
   flag = 0
   istxthtml = false
-  if url =~ /[\u4E00-\u9FA5]/
+  if url =~ /[\u4E00-\u9FA5]/u
     url = URI.encode(url)
   end
 
@@ -330,9 +330,8 @@ def gettitle(url,proxy=nil,mechanize=true)
   proxy = false if ! $proxy_status_ok
   print 'mechanize:' , mechanize , ' ' , url ,10.chr
 
-  #p $proxy_status_ok
-  #p url =~ $urlProxy
 
+  #p url =~ $urlProxy
   #用代理加快速度
   if mechanize
     if url =~ /%[A-F0-9]/
@@ -347,7 +346,7 @@ def gettitle(url,proxy=nil,mechanize=true)
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 1
-    agent.open_timeout = 6
+    agent.open_timeout = 14
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -377,13 +376,15 @@ def gettitle(url,proxy=nil,mechanize=true)
   end
 
     tmp = begin #加入错误处理
-      Timeout.timeout(13){
+      Timeout.timeout(13) {
         $uri = URI.parse(url)
         #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
         'Accept'=>'text/html , application/*',
         #'Cookie' => 'a',
         'Range' => 'bytes=0-9999',
+        #'Cookie' => cookie,
+        #'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
           istxthtml= f.content_type =~ /text\/html/i
@@ -417,6 +418,9 @@ def gettitle(url,proxy=nil,mechanize=true)
 
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
+    end
+    if charset =~ /^gb/i
+      charset='GB18030'
     end
 
     #tmp = guess_charset(title * 2).to_s
