@@ -3,7 +3,7 @@
 # sevkme@gmail.com
 
 $maxfloodme = 71.0 #70
-$maxflood = 35.7   #37
+$maxflood = 35.3   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 
