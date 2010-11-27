@@ -351,14 +351,13 @@ def gettitle(url,proxy=nil,mechanize=true)
     begin
       page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/)[1] rescue (p $!.message + $@[0])
-			p 'get page ok'
+			#p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
 				puts 'no page'
 				return
 			end
 			title = page.title
-			puts title + ' 1'
 			charset= guess_charset(title)
 			if charset and charset != 'UTF-8'
 				#p charset
@@ -366,7 +365,6 @@ def gettitle(url,proxy=nil,mechanize=true)
 				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
 			end
 			title = unescapeHTML(title)# rescue title
-			puts '2' + title
 			title = URI.decode(title)
 			return title
 			rescue Timeout::Error
@@ -466,7 +464,7 @@ def gettitleA(url,from)
 		return if $saytitle < 1
 		if ti
 			ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-			p 'gettitle ok..'
+			#p 'gettitle ok..'
 			return "⇪ title: #{ti}"
 		end
 end
