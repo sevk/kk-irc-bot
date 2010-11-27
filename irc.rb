@@ -443,11 +443,13 @@ class IRC
       msg to,"#{from}, #{tmp}" if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    when /(....)(:\/\/\S*?[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
+    when /(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
       url = $2
       case $1
       when /http/i
-        msg(to,gettitleA(url,from),0)
+				#msg(to,gettitleA(url,from),0)
+				@ti=Thread.start {msg(to,gettitleA(url,from),0) }
+				@ti.priority = 10
       when /ed2k/i
         msg(to,geted2kinfo(url),0)
       end

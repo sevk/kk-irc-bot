@@ -328,8 +328,7 @@ def gettitle(url,proxy=nil,mechanize=true)
   mechanize = false if url =~ $urlNoMechanize
   proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
-  print 'mechanize:' , mechanize , ' ' , url ,10.chr
-
+  print ' mechanize:' , mechanize , ' ' , url ,10.chr
 
   #p url =~ $urlProxy
   #用代理加快速度
@@ -341,8 +340,8 @@ def gettitle(url,proxy=nil,mechanize=true)
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
+		print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
     if proxy
-      print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 1
@@ -352,22 +351,25 @@ def gettitle(url,proxy=nil,mechanize=true)
     begin
       page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/)[1] rescue (p $!.message + $@[0])
+			p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
-	puts 'no page'
-	return
-      end
-      title = page.title
-      charset= guess_charset(title)
-      if charset and charset != 'UTF-8'
-        #p charset
-        charset='GB18030' if charset =~ /^gb/i
-        title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
-      end
-      title = unescapeHTML(title)# rescue title
-      title = URI.decode(title)
-      return title
-    rescue Timeout::Error
+				puts 'no page'
+				return
+			end
+			title = page.title
+			puts title + ' 1'
+			charset= guess_charset(title)
+			if charset and charset != 'UTF-8'
+				#p charset
+				charset='GB18030' if charset =~ /^gb/i
+				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
+			end
+			title = unescapeHTML(title)# rescue title
+			puts '2' + title
+			title = URI.decode(title)
+			return title
+			rescue Timeout::Error
       return 'time out . IN gettitle '
     rescue Exception => e
       p $!.message + $@[0]
@@ -438,34 +440,35 @@ def gettitle(url,proxy=nil,mechanize=true)
 end
 
 def gettitleA(url,from)
-      url = "http#{url}"
-      return if from =~ $botlist
-      return if url =~ /past|imagebin\.org|\.iso$/i
-      return if $last_ti == url
-      $last_ti = url
+	url = "http#{url}"
+	puts url.blue
+	return if from =~ $botlist
+	return if url =~ /past|imagebin\.org|\.iso$/i
+	return if $last_ti == url
+	$last_ti = url
 
-      @ti=Thread.start {
-        ti= gettitle(url)
-        return if ti =~ /\.log$/i
-        return if ti !~ $tiList and url !~ $urlList
-        Thread.new do
-          myti = ti
-          sleep 12
-          if $u.has_said?(myti)
-            p 'has_said = true'
-            $saytitle -=1 if $saytitle > 0
-          else
-            p 'has_said = false'
-            $saytitle +=0.4 if $saytitle < 1
-          end
-        end
-        return if $saytitle < 1
-        if ti
-          ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-          return "⇪ title: #{ti}"
-        end
-      }
-      @ti.priority = 10
+		ti= gettitle(url)
+		return if ti =~ /\.log$/i
+		return if ti !~ $tiList and url !~ $urlList
+
+		#检测是否有其它取标题机器人
+		Thread.new do
+			myti = ti
+			sleep 12
+			if $u.has_said?(myti)
+				p 'has_said = true'
+				$saytitle -=1 if $saytitle > 0
+			else
+				p 'has_said = false'
+				$saytitle +=0.4 if $saytitle < 1
+			end
+		end
+		return if $saytitle < 1
+		if ti
+			ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
+			p 'gettitle ok..'
+			return "⇪ title: #{ti}"
+		end
 end
 
 def getPY(c)
