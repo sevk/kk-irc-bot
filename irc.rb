@@ -64,7 +64,7 @@ class IRC
     send "PING LAG1982067890",false
   end
   #发送notice消息
-  def notice(who,sSay,delay=4)
+  def notice(who,sSay,delay=5)
     $otherbot_said=false
     do_after_sec(who,sSay,15,delay)
   end
@@ -129,7 +129,7 @@ class IRC
     Thread.new do
       sleep 300
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      send("privmsg #{@channel} :\001ACTION #{get_feed} \x01",false)
+      #send("privmsg #{@channel} :\001ACTION #{get_feed} \x01",false)
     end
   end
 
