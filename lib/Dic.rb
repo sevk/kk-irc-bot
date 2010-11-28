@@ -99,7 +99,7 @@ $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
 $urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
 $urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.youtube\.com/i
-$urlNoMechanize=/google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
+$urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 
 
 def URLDecode(str)
@@ -326,7 +326,7 @@ def gettitle(url,proxy=nil,mechanize=true)
   end
 
   mechanize = false if url =~ $urlNoMechanize
-  proxy = true if url =~ $urlProxy
+  mechanize = proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
   print ' mechanize:' , mechanize , ' ' , url ,10.chr
 
@@ -350,7 +350,7 @@ def gettitle(url,proxy=nil,mechanize=true)
     #agent.auth('^k^', 'password')
     begin
       page = agent.get(url)
-      #p page.header['content-type'].match(/charset=(.+)/)[1] rescue (p $!.message + $@[0])
+      #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
 			#p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
@@ -360,7 +360,7 @@ def gettitle(url,proxy=nil,mechanize=true)
 			title = page.title
 			charset= guess_charset(title)
 			if charset and charset != 'UTF-8'
-				#p charset
+				p charset
 				charset='GB18030' if charset =~ /^gb/i
 				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
 			end
