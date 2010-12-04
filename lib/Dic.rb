@@ -81,7 +81,8 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
 
-Http_re= /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"%]/
+$re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：])/iu#类似 http://
+# /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 Minsaytime= 5
 puts "Min say time=#{Minsaytime}"
@@ -98,7 +99,7 @@ $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
 $urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
-$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.youtube\.com/i
+$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.youtube\.com/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 
 
@@ -340,8 +341,8 @@ def gettitle(url,proxy=nil,mechanize=true)
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
-		print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
     if proxy
+			print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 1
@@ -387,9 +388,10 @@ def gettitle(url,proxy=nil,mechanize=true)
         #'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
-          istxthtml= f.content_type =~ /text\/html/i
+          istxthtml= f.content_type =~ /text\/html|application\//i
+          p f.content_type
           charset= f.charset          # "iso-8859-1"
-          f.read[0,4000].gsub(/\s+/,' ')
+          f.read[0,8800].gsub(/\s+/,' ')
         }
       }
     rescue Timeout::Error
@@ -419,9 +421,6 @@ def gettitle(url,proxy=nil,mechanize=true)
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
     end
-    if charset =~ /^gb/i
-      charset='GB18030'
-    end
 
     #tmp = guess_charset(title * 2).to_s
     #charset = 'gb18030' if tmp == 'TIS-620'
@@ -429,7 +428,7 @@ def gettitle(url,proxy=nil,mechanize=true)
     #return title.force_encoding(charset)
 
     if charset != 'UTF-8'
-      charset='GB18030' if charset =~ /^gb/i
+      charset='GB18030' if charset =~ /^gb|iso-8859-/i
       title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
     end
     title = unescapeHTML(title) rescue title
@@ -455,7 +454,7 @@ def gettitleA(url,from)
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
-				$saytitle -=1 if $saytitle > 0
+				#$saytitle -=1 if $saytitle > 0
 			else
 				p 'has_said = false'
 				$saytitle +=0.4 if $saytitle < 1
@@ -684,24 +683,17 @@ end
 
 #为Time类加入hm方法,返回格式化后的时和分
 class Time
-  $last_time_min = Time.now
   def hm
-    if Time.now - $last_time_min > 900
-      $last_time_min = Time.now
       Time.now.strftime(' %H:%M')
-    end
   end
   #ch,小时字符. '㍘' = 0x3358
   def ch
-    if Time.now - $last_time_min > 900
-      $last_time_min = Time.now
       ' ' +
       if RUBY_VERSION < '1.9'
         "\xE3\x8D"+ (Time.now.hour + 0x98).chr
       else
         (Time.now.hour + 0x3358).chr("UTF-8")
       end
-    end
   end
 end
 
@@ -788,7 +780,7 @@ end
 
 #每日一句英语学习
 def osod
-  return
+  return ''
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 1
@@ -865,5 +857,17 @@ def check_proxy_status
     $proxy_status_ok = true
     a.close
   end
+end
+
+def method_missing(m, *args, &block)  
+  "方法名 #{m} 未找到"  
+end  
+
+def addTimCh
+	Time.now.hm
+end
+
+def chr_hour
+	Time.now.hm
 end
 

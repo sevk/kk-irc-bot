@@ -443,7 +443,8 @@ class IRC
       msg to,"#{from}, #{tmp}" if tmp
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    when /(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
+    #when /(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
+    when $re_http
       url = $2
       case $1
       when /http/i
@@ -464,7 +465,7 @@ class IRC
       sayDic(6,from,to,$1)
     when /^[`']help$/i #`help
       sayDic(99,from,to,$2)
-    when /^`?(new|论坛新帖|新帖)$/i
+    when /^`?(new)$/i
       sayDic('new',from,to,$1)
     when /^`?(什么是)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
@@ -754,10 +755,10 @@ class IRC
 
   #说新帖
   def say_new(to)
-    @say_new=Thread.start{
+    @say_new=Thread.new{
       tmp = get_feed
       msg(to,tmp,0) if tmp.bytesize > 4
-    }.join
+    }
   end
 
   #大约每天一次
@@ -811,7 +812,7 @@ class IRC
           else
             send s.gsub(/^[\/\:]/,'')
           end
-        when /^`/ #直接执行eval
+        when /^`/ #直接执行
           p s
           if s[1..-1] =~ />\s(.*)/
             Thread.new do
@@ -834,7 +835,7 @@ class IRC
   #客户端输入并发送.
   def input_start
     @input=Thread.start{ iSend }
-    @input.priority = -20
+    @input.priority = -16
   end
 
   #主定时器
@@ -846,7 +847,7 @@ class IRC
         ping
         timer_daily
         n+=1
-        next if n%5 ==0
+        next if n%6 ==0
         if (8..24).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end
@@ -864,7 +865,7 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.003
+        sleep 0.05
         return if @exit
         break if $need_reconn
         ready = select([@irc], nil, nil,0.01)
@@ -875,7 +876,7 @@ class IRC
         end
       rescue
         log if $debug
-        sleep 0.5
+        sleep 1
         puts "#{$!.message} #{$@[0]}"
       end
     end
