@@ -99,7 +99,7 @@ $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
 $urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
-$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.youtube\.com/i
+$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 
 
@@ -325,6 +325,10 @@ def gettitle(url,proxy=nil,mechanize=true)
   if url =~ /[\u4E00-\u9FA5]/u
     url = URI.encode(url)
   end
+	if url =~ /%[A-F0-9]/
+		url = URI.decode(url)
+	end
+	puts url
 
   mechanize = false if url =~ $urlNoMechanize
   mechanize = proxy = true if url =~ $urlProxy
@@ -334,10 +338,6 @@ def gettitle(url,proxy=nil,mechanize=true)
   #p url =~ $urlProxy
   #用代理加快速度
   if mechanize
-    if url =~ /%[A-F0-9]/
-      url = URI.decode(url)
-      puts url
-    end
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
@@ -351,8 +351,10 @@ def gettitle(url,proxy=nil,mechanize=true)
     #agent.auth('^k^', 'password')
     begin
       page = agent.get(url)
+			p page.content_type if $DEBUG
+			p page.header['content-type'] if $DEBUG
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
-			#p 'get page ok'
+			p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
 				puts 'no page'
@@ -389,6 +391,7 @@ def gettitle(url,proxy=nil,mechanize=true)
         'User-Agent'=> UserAgent
         ){ |f|
           istxthtml= f.content_type =~ /text\/html|application\//i
+					istxthtml = false if f.content_type =~ /application\/octet-stream/i
           p f.content_type
           charset= f.charset          # "iso-8859-1"
           f.read[0,8800].gsub(/\s+/,' ')
@@ -405,6 +408,7 @@ def gettitle(url,proxy=nil,mechanize=true)
     end
 
     return unless istxthtml
+		#p tmp if $DEBUG
 
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
@@ -737,13 +741,14 @@ end
 def evaluate(s)
   l=4
   l=0 if s =~ /^(b|gg)$/i
+	s.gsub!(/print/i,'sprintf')
   Timeout.timeout(4){
     return safe(l){eval(s).to_s[0,400]}
   }
 rescue Timeout::Error
   return 'Timeout Error'
-rescue Exception => detail
-  return detail.message
+rescue
+	$!.message
 end
 
 def onemin
