@@ -743,11 +743,16 @@ def hostA(domain,hideip=false)#处理IP 或域名
   tmp.gsub(/\s+/,'').to_s + ' '
 end
 
+alias _print print if not defined?_print
+def print(* s)
+	_print s.join
+	s.join
+end
+
 #eval
 def evaluate(s)
   l=4
   l=0 if s =~ /^(b|gg)$/i
-	s.gsub!(/print/i,'sprintf')
   Timeout.timeout(4){
     return safe(l){eval(s).to_s[0,400]}
   }
