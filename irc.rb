@@ -102,7 +102,8 @@ class IRC
     else
       s.addTimCh if add_tim_chr
     end
-    @irc.send("#{s.strip}\n", 0)
+    @irc.write("#{s.strip}\r\n")
+    #@irc.write("#{s.strip}\n", 0)
     $Lsay = Time.now
     puts "----> #{s}".pink
   end
@@ -479,7 +480,7 @@ class IRC
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
       sayDic(21,from,to,$1)
-    when /^`?tt\s(.*?)$/i  # getGoogle_tran
+    when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
     when /^`?g\s(.*?)$/i  # Google
       sayDic(1,from,to,$1)
@@ -499,7 +500,7 @@ class IRC
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好',10,18)
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(中)?.{0,5})$/i #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,5})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ....',10,12)
     when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
@@ -634,7 +635,6 @@ class IRC
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     p s if $debug
-    #return if s.strip.size == 0
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue nil #if not $client #简单显示消息
@@ -748,7 +748,7 @@ class IRC
     saveu
     send 'quit ' + exit_msg#.gsub(/\s+/,'_')
     puts 'exiting...'.yellow
-    sleep 1
+    sleep 0.1
     @exit = true
     exit
   end
@@ -764,15 +764,14 @@ class IRC
   #大约每天一次
   def timer_daily
     puts Time.now.to_s.blue
-    done = false if Time.now.hour < 5
-    if Time.now.hour == 5
-      return if done
-      done=true
+    @daily_done = false if Time.now.hour < 5
+    if Time.now.hour == 6
+      return if @daily_done 
+      @daily_done =true
       saveu
       send 'join ' + @channel
       sleep 2
       send('time')
-      sleep 30
       msg(@channel, osod.addTimCh ,30)
     end
   end
@@ -865,14 +864,19 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.05
+        sleep 0.08
         return if @exit
         break if $need_reconn
         ready = select([@irc], nil, nil,0.01)
         next if not ready
         for s in ready[0]
           next if s != @irc
-          handle_server_input(@irc.recvfrom(2048)[0])
+					s = @irc.recvfrom(2048)[0].strip
+					if s.empty?
+						p ' s.empty, must be lose conn '
+						return 
+					end
+          handle_server_input(s)
         end
       rescue
         log if $debug
@@ -896,9 +900,9 @@ if not defined? $u
   irc.timer_start
   trap(:INT){irc.myexit 'int'}
 
+	irc.input_start if $client
   loop do
     irc.connect()
-    irc.input_start if $client
     check_proxy_status
     begin
       irc.main_loop()
@@ -908,7 +912,7 @@ if not defined? $u
       sleep 600
       restart
     end
-    sleep 9
+    sleep 300
   end
 end
 

@@ -1,7 +1,6 @@
 #让ruby1.8兼容1.9的写法
 
 if RUBY_VERSION < '1.9'
-  p 'do as ruby 1.9'
   #为字符串类添加force_encoding和ord方法
   class String
     unless defined?(String.new.bytesize)

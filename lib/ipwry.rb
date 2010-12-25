@@ -9,7 +9,8 @@ require 'iconv'
 
 class IpLocationSeeker
   def initialize()
-    fQQwry='./QQWry.Dat'
+		p 'IpLocationSeeker init' if $DEBUG
+    fQQwry='QQWry.Dat'
     #@datafile = File.open(fQQwry,"r:utf-8")
     @datafile = File.open(fQQwry,"rb")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
@@ -17,6 +18,7 @@ class IpLocationSeeker
   end
 
   def renamed_eump(number=100)
+		p 'renamed eump' if $DEBUG
     last_index_pos = number * 7
     last_index_pos = @last_index_pos if last_index_pos > @last_index_pos
     current_num = 0
@@ -38,16 +40,17 @@ class IpLocationSeeker
   end
 
   def seek(ip_str) #查询IP
+		p 'seek' if $DEBUG
     @ip_str = ip_str
     @ip_record_pos = get_ip_record_pos
     begin #错误处理
       return get_country_string + get_area_string
     rescue Interrupt
-      return ip_str
+      return @ip_str
     rescue Exception => detail
       p $!
       p $@
-      return ip_str
+      return @ip_str
     #~ retry
     end
   end
@@ -77,6 +80,7 @@ class IpLocationSeeker
   end
 
   def get_ip_record_pos()
+		p 'get ip record pos' if $DEBUG
     ip_record_pos_pos = @first_index_pos + half_find(my_inet_aton(@ip_str),0,@index_num-1)*7 + 4
     @datafile.seek(ip_record_pos_pos)
     three_byte = @datafile.read(3).unpack('C3')
@@ -85,12 +89,13 @@ class IpLocationSeeker
 
   #读取直到字符串结尾
   def read_zero_end_string(file_pos)
+		p 'read 0 str' if $DEBUG
     @datafile.seek(file_pos)
     str = ""
     count = 0
     while c = @datafile.getc
-      break if count>100
-      break if c.to_s.ord < 0x32 rescue p c
+      break if count > 70
+      break if c.ord < 0x32
       str << c
       count += 1
     end
@@ -100,12 +105,13 @@ class IpLocationSeeker
       @get_country_string_error = true
     end
     @after_read_country_pos = @datafile.pos
-    return Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",str) rescue ''
+    return Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",str) rescue str
   end
 
   #private
 
   def get_country_string()
+		p 'get country str' if $DEBUG
     @get_country_string_error = false
     begin
       @datafile.seek(@ip_record_pos + 4)
@@ -138,6 +144,7 @@ class IpLocationSeeker
   end
 
   def get_area_string()
+		p 'get area str' if $DEBUG
     @get_area_string_error = false
     if @get_country_string_error
       @get_area_string_error = true

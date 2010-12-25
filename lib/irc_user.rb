@@ -4,7 +4,7 @@
 
 #刷屏检测阀值系数,不建议修改.
 $maxfloodme = 71.0 #70
-$maxflood = 35.3   #37
+$maxflood = 35.5   #37
 $initFlood = 83.0 #83
 $maxNamed = 200
 

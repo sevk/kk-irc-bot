@@ -17,6 +17,7 @@ class String
   def utf8_to_gb
     Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
   end
+	alias togb utf8_to_gb
   def decode64
     Base64.decode64 self
   end
@@ -36,9 +37,10 @@ class String
   end
 end
 
+require 'ipwry.rb'
 begin
   #apt-get install rubygems
-  require 'rubygems' #以便引用相关的库
+	require 'rubygems' #以便引用相关的库
   #gem install htmlentities
   require 'htmlentities'
   #gem install mechanize
@@ -134,14 +136,12 @@ if defined?CharGuess
 else
   #第二种字符集猜测库
   begin
-    require 'rchardet'
+		require 'rchardet'
   rescue LoadError
     s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
     s = s.utf8_to_gb if os_family == 'windows'
     puts s
-    puts $!.message
-    puts $@[0]
-    exit
+    puts $!.message + $@[0]
   end
   def guess(s)
     CharDet.detect(s)['encoding'].upcase
@@ -316,21 +316,20 @@ def url_fetch(uri_str, limit = 3)
 end
 
 #取标题,参数是url.
-def gettitle(url,proxy=nil,mechanize=true)
-  url.force_encoding('utf-8')
+def gettitle(url,proxy=nil,mechanize=1)
   title = ''
   charset = ''
   flag = 0
   istxthtml = false
-  if url =~ /[\u4E00-\u9FA5]/u
+	if url.force_encoding("ASCII-8BIT") =~ CN_re #有中文
     url = URI.encode(url)
   end
-	if url =~ /%[A-F0-9]/
-		url = URI.decode(url)
-	end
-	puts url
+	puts 'url: ' + url
 
-  mechanize = false if url =~ $urlNoMechanize
+	if mechanize == 1
+		p mechanize
+		mechanize = false if url =~ $urlNoMechanize
+	end
   mechanize = proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
   print ' mechanize:' , mechanize , ' ' , url ,10.chr
@@ -338,6 +337,9 @@ def gettitle(url,proxy=nil,mechanize=true)
   #p url =~ $urlProxy
   #用代理加快速度
   if mechanize
+		#if url =~ /%[A-F0-9]/
+			#url = URI.decode(url)
+		#end
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
@@ -351,9 +353,10 @@ def gettitle(url,proxy=nil,mechanize=true)
     #agent.auth('^k^', 'password')
     begin
       page = agent.get(url)
-			p page.content_type if $DEBUG
-			p page.header['content-type'] if $DEBUG
+			puts page.header['content-type'] if $DEBUG
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
+			return '' if page.header['content-type']  !~ /text\/html|application\//i
+
 			p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
@@ -369,6 +372,7 @@ def gettitle(url,proxy=nil,mechanize=true)
 			end
 			title = unescapeHTML(title)# rescue title
 			title = URI.decode(title)
+			puts title
 			return title
 			rescue Timeout::Error
       return 'time out . IN gettitle '
@@ -451,6 +455,7 @@ def gettitleA(url,from)
 		ti= gettitle(url)
 		return if ti =~ /\.log$/i
 		return if ti !~ $tiList and url !~ $urlList
+		return if ti.empty?
 
 		#检测是否有其它取标题机器人
 		Thread.new do
@@ -702,6 +707,7 @@ class Time
 end
 
 
+@ip_seeker = IpLocationSeeker.new
 #取IP地址的具体位置,参数是IP
 def getaddr_fromip(ip)
   hostA(ip,true)
@@ -728,9 +734,9 @@ def hostA(domain,hideip=false)#处理IP 或域名
     tmp = host(domain)
   end
   if hideip
-    tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
+    tmp = @ip_seeker.seek(tmp) rescue tmp
   else
-    tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
+    tmp = tmp + '-' + @ip_seeker.seek(tmp) rescue tmp
   end
   tmp.gsub!(/CZ88\.NET/i,'')
   tmp.gsub!(/IANA/i,'不在宇宙')
