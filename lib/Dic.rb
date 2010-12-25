@@ -745,7 +745,7 @@ end
 
 alias _print print if not defined?_print
 def print(* s)
-	_print s.join
+	_print s.join rescue nil
 	s.join
 end
 
