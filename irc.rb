@@ -116,7 +116,6 @@ class IRC
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
-    $min_next_say=Time.now
     File.open(ARGV[0]).each { |line|
       if line =~ /pass/
         eval line
@@ -126,7 +125,7 @@ class IRC
     $pass = nil
     $bot_on = $bot_on1
     $min_next_say = Time.now
-    do_after_sec(@channel,nil,7,26)
+    do_after_sec(@channel,nil,7,20)
     Thread.new do
       sleep 300
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
@@ -227,8 +226,8 @@ class IRC
       if tmp =~ /^gb./i
         s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
       else
-        #p tmp
-        s=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",s).strip
+        p tmp
+        s=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",s).strip rescue s
       end
       #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
@@ -310,6 +309,7 @@ class IRC
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
           $u.saidAndCheckFlood(nick,name,ip,sSay)
+          #$u.saidAndCheckFlood(nick,name,ip,sSay)
         end
         return
       end
@@ -439,9 +439,12 @@ class IRC
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     case s.strip.force_encoding('utf-8')
-    when /^\`?>\s(.+)$/i #eval
-      tmp = evaluate($1.to_s)
-      msg to,"#{from}, #{tmp}" if tmp
+    when /^`?> (.+)$/i
+      @e=Thread.start($1){|s|
+        tmp = evaluate(s.to_s)
+        msg to,"#{from}, #{tmp}", 28 if not tmp.empty?
+      }
+      @e.priority = -10
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
     #when /(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
@@ -510,6 +513,8 @@ class IRC
     when /^`i\s?(.*?)$/i #svn
       s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
       msg to,from + ", #{s1}",15
+		#when $dic
+	#		msg to,from + ", #$1", 15
     when /^`rst\s?(\d*)$/i #restart soft
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
@@ -570,10 +575,15 @@ class IRC
         $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
         puts Time.now.to_s.green
       end
-      if pos == 376
+      if pos == 376 #moted
+        #$min_next_say=Time.now
+        #do_after_sec(@channel,nil,7,1)
       end
 
       case pos
+      when 396 #nick verifd
+        $min_next_say=Time.now
+        do_after_sec(@channel,nil,7,1)
       when 353
         p 'all nick:' + tmp
         @tmp << " #{tmp}"
@@ -679,6 +689,7 @@ class IRC
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
+        send "PRIVMSG #{to} :...休息一下..." if rand(10) == 2
         Thread.exit
       else
         isaid(second)
@@ -686,7 +697,7 @@ class IRC
       if second < Minsaytime
         sleep second
       else
-        sleep rand(second-Minsaytime) + Minsaytime
+        sleep rand(second - Minsaytime) + Minsaytime
       end
       Thread.exit if $otherbot_said
 
@@ -782,6 +793,7 @@ class IRC
   def iSend()
     loop do
       sleep 0.8
+      $stdout.flush
       #windows 好像不支持Readline
       if os_family == 'windows'
         s = IO.select([$stdin],nil,nil,5)
@@ -837,16 +849,28 @@ class IRC
     @input.priority = -16
   end
 
-  #主定时器
+  #timer
+  def timer_minly #每分钟一次
+    @timer_min = Thread.new do
+      n = 0
+      loop do
+        sleep 55 + rand(10)
+        n+=1
+        n=0 if n > 1e+10
+        next if n%10 ==0
+        ping
+      end
+    end
+  end
   def timer_start
     @timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep 60*10 + rand(60*15)  #间隔10+7分钟
-        ping
+        sleep 60*12 + rand(60*18)  #间隔10+7分钟
         timer_daily
         n+=1
-        next if n%6 ==0
+        n=0 if n > 1e+10
+        next if n%2 ==0
         if (8..24).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end
@@ -878,6 +902,10 @@ class IRC
 					end
           handle_server_input(s)
         end
+      rescue Exception
+        log
+        sleep 10
+        return
       rescue
         log if $debug
         sleep 1
@@ -908,11 +936,12 @@ if not defined? $u
       irc.main_loop()
     rescue
       log
-      p "re-connection..."
+			p Time.now
       sleep 600
       restart
     end
-    sleep 300
+		p Time.now
+    sleep 240
   end
 end
 

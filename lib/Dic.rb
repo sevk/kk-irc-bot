@@ -21,9 +21,14 @@ class String
   def decode64
     Base64.decode64 self
   end
+	alias unbase64 decode64
   def encode64
     Base64.encode64 self
   end
+	alias base64 encode64
+	def rot13
+		self.tr "A-Za-z", "N-ZA-Mn-za-m"
+	end
   def ii(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
@@ -165,11 +170,18 @@ def saveu
 end
 
 #使用安全进程进行eval操作,参数level是安全级别.
+def safely(code,l)
+	sandbox = lambda do
+		$SAFE = l
+		eval(code)
+	end
+	sandbox.call.to_s
+end
 def safe(level)
-  result = nil
+	result = nil
   Thread.start {
     $SAFE = level
-    result = yield rescue $!.message
+    result = yield
   }.join
   result
 end
@@ -324,12 +336,14 @@ def gettitle(url,proxy=nil,mechanize=1)
 	if url.force_encoding("ASCII-8BIT") =~ CN_re #有中文
     url = URI.encode(url)
   end
+	#url.force_encoding('utf-8')
 	puts 'url: ' + url
 
 	if mechanize == 1
 		p mechanize
 		mechanize = false if url =~ $urlNoMechanize
 	end
+	mechanize = true if url =~ /www\.google\.com/i
   mechanize = proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
   print ' mechanize:' , mechanize , ' ' , url ,10.chr
@@ -382,6 +396,7 @@ def gettitle(url,proxy=nil,mechanize=1)
     end
   end
 
+		#puts URI.split url
     tmp = begin #加入错误处理
       Timeout.timeout(13) {
         $uri = URI.parse(url)
@@ -391,7 +406,6 @@ def gettitle(url,proxy=nil,mechanize=1)
         #'Cookie' => 'a',
         'Range' => 'bytes=0-9999',
         #'Cookie' => cookie,
-        #'Range' => 'bytes=0-9999',
         'User-Agent'=> UserAgent
         ){ |f|
           istxthtml= f.content_type =~ /text\/html|application\//i
@@ -626,6 +640,7 @@ end
 def geted2kinfo(url)
   url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
   return if $1 == 'server'
+	return if not $3
   $ti = "#{URLDecode($2.to_s)} , #{ '%.2f' % ($3.to_f / 1024**3)} GB"
   $ti.gsub!(/.*\]\./,'')
   "⇪ #{unescapeHTML($ti)}"
@@ -751,15 +766,26 @@ end
 
 #eval
 def evaluate(s)
-  l=4
-  l=0 if s =~ /^(b|gg)$/i
-  Timeout.timeout(4){
-    return safe(l){eval(s).to_s[0,400]}
-  }
-rescue Timeout::Error
-  return 'Timeout Error'
-rescue
-	$!.message
+	p s
+	begin
+		s.untaint
+		l=4
+		l=2 if s =~ /^(b|gg|`uname -a`|`uptime`)$/
+		l=2 if s =~ /^(`free`|`lsb_release -a`|`ls`|`wh[a-z]+`)$/
+		l=2 if s =~ /^`cat [a-z\/]+`$/i
+		#l=2 if s =~ /^`[\w\s\-]+`$/i
+		#return '' if s =~ /touch|kill|:|reboot|halt/i
+		Timeout.timeout(5){
+			return safe(l){eval(s).to_s[0,400]}
+			#return safely(s,l)[0,400]
+		}
+	rescue Timeout::Error
+		return 'Timeout Error'
+	rescue Exception
+		return $!.message # + $@[1..2].join(' ')
+	rescue
+		return $!.message + $@[1..2].join(' ')
+	end
 end
 
 def onemin

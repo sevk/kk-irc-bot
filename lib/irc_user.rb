@@ -20,7 +20,8 @@ class ALL_USER
     @sex=Array.new
 
     #[1]=>重复次数,[2]=>玩机器人次数
-    @RP=Array.new(3,[])
+    #@RP=Array.new(3,[]) #why wrong , very surprised
+		Array.new(3) {[]}
     init_pp
     puts 'users class start' if $debug
   end
