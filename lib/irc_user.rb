@@ -21,12 +21,12 @@ class ALL_USER
 
     #[1]=>重复次数,[2]=>玩机器人次数
     #@RP=Array.new(3,[]) #why wrong , very surprised
-		Array.new(3) {[]}
+		@RP=Array.new(3) {[]}
     init_pp
     puts 'users class start' if $debug
   end
   def init_pp
-    @RP=Array.new(3,[])
+		@RP=Array.new(3) {[]}
     $mode=Array.new
     $ban_time=Array.new
     $time_in=Array.new
@@ -193,7 +193,7 @@ class ALL_USER
   end
   
   def said(nick,name,ip)
-    if @index == nil
+    if not @index
       puts '#无任何用户'
       return add(nick,name,ip)
     end

@@ -242,7 +242,6 @@ class IRC
 
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
-    return if !s
     s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     case s
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
@@ -286,6 +285,8 @@ class IRC
         return
       end
       #p 'check flood'
+      
+      $u.said(nick,name,ip) if sSay.size > 320
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
@@ -627,7 +628,7 @@ class IRC
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       sleep 1
       puts s.red
-      exit if @exit
+      return if @exit
       log s
       $need_reconn=true if s =~ /:Closing/i
     else
@@ -758,10 +759,8 @@ class IRC
   def myexit(exit_msg = 'optimize')
     saveu
     send 'quit ' + exit_msg#.gsub(/\s+/,'_')
-    puts 'exiting...'.yellow
-    sleep 0.1
     @exit = true
-    exit
+    puts 'exiting...'.yellow
   end
 
   #说新帖
@@ -935,14 +934,17 @@ if not defined? $u
     begin
       irc.main_loop()
     rescue
+      break if irc.exited?
       log
 			p Time.now
       sleep 600
       restart
     end
+    break if irc.exited?
 		p Time.now
     sleep 240
   end
+  Thread.list.each{|x|(x.kill; x.exit) rescue nil}
 end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
