@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上
+# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上
 
 =begin
    * Description:
@@ -224,6 +224,7 @@ class IRC
     return if ! tmp
     if tmp != @charset && tmp !~ /IBM855|windows-1252/i
       if tmp =~ /^gb./i
+        tmp = 'GBK'
         s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
       else
         p tmp
@@ -232,7 +233,7 @@ class IRC
       #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
-        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{say} in #{tmp} ? But we use #{@charset} !" if $need_Check_code
+        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{say} in #{tmp} ? We use #{@charset} !" if $need_Check_code
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset'
       end
@@ -250,7 +251,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"...不要玩机器人... ",11 if rand(10) > 6
+        msg from,"...不要玩机器人...不然.... ",11 if rand(10) > 5
         return
       end
 
@@ -291,9 +292,9 @@ class IRC
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
-        when 0..65
+        when 0..63
           return
-        when 65..110 #n分钟之前ban过
+        when 63..310 #5分钟之前ban过
           autoban to,nick,300,'q'
           kick a1
         else
@@ -443,12 +444,11 @@ class IRC
     when /^`?> (.+)$/i
       @e=Thread.start($1){|s|
         tmp = evaluate(s.to_s)
-        msg to,"#{from}, #{tmp}", 28 if not tmp.empty?
+        msg to,"#{from}, #{tmp}", 40 if not tmp.empty?
       }
       @e.priority = -10
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
-    #when /(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"%])/#类似 http://
     when $re_http
       url = $2
       case $1
@@ -512,8 +512,7 @@ class IRC
       return nil if s.bytesize < 12
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
-      s1= '我的源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/'
-      msg to,from + ", #{s1}",15
+      msg to,from + ", #$my_s",15
 		#when $dic
 	#		msg to,from + ", #$1", 15
     when /^`rst\s?(\d*)$/i #restart soft
@@ -690,7 +689,7 @@ class IRC
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
-        send "PRIVMSG #{to} :...休息一下..." if rand(10) == 2
+        send "PRIVMSG #{to} :#{rand_do}"
         Thread.exit
       else
         isaid(second)
@@ -744,7 +743,7 @@ class IRC
   end
 
   def mystart
-    $u = YAML.load_file("person_#{ARGV[0]}.yaml") rescue (p $!.message)
+    $u = YAML.load_file("_#{ARGV[0]}.yaml") rescue (p $!.message)
     p $u.class
     $u = ALL_USER.new if $u.class != ALL_USER
     $u.init_pp

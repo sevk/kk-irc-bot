@@ -80,10 +80,10 @@ load 'color.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = '请勿Flood，超过4行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
+$kick_info = '请勿Flood，超过 5行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 > gg 公告 > b 服务器状态 `a 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
-Ver='v0.31' unless defined?(Ver)
+Ver='v0.32' unless defined?(Ver)
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
@@ -91,7 +91,7 @@ CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x
 $re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：])/iu#类似 http://
 # /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
-Minsaytime= 5
+Minsaytime= 6
 puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
@@ -105,9 +105,10 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs/i
+$urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs|gnome|kde|x11|xorg|wine/i
 $urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
+$my_s= '我的源代码: http://github.com/sevk/kk-irc-bot/ '
 
 
 def URLDecode(str)
@@ -388,7 +389,7 @@ def gettitle(url,proxy=nil,mechanize=1)
 			title = URI.decode(title)
 			puts title
 			return title
-			rescue Timeout::Error
+		rescue Timeout::Error
       return 'time out . IN gettitle '
     rescue Exception => e
       p $!.message + $@[0]
@@ -770,21 +771,22 @@ def evaluate(s)
 	begin
 		s.untaint
 		l=4
-		l=2 if s =~ /^(b|gg|`uname -a`|`uptime`)$/
-		l=2 if s =~ /^(`free`|`lsb_release -a`|`ls`|`wh[a-z]+`)$/
-		l=2 if s =~ /^`cat [a-z\/]+`$/i
+		l=2 if s =~ /^(b|gg|`pwd`|`uname -a`|`uptime`)$/
+		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|who[a-z]+)`$/
+		l=2 if s =~ /^`(ps) [a-z\/]+`$/i
+		l=2 if s =~ /^`(date)`$/i
 		#l=2 if s =~ /^`[\w\s\-]+`$/i
 		#return '' if s =~ /touch|kill|:|reboot|halt/i
 		Timeout.timeout(5){
-			return safe(l){eval(s).to_s[0,400]}
+			return safe(l){eval(s).to_s[0,280]}
 			#return safely(s,l)[0,400]
 		}
 	rescue Timeout::Error
 		return 'Timeout Error'
 	rescue Exception
-		return $!.message # + $@[1..2].join(' ')
+		return ''#$!.message[0,38] # + $@[1..2].join(' ')
 	rescue
-		return $!.message + $@[1..2].join(' ')
+		return ''#$!.message[0,38] #+ $@[1..2].join(' ')
 	end
 end
 
@@ -911,5 +913,17 @@ end
 
 def chr_hour
 	Time.now.hm
+end
+
+#随机事件
+def rand_do
+	case rand(1000)
+	when 0..40
+		$my_s
+	when 100..110
+		get_feed
+	when 200..260
+		"...休息一下..."
+	end
 end
 
