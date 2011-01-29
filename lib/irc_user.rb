@@ -4,7 +4,7 @@
 
 #刷屏检测阀值系数,不建议修改.
 $maxfloodme = 74.0 #70
-$maxflood = 34.8  #35.5
+$maxflood = 34.4  #35.5
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -170,11 +170,11 @@ class ALL_USER
     index = getindex(nick)
     return unless index
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
-    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood +10
+    #p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 5
     return $timelast6say[index] < $maxflood
   end
 
-  def said_me(nick,name,ip)
+  def said_me(nick,name,ip,ratio=1.0)
     if ! @index
       return add(nick,name,ip)
     end
@@ -187,12 +187,12 @@ class ALL_USER
     $timelastsayme[index] = t if ! $timelastsayme[index]
     $timelast6me[index] = $initFlood if ! $timelast6me[index]
     $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood or $timelast6me[index] < 1
-    $timelast6me[index] = $timelast6me[index] / 5 * 4 +  (t - $timelastsayme[index])
+    $timelast6me[index] = $timelast6me[index] / 5 * 4 + ratio * (t - $timelastsayme[index])
     p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
   end
   
-  def said(nick,name,ip)
+  def said(nick,name,ip,ratio=1.0)
     if not @index
       puts '#无任何用户'
       return add(nick,name,ip)
@@ -208,12 +208,11 @@ class ALL_USER
     $timelastsay[index] = t if ! $timelastsay[index]
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
     $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood or $timelast6say[index] < 1
-    $timelast6say[index] = $timelast6say[index] / 5 * 4 +  (t - $timelastsay[index])
+    $timelast6say[index] = $timelast6say[index] / 5 * 4 + ratio * (t - $timelastsay[index])
     $timelastsay[index] = t
   end
 
   def saidAndCheckFlood(nick,name,ip,w)
-    #p 'saidAndCheckFlood'
     said(nick,name,ip)
     setLastSay(nick,w)
     return check_flood(nick)

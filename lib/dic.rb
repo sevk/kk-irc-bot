@@ -40,6 +40,7 @@ class String
   def unescapeHTML
     HTMLEntities.new.decode(self) rescue self
   end
+	alias dir public_methods
 end
 
 require 'ipwry.rb'
@@ -96,7 +97,7 @@ puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 $last_save = Time.now - 110
-$proxy_status_ok = false
+$proxy_status_ok = false if not defined? $proxy_status_ok
 
 puts "$SAFE= #$SAFE"
 NoFloodAndPlay=/\-ot|arch|fire/i
@@ -105,8 +106,8 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|debia|java|python|ruby|perl|vim|emacs|gnome|kde|x11|xorg|wine/i
-$urlProxy=/\.ubuntu\.(org|com)\.cn|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|vim|emacs|gnome|kde|x11|xorg|wine/i
+$urlProxy=/\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源代码: http://github.com/sevk/kk-irc-bot/ '
 
@@ -164,7 +165,7 @@ end
 def saveu
   return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
-  File.open("person_#{ARGV[0]}.yaml","w") do|io|
+  File.open("_#{ARGV[0]}.yaml","w") do|io|
     YAML.dump($u,io)
   end
   puts ' save u ok'.red
@@ -419,10 +420,12 @@ def gettitle(url,proxy=nil,mechanize=1)
     rescue Timeout::Error
       return 'time out . IN gettitle '
     rescue
-      p $!.message + $@[0]
-      #if $!.message == 'Connection reset by peer' && $proxy_status_ok
-        #return Timeout.timeout(12){gettitle(url,true)}
-      #end
+      p $!.message
+      if $!.message == 'Connection reset by peer' && $proxy_status_ok
+				p ' need pass wall '
+				return if proxy
+				return gettitle(url,true,true)
+      end
       return $!.message[0,60] + ' . IN gettitle'
     end
 
@@ -709,7 +712,7 @@ end
 #为Time类加入hm方法,返回格式化后的时和分
 class Time
   def hm
-      Time.now.strftime(' %H:%M')
+			Time.now.strftime(' %H:%M')
   end
   #ch,小时字符. '㍘' = 0x3358
   def ch
@@ -774,9 +777,9 @@ def evaluate(s)
 		l=2 if s =~ /^(b|gg|`pwd`|`uname -a`|`uptime`)$/
 		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|who[a-z]+)`$/
 		l=2 if s =~ /^`(ps) [a-z\/]+`$/i
-		l=2 if s =~ /^`(date)`$/i
 		#l=2 if s =~ /^`[\w\s\-]+`$/i
-		#return '' if s =~ /touch|kill|:|reboot|halt/i
+		return '' if s =~ /touch|kill|:\(\)|reboot|halt/i
+		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
 		Timeout.timeout(5){
 			return safe(l){eval(s).to_s[0,280]}
 			#return safely(s,l)[0,400]
@@ -784,9 +787,9 @@ def evaluate(s)
 	rescue Timeout::Error
 		return 'Timeout Error'
 	rescue Exception
-		return ''#$!.message[0,38] # + $@[1..2].join(' ')
+		return ''#$!.message[0,28] # + $@[1..2].join(' ')
 	rescue
-		return ''#$!.message[0,38] #+ $@[1..2].join(' ')
+		return $!.message[0,28] #+ $@[1..2].join(' ')
 	end
 end
 
@@ -895,11 +898,12 @@ def check_proxy_status
     rescue Timeout::Error
       print $proxy_addr,':',$proxy_port,' ',false
       $proxy_status_ok = false
-      return
+      false
     end
     print $proxy_addr,':',$proxy_port,' ',true
-    $proxy_status_ok = true
     a.close
+    $proxy_status_ok = true
+		true
   end
 end
 
@@ -912,18 +916,65 @@ def addTimCh
 end
 
 def chr_hour
-	Time.now.hm
+	Time.now.ch
 end
 
 #随机事件
 def rand_do
 	case rand(1000)
-	when 0..40
+	when 0..20
 		$my_s
-	when 100..110
+	when 100..120
 		get_feed
-	when 200..260
+	when 200..250
 		"...休息一下..."
 	end
+end
+
+def hello_replay(to,sSay)
+	tmp = Time.parse('2011-02-02 00:00:00+08:00')-Time.now
+	if tmp < 0 #不用显示倒计时
+		return if sSay =~ /\s$/
+		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
+	end
+
+	case tmp
+	when 61..3600
+		tmp="#{tmp/60}分钟"
+	when 3601..86400
+		tmp="#{tmp/60/60}小时"
+	when 0..60
+		tmp="#{tmp}秒"
+	else
+		tmp="#{tmp/60/60/24}天"
+	end
+	tmp = sprintf("%.2f", tmp)
+	return "privmsg #{to} :#{sSay} #{chr_hour} #{addTimCh} \0039新年快乐，除夕还有 #{tmp}\017"
+end
+
+def gettitle_https(url)
+	require 'net/http'
+	require 'net/https'
+
+	url = URI.parse(url)
+
+	http = Net::HTTP.new(url.host, url.port)
+	http.use_ssl = true if url.scheme == 'https'
+
+	request = Net::HTTP::Get.new(url.path)
+	puts http.request(request).body
+end
+
+def gettitle_proxy(url)
+#Net::HTTP 的类方法 Net::HTTP.Proxy通常会生成一个新的类，该类通过代理进行连接操作。由于该类继承了Net::HTTP，所以可以像使用Net::HTTP那样来操作它。
+
+require 'net/http'
+Net::HTTP.version_1_2   # 设定对象的运作方式
+#Net::HTTP::Proxy($proxy_addr, $proxy_port).start( 'some.www.server' ) {|http|
+  ## always connect to your.proxy.addr:8080
+      #:
+#}
+#若Net::HTTP.Proxy的第一参数为nil的话，它就会返回Net::HTTP本身。所以即使没有代理，上面的代码也可应对自如。
+
 end
 

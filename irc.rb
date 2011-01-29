@@ -12,7 +12,7 @@
 $: << 'lib'
 $: << '.'
 require 'platform.rb'
-load 'Dic.rb'
+load 'dic.rb'
 include Math
 require "monitor"
 require "readline"
@@ -224,7 +224,7 @@ class IRC
     return if ! tmp
     if tmp != @charset && tmp !~ /IBM855|windows-1252/i
       if tmp =~ /^gb./i
-        tmp = 'GBK'
+        #tmp = 'GBK'
         s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
       else
         p tmp
@@ -271,6 +271,7 @@ class IRC
         $otherbot_said=false
         do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if defined?$me
       end
+
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
       nick=from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
       return if a1==@nick
@@ -287,7 +288,11 @@ class IRC
       end
       #p 'check flood'
       
-      $u.said(nick,name,ip) if sSay.size > 320
+      if sSay.size > 290
+        p sSay.size
+        $u.said(nick,name,ip,1.1)
+        $u.said(nick,name,ip,1.1) if sSay.size > 380
+      end
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
@@ -299,7 +304,7 @@ class IRC
           kick a1
         else
           autoban to,nick
-          msg(a4,"#{a1}:...,谁说话这么快,#$kick_info",0)
+          msg(a4,"#{a1}:..., 有刷屏嫌疑 ,#$kick_info",0)
         end
         notice(nick,"#{a1}: ... #$kick_info",14)
         return
@@ -310,8 +315,7 @@ class IRC
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
-          $u.saidAndCheckFlood(nick,name,ip,sSay)
-          #$u.saidAndCheckFlood(nick,name,ip,sSay)
+          $u.said(nick,name,ip,sSay,0.9)
         end
         return
       end
@@ -442,7 +446,7 @@ class IRC
   def check_dic(s,from,to)
     case s.strip.force_encoding('utf-8')
     when /^`?> (.+)$/i
-      @e=Thread.start($1){|s|
+      @e=Thread.new($1){|s|
         tmp = evaluate(s.to_s)
         msg to,"#{from}, #{tmp}", 40 if not tmp.empty?
       }
@@ -499,11 +503,11 @@ class IRC
       sayDic(2,from,to,$1)
     when /^`address\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
-    when /^`?f\s(.*?)$/i #查某人的老乡
+    when /^`f\s(.*?)$/i #查某人的老乡
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ',  好',10,18)
+      do_after_sec(to,from + ',  好',10,23)
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,5})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ....',10,12)
@@ -527,7 +531,7 @@ class IRC
       $saytitle -= 1 if tmp[2].ord == 48
       $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
-      load 'Dic.rb'
+      load 'dic.rb'
       load 'irc_user.rb'
       load "ipwry.rb"
       #load 'irc.rb'
@@ -712,24 +716,7 @@ class IRC
         sleep 1
         send "JOIN #{@channel}" if @channel != '#sevk'
       when 10#打招呼回复
-        tmp = Time.parse('2010-02-14 00:00:00+08:00')-Time.now
-        if tmp < 0 #不用显示倒计时
-          return if sSay =~ /\s$/
-          send "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
-          return
-        end
-
-        case tmp
-        when 0..60
-          tmp="#{tmp}秒"
-        when 61..3600
-          tmp="#{tmp/60}分钟"
-        when 3601..86400
-          tmp="#{tmp/60/60}小时"
-        else
-          tmp="#{tmp/60/60/24}天"
-        end
-        send "privmsg #{to} :#{sSay} #{chr_hour} #{Time.now.strftime('[%H:%M]')} \0039新年快乐，离除夕0点还有 #{tmp}\017"
+        send hello_replay(to,sSay)
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
       end
@@ -794,7 +781,7 @@ class IRC
       $stdout.flush
       #windows 好像不支持Readline
       if os_family == 'windows'
-        s = IO.select([$stdin],nil,nil,5)
+        s = IO.select([$stdin],nil,nil,1)
         next if !s
         #next if s[0][0] != IO
         s = $stdin.gets
@@ -822,13 +809,16 @@ class IRC
             send s.gsub(/^[\/\:]/,'')
           end
         when /^`/ #直接执行
-          p s
           if s[1..-1] =~ />\s(.*)/
-            Thread.new do
-              tmp=eval($1.to_s) rescue $!
-              p tmp
-              say tmp if tmp.class == String
-            end
+						p s
+						begin
+							tmp=eval($1.to_s)
+							say tmp if tmp.class == String
+						rescue Exception
+							p $!.message
+						#rescue
+							#p $!.message
+						end
           else
             check_dic(s,@nick,@channel)
           end
@@ -886,19 +876,21 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.08
+        sleep 0.1
         return if @exit
         break if $need_reconn
-        ready = select([@irc], nil, nil,0.01)
+        ready = select([@irc], nil, nil, 0.2)
         next if not ready
         for s in ready[0]
           next if s != @irc
-					s = @irc.recvfrom(2048)[0].strip
-					if s.empty?
-						p ' s.empty, must be lose conn '
-						return 
-					end
-          handle_server_input(s)
+					x = @irc.recvfrom(2048)[0]
+          if x.empty?
+            p ' x.empty, must be lose conn '
+            return 
+          end
+          x.split(/\r?\n/).each{|s|
+            handle_server_input(s)
+          }
         end
       rescue Exception
         log
@@ -943,7 +935,7 @@ if not defined? $u
 		p Time.now
     sleep 240
   end
-  Thread.list.each{|x|(x.kill; x.exit) rescue nil}
+	Thread.list.each{|x|(x.kill; x.exit) rescue nil}
 end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
