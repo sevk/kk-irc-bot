@@ -4,12 +4,12 @@
 
 #刷屏检测阀值系数,不建议修改.
 $maxfloodme = 74.0 #70
-$maxflood = 34.4  #35.5
+$maxflood = 34.9  #35.5
 $initFlood = 83.0 #83
 $maxNamed = 200
 
 class ALL_USER
-  #attr :nick, true
+	#attr_accessor
   def initialize
     @pos_write = 0
     @index=Hash.new # name => pos
@@ -39,7 +39,7 @@ class ALL_USER
   end
 
   def addr
-    return @addr
+    @addr
   end
 
   def havenick?(nick)
@@ -250,13 +250,14 @@ class ALL_USER
   def getname(nick)
     return @name[getindex(nick)]
   end
-  def all_nick()
+  def all_nick
     @index.keys
   end
 
   def completename(s)
     return s if !s or s=='' or @index.include?(s)
-    return @index.select{|x,y| x =~ /#{Regexp::escape s}/i}.keys[0]
+    #return @index.select{|x,y| x =~ /#{Regexp::escape s}/i}.keys[0]
+    all_nick.grep(/#{s}/i)[0]
   end
 
   def ipgrep(ip)

@@ -83,8 +83,8 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过 5行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > x=1+2;x+=1 计算x的值 > gg 公告 > b 服务器状态 `a 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
-Ver='v0.32' unless defined?(Ver)
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
+Ver='v0.33' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
@@ -106,7 +106,7 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|vim|emacs|gnome|kde|x11|xorg|wine/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|vim|emacs|gnome|kde|x11|xorg|wine|sql/i
 $urlProxy=/\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源代码: http://github.com/sevk/kk-irc-bot/ '
@@ -430,7 +430,7 @@ def gettitle(url,proxy=nil,mechanize=1)
     end
 
     return unless istxthtml
-		#p tmp if $DEBUG
+		#p tmp[0,2222]
 
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
@@ -640,14 +640,22 @@ def getGoogle(word,flg)
     return re
 end
 
+class Dic
 #ed2k
-def geted2kinfo(url)
-  url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
-  return if $1 == 'server'
-	return if not $3
-  $ti = "#{URLDecode($2.to_s)} , #{ '%.2f' % ($3.to_f / 1024**3)} GB"
-  $ti.gsub!(/.*\]\./,'')
-  "⇪ #{unescapeHTML($ti)}"
+	def geted2kinfo(url)
+		url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
+		name=$2.to_s;size=$3.to_f
+		return if $1 == 'server'
+		return if not $3
+		#return if url !~ $urlList
+		if url =~ /%..%../ #解析%DA之类的
+			$ti = "#{URLDecode(name)} , #{'%.2f' % (size / 1024**3)} GB"
+		else
+			$ti = " #{ '%.2f' % (size / 1024**3)} GB"
+		end
+		$ti.gsub!(/.*\]\./,'')
+		"⇪ #{unescapeHTML($ti)}"
+	end
 end
 
 def getBaidu(word)
@@ -785,7 +793,7 @@ def evaluate(s)
 			#return safely(s,l)[0,400]
 		}
 	rescue Timeout::Error
-		return 'Timeout Error'
+		return 'Timeout'
 	rescue Exception
 		return ''#$!.message[0,28] # + $@[1..2].join(' ')
 	rescue
@@ -948,7 +956,7 @@ def hello_replay(to,sSay)
 	else
 		tmp="#{tmp/60/60/24}天"
 	end
-	tmp = sprintf("%.2f", tmp)
+	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
 	return "privmsg #{to} :#{sSay} #{chr_hour} #{addTimCh} \0039新年快乐，除夕还有 #{tmp}\017"
 end
 

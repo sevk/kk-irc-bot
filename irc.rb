@@ -102,6 +102,7 @@ class IRC
     else
       s.addTimCh if add_tim_chr
     end
+		return if s.size < 2
     @irc.write("#{s.strip}\r\n")
     #@irc.write("#{s.strip}\n", 0)
     $Lsay = Time.now
@@ -290,8 +291,8 @@ class IRC
       
       if sSay.size > 290
         p sSay.size
-        $u.said(nick,name,ip,1.1)
-        $u.said(nick,name,ip,1.1) if sSay.size > 380
+        $u.said(nick,name,ip,1.2)
+        $u.said(nick,name,ip,1.2) if sSay.size > 380
       end
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
@@ -304,18 +305,18 @@ class IRC
           kick a1
         else
           autoban to,nick
-          msg(a4,"#{a1}:..., 有刷屏嫌疑 ,#$kick_info",0)
+          msg(to,"#{a1}:..., 有刷屏嫌疑 ,#$kick_info",0)
         end
         notice(nick,"#{a1}: ... #$kick_info",14)
         return
       elsif $u.rep nick
-        msg(a4,"#{a1}: .. ..",13)
+        msg(to,"#{a1}: .. ..",13)
       end
 
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
-          $u.said(nick,name,ip,sSay,0.9)
+          $u.said(nick,name,ip,0.85)
         end
         return
       end
@@ -461,7 +462,7 @@ class IRC
 				@ti=Thread.start {msg(to,gettitleA(url,from),0) }
 				@ti.priority = 10
       when /ed2k/i
-        msg(to,geted2kinfo(url),0)
+        msg(to,Dic.new.geted2kinfo(url),0)
       end
       return 2
     when /^`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
