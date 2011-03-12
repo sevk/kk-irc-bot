@@ -130,7 +130,7 @@ class IRC
     Thread.new do
       sleep 300
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      #send("privmsg #{@channel} :\001ACTION #{get_feed} \x01",false)
+			send("privmsg #{@channel} :\001ACTION #{`uname -a`} \x01",false)
     end
   end
 
@@ -289,10 +289,10 @@ class IRC
       end
       #p 'check flood'
       
-      if sSay.size > 290
+      if sSay.bytesize > 290
         p sSay.size
-        $u.said(nick,name,ip,1.2)
-        $u.said(nick,name,ip,1.2) if sSay.size > 380
+        $u.said(nick,name,ip,1.3)
+        $u.said(nick,name,ip,1.25) if sSay.bytesize > 380
       end
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
@@ -300,7 +300,7 @@ class IRC
         case tmp
         when 0..63
           return
-        when 63..310 #5分钟之前ban过
+        when 63..610 #n分钟之前ban过
           autoban to,nick,300,'q'
           kick a1
         else
@@ -316,7 +316,7 @@ class IRC
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i then
-          $u.said(nick,name,ip,0.85)
+          $u.said(nick,name,ip,1.25)
         end
         return
       end
@@ -506,7 +506,7 @@ class IRC
       sayDic(22,from,to,$1)
     when /^`f\s(.*?)$/i #查某人的老乡
       sayDic(23,from,to,$1)
-    when /^`?(大家好(...)?|hi( all)?.?|hello)$/i
+    when /^`?(大家好(...)?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好',10,23)
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,5})$/ui #有人吗?
@@ -587,8 +587,7 @@ class IRC
 
       case pos
       when 396 #nick verifd
-        $min_next_say=Time.now
-        do_after_sec(@channel,nil,7,1)
+				joinit
       when 353
         p 'all nick:' + tmp
         @tmp << " #{tmp}"
@@ -687,6 +686,16 @@ class IRC
     $min_next_say=Time.now + Minsaytime + second
   end
 
+  #加入频道
+	def joinit
+		sleep 1
+		send 'time'
+		sleep 1
+		send "JOIN #sevk"
+		sleep 1
+		send "JOIN #{@channel}" if @channel != '#sevk'
+	end
+
   #延时发送
   def do_after_sec(to,sSay,flg,second=18)
     #puts "need_do #{flg} #{second}"
@@ -710,7 +719,7 @@ class IRC
       when 0
         send "PRIVMSG #{to} :#{sSay}"
       when 7
-        sleep 10
+        sleep 1
         send 'time'
         sleep 1
         send "JOIN #sevk"
@@ -845,9 +854,8 @@ class IRC
       loop do
         sleep 55 + rand(10)
         n+=1
-        n=0 if n > 1e+10
-        next if n%10 ==0
-        ping
+        n=0 if n > 1e8
+        ping if n%2==0
       end
     end
   end
@@ -855,18 +863,18 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep 60*12 + rand(60*18)  #间隔10+7分钟
+        sleep 60*13 + rand(60*20)  #间隔13+10分钟左右
         timer_daily
         n+=1
-        n=0 if n > 1e+10
+        n=0 if n > 1e8
         next if n%2 ==0
-        if (8..24).include? Time.now.hour
+        if (8..23).include? Time.now.hour
           say_new($channel) if $need_say_feed > 0
         end
         check_proxy_status
       end
     end
-    @timer2 = Thread.new do
+    @timer_daily = Thread.new do
       sleep 86350
       #say gg
       sleep 50

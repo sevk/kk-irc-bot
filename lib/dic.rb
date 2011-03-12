@@ -22,6 +22,7 @@ class String
     Base64.decode64 self
   end
 	alias unbase64 decode64
+	alias ub64 decode64
   def encode64
     Base64.encode64 self
   end
@@ -106,8 +107,8 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|vim|emacs|gnome|kde|x11|xorg|wine|sql/i
-$urlProxy=/\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql/i
+$urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源代码: http://github.com/sevk/kk-irc-bot/ '
 
@@ -420,8 +421,8 @@ def gettitle(url,proxy=nil,mechanize=1)
     rescue Timeout::Error
       return 'time out . IN gettitle '
     rescue
-      p $!.message
       if $!.message == 'Connection reset by peer' && $proxy_status_ok
+				log $!.message
 				p ' need pass wall '
 				return if proxy
 				return gettitle(url,true,true)
@@ -782,11 +783,11 @@ def evaluate(s)
 	begin
 		s.untaint
 		l=4
-		l=2 if s =~ /^(b|gg|`pwd`|`uname -a`|`uptime`)$/
-		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|who[a-z]+)`$/
-		l=2 if s =~ /^`(ps) [a-z\/]+`$/i
+		l=2 if s =~ /^(b|gg|update_rule|`pwd`|`uname -a`|`uptime`)$/
+		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|date|who[a-z]+)`$/
+		l=2 if s =~ /^`(ps|cat) [a-z\/]+`$/i
 		#l=2 if s =~ /^`[\w\s\-]+`$/i
-		return '' if s =~ /touch|kill|:\(\)|reboot|halt/i
+		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
 		Timeout.timeout(5){
 			return safe(l){eval(s).to_s[0,280]}
@@ -902,14 +903,13 @@ end
 def check_proxy_status
   Thread.new do
     begin
-      a=Timeout.timeout(15){TCPSocket.open $proxy_addr,$proxy_port}
+      Timeout.timeout(20){TCPSocket.open $proxy_addr,$proxy_port}
     rescue Timeout::Error
       print $proxy_addr,':',$proxy_port,' ',false
       $proxy_status_ok = false
-      false
+      return false
     end
     print $proxy_addr,':',$proxy_port,' ',true
-    a.close
     $proxy_status_ok = true
 		true
   end
@@ -984,5 +984,15 @@ Net::HTTP.version_1_2   # 设定对象的运作方式
 #}
 #若Net::HTTP.Proxy的第一参数为nil的话，它就会返回Net::HTTP本身。所以即使没有代理，上面的代码也可应对自如。
 
+end
+
+def update_proxy_rule
+	File.open('gfwlist.txt','w'){ |x|
+	  url = "nUE0pQbiY2S1qT9jpz94rF1aMaqfnKA0Yzqio2qfMJAiMTHhL29gY3A2ov90\npaIhnl9aMaqfnKA0YaE4qN==\n".rot13.ub64
+	  x.write Mechanize.new.get(url).body
+	}
+end
+def read_proxy_rule
+	$proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
 
