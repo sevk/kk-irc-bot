@@ -277,6 +277,7 @@ class String
     page = agent.post(url,{"input"=> self } )
     page.body.match(/.+<em>(.+)<\/em>/)[1].gsub(/alice/,' @ ')
   end
+
 	def en2zh
 		return self if self.force_encoding("ASCII-8BIT") =~ CN_re #有中文
 		flg = 'auto%7czh-CN'
@@ -963,10 +964,6 @@ def check_proxy_status
 		true
   end
 end
-
-def method_missing(m, *args, &block)  
-  "方法名 #{m} 未找到"  
-end  
 
 def addTimCh
 	Time.now.hm

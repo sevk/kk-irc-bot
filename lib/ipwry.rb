@@ -11,6 +11,10 @@ class IpLocationSeeker
   def initialize()
 		p 'IpLocationSeeker init' if $DEBUG
     fQQwry='QQWry.Dat'
+		unless File.exist? fQQwry
+			puts "#{fQQwry} not found ."
+			return
+		end
     #@datafile = File.open(fQQwry,"r:utf-8")
     @datafile = File.open(fQQwry,"rb")
     @first_index_pos,@last_index_pos  = @datafile.read(8).unpack('L2')
