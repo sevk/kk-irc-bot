@@ -2,9 +2,9 @@
 # coding: utf-8
 # sevkme@gmail.com
 
-#刷屏检测阀值系数,不建议修改.
+#刷屏检测阀值,不建议修改.
 $maxfloodme = 74.0 #70
-$maxflood = 34.9  #35.5
+$maxflood = 35.0  #35.5
 $initFlood = 83.0 #83
 $maxNamed = 200
 

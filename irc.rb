@@ -14,7 +14,6 @@ $: << '.'
 require 'platform.rb'
 load 'dic.rb'
 include Math
-require "monitor"
 require "readline"
 require 'yaml'
 load "ipwry.rb"
@@ -49,7 +48,7 @@ class IRC
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
-  def autoban(chan,nick,time=65,mode='q')
+  def autoban(chan,nick,time=55,mode='q')
     s="#{nick}!*@*"
     send "mode #{chan} +#{mode} #{s}"
     $u.set_ban_time(nick)
@@ -252,11 +251,11 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"...不要玩机器人...不然.... ",11 if rand(10) > 5
+        msg from,"...不要玩机器人...谢谢.... ",11 if rand(10) > 5
         return
       end
 
-      if s =~ /help|man|帮助|有什么功能|叫什么|几岁|\?\?/i
+      if s =~ /help|man|帮助|有什么功能|\??\??/i
         sSay = '`help |'
       end
 
@@ -265,12 +264,9 @@ class IRC
       end
 
       tmp = check_dic(a5,a1,a1)
-      if tmp.class == Fixnum
-        if sSay.bytesize < 4 and rand(10) > 7
-          msg(from,"#{sSay} ? ,you can try `help")
-        end
+      if tmp == 1 #not matched check_dic
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if defined?$me
+        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,25) if defined?$me
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -291,23 +287,23 @@ class IRC
       
       if sSay.bytesize > 290
         p sSay.size
-        $u.said(nick,name,ip,1.3)
-        $u.said(nick,name,ip,1.25) if sSay.bytesize > 380
+        $u.said(nick,name,ip,1.25)
+        $u.said(nick,name,ip,1.2) if sSay.bytesize > 380
       end
       if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
-        when 0..63
+        when 0..60
           return
-        when 63..610 #n分钟之前ban过
+        when 59..910 #n分钟之前ban过
           autoban to,nick,300,'q'
           kick a1
         else
           autoban to,nick
           msg(to,"#{a1}:..., 有刷屏嫌疑 ,#$kick_info",0)
         end
-        notice(nick,"#{a1}: ... #$kick_info",14)
+        notice(nick,"#{a1}: ... #$kick_info",18)
         return
       elsif $u.rep nick
         msg(to,"#{a1}: .. ..",13)
@@ -330,21 +326,22 @@ class IRC
 
       #以我的名字开头
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
-        s=$1.to_s.strip
+        s=$1.to_s.strip #消息内容
 
         s = '`' + s if s[0,1] != '`'
         tmp = check_dic(s,from,to)
         case tmp
-        when 1
-        when 2
-          #是title
-        else
-          puts '是字典消息' if $debug
+        when 1 #非字典消息
+					puts '消息以我名字开头'
+					$otherbot_said=false
+					do_after_sec(to,"#{from}, #{$me.rand(s[1..-1])}",10,35) if $me
+          #`sh sound.sh` if File.exist? 'sound.sh'
+        else #是字典消息
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
             $otherbot_said=true
             msg to ,"#{from}, 不要玩机器人 ...",0 if rand(10) > 5
-            return nil
+            return
           end
         end
         return 'msg with my name:.+'
@@ -355,32 +352,15 @@ class IRC
 
       tmp = check_dic(sSay,from,to)
       case tmp
-      #非字典消息
-      when 1
-        if sSay =~ /^#{Regexp::escape @nick}\s?,?:?(.*)$/i
-          puts '消息以我名字开头1'
-          sSay=$1.to_s.strip
-          if sSay.bytesize < 3
-            send "PRIVMSG #{from} :#{sSay} ? ,you can try `help" if rand(10)>7 
-          end
-          #$otherbot_said=false
-          #do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,15) if $me
-          #`sh sound.sh` if File.exist? 'sound.sh'
-        else
-          #$u.said(from,name,ip)
-          #$u.setLastSay(from,sSay)
-        end
-      #是title
-      when 2
-
-      #是字典消息
-      else
+      when 1 #非字典消息
+      when 2 #是title
+      else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           #$u.floodmereset(a1)
           $otherbot_said=true
           send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
           msg to ,"#{from}, 不要玩机器人",0 if rand(10) > 4
-          return nil
+          return
         end
       end
 
@@ -683,7 +663,7 @@ class IRC
 
   #记录自己说话的时间
   def isaid(second=3)
-    $min_next_say=Time.now + Minsaytime + second
+    $min_next_say=Time.now + $minsaytime + second
   end
 
   #加入频道
@@ -703,15 +683,17 @@ class IRC
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
-        send "PRIVMSG #{to} :#{rand_do}"
+				tmp = rand_do
+				return if tmp.tmpty?
+        send "PRIVMSG #{to} :#{tmp}"
         Thread.exit
       else
         isaid(second)
       end
-      if second < Minsaytime
+      if second < $minsaytime
         sleep second
       else
-        sleep rand(second - Minsaytime) + Minsaytime
+        sleep rand(second - $minsaytime) + $minsaytime
       end
       Thread.exit if $otherbot_said
 
@@ -863,21 +845,16 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       n = 0
       loop do
-        sleep 60*13 + rand(60*20)  #间隔13+10分钟左右
+        sleep 60*14 + rand(60*25)  #间隔14+12分钟左右
         timer_daily
         n+=1
         n=0 if n > 1e8
+        check_proxy_status
         next if n%2 ==0
-        if (8..23).include? Time.now.hour
+        if Time.now.hour.between? 9,22
           say_new($channel) if $need_say_feed > 0
         end
-        check_proxy_status
       end
-    end
-    @timer_daily = Thread.new do
-      sleep 86350
-      #say gg
-      sleep 50
     end
   end
 

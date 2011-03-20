@@ -42,6 +42,7 @@ class String
     HTMLEntities.new.decode(self) rescue self
   end
 	alias dir public_methods
+	
 end
 
 require 'ipwry.rb'
@@ -84,17 +85,15 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过 5行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick'
-Ver='v0.33' unless defined? Ver
-UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}"
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
+Ver='v0.34' unless defined? Ver
+UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}" unless defined? UserAgent
 
-CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
+CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
 $re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：])/iu#类似 http://
 # /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
-Minsaytime= 6
-puts "Min say time=#{Minsaytime}"
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
 $last_save = Time.now - 110
@@ -254,7 +253,55 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML
 end
 
+class String
+  def alice_say
+    return if self.empty?
+    url = 'http://www.pandorabots.com/pandora/talk?botid=f5d922d97e345aa1&skin=custom_input'
+    $uri = uri=URI.parse(url)
+    $uri.open(
+      'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+      'Accept'=>'text/html',
+      'Referer'=> URI.escape(url),
+      'Accept-Language'=>'zh-cn',
+      'Keep-alive' => 0.chr,
+      'User-Agent'=> UserAgent
+    )
+
+    agent = Mechanize.new
+    # Get the flickr sign in page
+    page  = agent.get(url)
+
+    form          = page.form_with(:name => 'f')
+    #form.input = 'how old are you ?'
+    #page          = agent.submit(form)
+    page = agent.post(url,{"input"=> self } )
+    page.body.match(/.+<em>(.+)<\/em>/)[1].gsub(/alice/,' @ ')
+  end
+	def en2zh
+		return self if self.force_encoding("ASCII-8BIT") =~ CN_re #有中文
+		flg = 'auto%7czh-CN'
+		g_tr(self,flg)
+	end
+	def zh2en
+		return self if self.force_encoding("ASCII-8BIT") !~ CN_re #无中文
+		flg = 'zh-CN%7cen'
+		g_tr(self,flg)
+	end
+end
+
 #google 全文翻译,参数可以是中文,也可以是英文.
+def g_tr(word,flg)
+  word = URI.escape(word)
+  url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
+  uri = URI.parse(url)
+  uri.open(
+	 'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+	 'Accept'=>'text/html',
+	 'Referer'=> URI.escape(url)
+	 ){ |f|
+			return f.read.match(/"trans":"(.*?)","/)[1]
+  }
+end
 def getGoogle_tran(word)
   if word.force_encoding("ASCII-8BIT") =~ CN_re #有中文
     flg = 'zh-CN%7cen'
@@ -343,7 +390,6 @@ def gettitle(url,proxy=nil,mechanize=1)
 	puts 'url: ' + url
 
 	if mechanize == 1
-		p mechanize
 		mechanize = false if url =~ $urlNoMechanize
 	end
 	mechanize = true if url =~ /www\.google\.com/i
@@ -364,8 +410,10 @@ def gettitle(url,proxy=nil,mechanize=1)
 			print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       agent.set_proxy($proxy_addr,$proxy_port)
     end
-    agent.max_history = 1
-    agent.open_timeout = 14
+    agent.max_history = 2
+    agent.open_timeout = 13
+		agent.read_timeout = 10
+		agent.keep_alive = false
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -374,12 +422,12 @@ def gettitle(url,proxy=nil,mechanize=1)
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
 			return '' if page.header['content-type']  !~ /text\/html|application\//i
 
-			p 'get page ok'
       #Content-Type
       if page.class != Mechanize::Page
 				puts 'no page'
 				return
 			end
+			#p 'get page ok'
 			title = page.title
 			charset= guess_charset(title)
 			if charset and charset != 'UTF-8'
@@ -405,11 +453,11 @@ def gettitle(url,proxy=nil,mechanize=1)
         $uri = URI.parse(url)
         #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
-        'Accept'=>'text/html , application/*',
-        #'Cookie' => 'a',
-        'Range' => 'bytes=0-9999',
-        #'Cookie' => cookie,
-        'User-Agent'=> UserAgent
+					'Accept'=>'text/html , application/*',
+					#'Cookie' => 'a',
+					'Range' => 'bytes=0-9999',
+					#'Cookie' => cookie,
+					'User-Agent'=> UserAgent
         ){ |f|
           istxthtml= f.content_type =~ /text\/html|application\//i
 					istxthtml = false if f.content_type =~ /application\/octet-stream/i
@@ -735,7 +783,6 @@ class Time
 end
 
 
-@ip_seeker = IpLocationSeeker.new
 #取IP地址的具体位置,参数是IP
 def getaddr_fromip(ip)
   hostA(ip,true)
@@ -754,6 +801,7 @@ end
 
 #取IP或域名的地理位置
 #hostA('www.g.cn',true)
+@ip_seeker = IpLocationSeeker.new
 def hostA(domain,hideip=false)#处理IP 或域名
   return nil if !domain
   if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
@@ -764,7 +812,7 @@ def hostA(domain,hideip=false)#处理IP 或域名
   if hideip
     tmp = @ip_seeker.seek(tmp) rescue tmp
   else
-    tmp = tmp + '-' + @ip_seeker.seek(tmp) rescue tmp
+    tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
   end
   tmp.gsub!(/CZ88\.NET/i,'')
   tmp.gsub!(/IANA/i,'不在宇宙')
@@ -786,6 +834,7 @@ def evaluate(s)
 		l=2 if s =~ /^(b|gg|update_rule|`pwd`|`uname -a`|`uptime`)$/
 		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|date|who[a-z]+)`$/
 		l=2 if s =~ /^`(ps|cat) [a-z\/]+`$/i
+		l=2 if s =~ /^`(aptitude search|aptitude show) [a-z\-~]+`$/i
 		#l=2 if s =~ /^`[\w\s\-]+`$/i
 		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
@@ -936,6 +985,8 @@ def rand_do
 		get_feed
 	when 200..250
 		"...休息一下..."
+	else
+		""
 	end
 end
 
@@ -970,17 +1021,20 @@ def gettitle_https(url)
 	http.use_ssl = true if url.scheme == 'https'
 
 	request = Net::HTTP::Get.new(url.path)
-	puts http.request(request).body
+	s= http.request(request)
+	#puts s.head[0,9999]
+	pp s.body
+	#puts s.body[0,9999]
 end
 
 def gettitle_proxy(url)
 #Net::HTTP 的类方法 Net::HTTP.Proxy通常会生成一个新的类，该类通过代理进行连接操作。由于该类继承了Net::HTTP，所以可以像使用Net::HTTP那样来操作它。
 
-require 'net/http'
-Net::HTTP.version_1_2   # 设定对象的运作方式
+	require 'net/http'
+	Net::HTTP.version_1_2   # 设定对象的运作方式
 #Net::HTTP::Proxy($proxy_addr, $proxy_port).start( 'some.www.server' ) {|http|
-  ## always connect to your.proxy.addr:8080
-      #:
+		## always connect to your.proxy.addr:8080
+				#:
 #}
 #若Net::HTTP.Proxy的第一参数为nil的话，它就会返回Net::HTTP本身。所以即使没有代理，上面的代码也可应对自如。
 
@@ -994,5 +1048,10 @@ def update_proxy_rule
 end
 def read_proxy_rule
 	$proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
+end
+
+$me=true
+def $me.rand(s)
+	s.zh2en.alice_say.en2zh
 end
 
