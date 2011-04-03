@@ -100,7 +100,7 @@ $last_save = Time.now - 110
 $proxy_status_ok = false if not defined? $proxy_status_ok
 
 puts "$SAFE= #$SAFE"
-NoFloodAndPlay=/\-ot|arch|fire/i
+ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
@@ -290,6 +290,18 @@ class String
 	end
 end
 
+def getbody(url)
+	agent = Mechanize.new
+  #agent.user_agent_alias = 'Linux Mozilla'
+	agent.user_agent_alias = 'Mac Safari'
+  agent.max_history = 0
+  agent.open_timeout = 10
+  agent.cookies
+	page = agent.get(url)
+	#form = page.form_with(:name => 'f')
+	#page = agent.post(url,{"input"=> self } )
+	page.body
+end
 #google 全文翻译,参数可以是中文,也可以是英文.
 def g_tr(word,flg)
   word = URI.escape(word)
@@ -388,7 +400,7 @@ def gettitle(url,proxy=nil,mechanize=1)
     url = URI.encode(url)
   end
 	#url.force_encoding('utf-8')
-	puts 'url: ' + url
+	#puts 'url: ' + url
 
 	if mechanize == 1
 		mechanize = false if url =~ $urlNoMechanize
@@ -411,7 +423,7 @@ def gettitle(url,proxy=nil,mechanize=1)
 			print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       agent.set_proxy($proxy_addr,$proxy_port)
     end
-    agent.max_history = 2
+    agent.max_history = 0
     agent.open_timeout = 13
 		agent.read_timeout = 10
 		agent.keep_alive = false
@@ -433,7 +445,7 @@ def gettitle(url,proxy=nil,mechanize=1)
 			charset= guess_charset(title)
 			if charset and charset != 'UTF-8'
 				p charset
-				charset='GB18030' if charset =~ /^gb/i
+				charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
 				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
 			end
 			title = unescapeHTML(title)# rescue title
@@ -514,7 +526,7 @@ end
 
 def gettitleA(url,from)
 	url = "http#{url}"
-	puts url.blue
+	#puts url.blue
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso$/i
 	return if $last_ti == url
@@ -601,20 +613,27 @@ def google_py(word)
     }
 end
 
-def getGoogle(word,flg)
-    re=''
-    url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
-    url = encodeurl(url)
-    url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
+def getGoogle(word,flg=0)
+	url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
+	s=getbody(url)
+	puts s.size
+	s = s.match(/<div id=resultStats>.+/i)[0]
+	#File.open('tmp.html','wb').puts s
+	#puts s.match(/.+?<div id=foot>/i)[0]
+	#return
+	url = encodeurl(url)
+	url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
 
+    re=''
     open(url,
-    #'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+		'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
     'Referer'=> url,
-    #'Accept-Language'=>'zh-cn',
-    'Accept-Encoding'=>'deflate',
+		'Accept-Language'=>'zh-cn',
+		'Accept-Encoding'=>'deflate',
     'User-Agent'=> UserAgent
     ){ |f|
       html=f.read.gsub(/\s+/,' ')
+			puts html
         matched = true
         case html
         when /相关词句：(.*?)网络上查询(.*?)(https?:\/\/\S+[^\s*])">/i#define
@@ -889,7 +908,7 @@ def osod
   return ''
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
-  agent.max_history = 1
+  agent.max_history = 0
   agent.open_timeout = 10
   agent.cookies
   #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
@@ -911,7 +930,7 @@ end
 def ge name
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
-  agent.max_history = 1
+  agent.max_history = 0
   agent.open_timeout = 10
   agent.cookies
   begin
@@ -976,11 +995,11 @@ end
 #随机事件
 def rand_do
 	case rand(1000)
-	when 0..20
+	when 0..130
 		$my_s
-	when 100..120
+	when 131..180
 		get_feed
-	when 200..250
+	when 200..300
 		"...休息一下..."
 	else
 		""
@@ -1049,6 +1068,7 @@ end
 
 $me=true
 def $me.rand(s)
+	s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
 	s.zh2en.alice_say.en2zh
 end
 

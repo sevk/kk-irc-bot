@@ -78,9 +78,9 @@ class IRC
   end
 
   #发送到频道$channel
-  def say(s)
-    send "PRIVMSG #{@channel} :#{s}"
-    isaid()
+  def say(s,ch=@channel)
+    send "PRIVMSG #{ch} :#{s}"
+    isaid
   end
 
   #发送tcp数据,如果长度大于460 就自动截断.
@@ -232,8 +232,8 @@ class IRC
       end
       #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
-        from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;say=$5.to_s.untaint
-        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{say} in #{tmp} ? We use #{@charset} !" if $need_Check_code
+        from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;sSay=$5.to_s.untaint
+        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{sSay} in #{tmp} ? We use #{@charset} !" if $need_Check_code
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset'
       end
@@ -290,7 +290,7 @@ class IRC
         $u.said(nick,name,ip,1.25)
         $u.said(nick,name,ip,1.2) if sSay.bytesize > 380
       end
-      if to !~ NoFloodAndPlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
+      if to !~ ChFreePlay $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
@@ -356,9 +356,8 @@ class IRC
       when 2 #是title
       else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
-          #$u.floodmereset(a1)
+          $u.floodmereset(a1)
           $otherbot_said=true
-          send "PRIVMSG #{a1} :sleeping ... in channel #Sevk " if rand(10) > 7
           msg to ,"#{from}, 不要玩机器人",0 if rand(10) > 4
           return
         end
