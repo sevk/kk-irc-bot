@@ -290,7 +290,7 @@ class IRC
         $u.said(nick,name,ip,1.25)
         $u.said(nick,name,ip,1.2) if sSay.bytesize > 380
       end
-      if to !~ ChFreePlay $u.saidAndCheckFlood(nick,name,ip,sSay)
+      if to !~ ChFreePlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
