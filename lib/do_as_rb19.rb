@@ -3,11 +3,6 @@
 if RUBY_VERSION < '1.9'
   #为字符串类添加force_encoding和ord方法
   class String
-    unless defined?(String.new.bytesize)
-      def bytesize
-        self.size
-      end
-    end
     def force_encoding(s)
       self
     end

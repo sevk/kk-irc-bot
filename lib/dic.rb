@@ -65,7 +65,7 @@ end
 begin
   require 'charguess.so'
 rescue LoadError
-  p 'charguess.so not found'
+  #p 'charguess.so not found'
 end
 require 'time'
 require 'timeout'
@@ -86,12 +86,12 @@ $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过 5行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.34' unless defined? Ver
+Ver='v0.35' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
-$re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：])/iu#类似 http://
+$re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：，])/iu#类似 http://
 # /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 $min_next_say = Time.now
@@ -109,7 +109,7 @@ $botlist_title=/raybot|\^?[Ou]_[ou]/i
 $urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
-$my_s= '我的源代码: http://github.com/sevk/kk-irc-bot/ '
+$my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 
 
 def URLDecode(str)
@@ -155,8 +155,17 @@ else
   end
 end
 
+def reload_all
+	load 'dic.rb'
+	load 'irc_user.rb'
+	load "ipwry.rb"
+	#load 'irc.rb'
+	#load 'plugin.rb' ✘
+	loadDic
+end
+
 #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
-def loadDic()
+def loadDic
   $str1 = IO.read('UBUNTU新手资料.txt') rescue ''
   puts 'Dic load [ok]'
 end
@@ -391,7 +400,7 @@ def url_fetch(uri_str, limit = 3)
 end
 
 #取标题,参数是url.
-def gettitle(url,proxy=nil,mechanize=1)
+def gettitle(url,proxy=true,mechanize=1)
   title = ''
   charset = ''
   flag = 0
@@ -420,12 +429,12 @@ def gettitle(url,proxy=nil,mechanize=1)
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
     if proxy
-			print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
+			#print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 0
-    agent.open_timeout = 13
-		agent.read_timeout = 10
+    agent.open_timeout = 15
+		agent.read_timeout = 14
 		agent.keep_alive = false
     #agent.cookies
     #agent.auth('^k^', 'password')
@@ -712,7 +721,7 @@ end
 class Dic
 #ed2k
 	def geted2kinfo(url)
-		url.match(/^:\/\/\|(\w+?)\|(\S+?)\|(.+?)\|.*$/)
+		url.match(/^:\/\/\|(.+?)\|(\S+?)\|(.+?)\|.*$/)
 		name=$2.to_s;size=$3.to_f
 		return if $1 == 'server'
 		return if not $3
@@ -974,11 +983,11 @@ def check_proxy_status
     begin
       Timeout.timeout(20){TCPSocket.open $proxy_addr,$proxy_port}
     rescue Timeout::Error
-      print $proxy_addr,':',$proxy_port,' ',false
+      print $proxy_addr,':',$proxy_port,' ',false,"\n"
       $proxy_status_ok = false
       return false
     end
-    print $proxy_addr,':',$proxy_port,' ',true
+    print $proxy_addr,':',$proxy_port,' ',true,"\n"
     $proxy_status_ok = true
 		true
   end
@@ -1071,4 +1080,32 @@ def $me.rand(s)
 	s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
 	s.zh2en.alice_say.en2zh
 end
+
+
+  #高亮打印内容
+  def pr_highlighted(s)
+    s=s.force_encoding("utf-8")
+    s=s.gb_to_utf8 if @charset !~ /UTF-8/i
+    case s
+    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
+      from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+			return if $ignore_action =~ /#{Regexp::escape from}/i
+      if mt =~ /privmsg/i
+        mt= ''
+      else
+        mt= mt[0,1].green 
+      end
+      if to =~ /#{Regexp::escape @channel}/i
+				to = ''
+			else
+				to=to.blueb if to
+			end
+      sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
+      re= "<#{from.cyan}>#{mt}#{to}#{sy}"
+    else
+      re= s.red
+    end
+    re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
+    puts re
+  end
 

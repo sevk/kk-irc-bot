@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上
+# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上, 建议使用linux系统.
 
 =begin
    * Description:
@@ -511,13 +511,9 @@ class IRC
       $saytitle -= 1 if tmp[2].ord == 48
       $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
-      load 'dic.rb'
-      load 'irc_user.rb'
-      load "ipwry.rb"
-      #load 'irc.rb'
-      #load 'plugin.rb' ✘
-      loadDic
-      msg(to,from + ", ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}",0)
+			reload_all
+      rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
+      msg(from,rt,0)
     else
       return 1#not match dic_event
     end
@@ -627,7 +623,7 @@ class IRC
 
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
-    p s if $debug
+    #puts s
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue nil #if not $client #简单显示消息
@@ -636,29 +632,6 @@ class IRC
     return if check_msg(s).class != Fixnum #1 not matched 字典消息
   end
 
-  #高亮打印内容
-  def pr_highlighted(s)
-    s=s.force_encoding("utf-8")
-    s=s.gb_to_utf8 if @charset !~ /UTF-8/i
-    case s
-    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s:?(.+)$/i
-      from=$1;name=$2;ip=$3;mt=msgto=$4;sy=$5
-      if mt =~ /^priv/i
-        mt= ''
-      else
-        #return if mt =~ Regexp.new(Regexp.escape($ignore),Regexp::IGNORECASE)
-        #return if mt =~ Regexp.new($ignore,Regexp::IGNORECASE)
-        return if $ignore_action =~ Regexp.new(mt,Regexp::IGNORECASE)
-        mt= mt.green 
-      end
-      sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
-      re= "<#{from.cyan}> #{mt} #{sy}"
-    else
-      re= s.red
-    end
-    re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
-    puts re
-  end
 
   #记录自己说话的时间
   def isaid(second=3)
@@ -759,6 +732,7 @@ class IRC
       send 'join ' + @channel
       sleep 2
       send('time')
+			reload_all
       msg(@channel, osod.addTimCh ,30)
     end
   end

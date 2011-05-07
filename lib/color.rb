@@ -44,5 +44,9 @@ class String
   def redb
     "\e[41m#{self}#$normal"
   end
+	def greenb
+    "\e[42m#{self}#$normal"
+	end
+
     
 end
