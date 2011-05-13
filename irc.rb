@@ -16,6 +16,7 @@ load 'dic.rb'
 include Math
 require "readline"
 require 'yaml'
+require 'client.rb'
 load "ipwry.rb"
 load 'irc_user.rb'
 load 'plugin.rb'
@@ -113,6 +114,7 @@ class IRC
     $need_reconn = false
     @irc.close if @irc
     @irc = TCPSocket.open(@server, @port)
+		sleep 0.5
     send "NICK #{@nick}"
     sleep 1
     send "USER #@str_user"
@@ -129,7 +131,7 @@ class IRC
     Thread.new do
       sleep 300
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-			send("privmsg #{@channel} :\001ACTION #{`uname -a`} \x01",false)
+			send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`}\x01",false)
     end
   end
 
@@ -616,11 +618,6 @@ class IRC
     return 'matched'
   end #end irc_event
 
-  #写入聊天记录
-  def save_log(s)
-
-  end
-
   #检测消息是不是服务器消息,乱码检测或字典消息
   def handle_server_input(s)
     #puts s
@@ -707,6 +704,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
+		Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send 'quit ' + exit_msg#.gsub(/\s+/,'_')
     @exit = true
@@ -745,7 +743,7 @@ class IRC
       sleep 0.8
       $stdout.flush
       #windows 好像不支持Readline
-      if os_family == 'windows'
+      if win_platform?
         s = IO.select([$stdin],nil,nil,1)
         next if !s
         #next if s[0][0] != IO

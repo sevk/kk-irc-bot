@@ -2,6 +2,7 @@
 # coding: utf-8
 
 require 'rubygems'
-def os_family
+def win_platform?
 	Gem.win_platform?
 end
+

@@ -56,7 +56,7 @@ begin
 
 rescue LoadError
   s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
-  s = s.utf8_to_gb if os_family == 'windows'
+  s = s.utf8_to_gb if win_platform?
   puts s
   puts $!.message
   puts $@[0]
@@ -99,7 +99,6 @@ $Lsay=Time.now; $Lping=Time.now
 $last_save = Time.now - 110
 $proxy_status_ok = false if not defined? $proxy_status_ok
 
-puts "$SAFE= #$SAFE"
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
@@ -146,7 +145,7 @@ else
 		require 'rchardet'
   rescue LoadError
     s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
-    s = s.utf8_to_gb if os_family == 'windows'
+    s = s.utf8_to_gb if win_platform?
     puts s
     puts $!.message + $@[0]
   end
@@ -417,7 +416,7 @@ def gettitle(url,proxy=true,mechanize=1)
 	mechanize = true if url =~ /www\.google\.com/i
   mechanize = proxy = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
-  print ' mechanize:' , mechanize , ' ' , url ,10.chr
+  print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
 
   #p url =~ $urlProxy
   #用代理加快速度
@@ -535,7 +534,9 @@ end
 
 def gettitleA(url,from)
 	url = "http#{url}"
-	#puts url.blue
+	#\s<>\\\[\]\^\`\{\}\|\~#"：，]
+	url.gsub!(/(，|：).*$/,'')
+	puts url.blue
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso$/i
 	return if $last_ti == url
@@ -552,10 +553,9 @@ def gettitleA(url,from)
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
-				#$saytitle -=1 if $saytitle > 0
+				$saytitle -=0.1 if $saytitle > 0
 			else
-				p 'has_said = false'
-				$saytitle +=0.4 if $saytitle < 1
+				$saytitle +=0.6 if $saytitle < 1
 			end
 		end
 		return if $saytitle < 1
@@ -1082,7 +1082,7 @@ def $me.rand(s)
 end
 
 
-  #高亮打印内容
+  #高亮打印消息
   def pr_highlighted(s)
     s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i
@@ -1093,19 +1093,32 @@ end
       if mt =~ /privmsg/i
         mt= ''
       else
-        mt= mt[0,1].green 
+        mt= mt[0,1].bold+ ' '
+				sy=sy.green
       end
       if to =~ /#{Regexp::escape @channel}/i
 				to = ''
 			else
-				to=to.blueb if to
+				to=to.bold.green if to
 			end
       sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
-      re= "<#{from.cyan}>#{mt}#{to}#{sy}"
+			$tim_last_pr = Time.now - 99 unless $tim_last_pr 
+			if Time.now - $tim_last_pr < 3
+				t = $tim_last_pr.strftime('%M%S')
+				re= "#{t}#{sprintf("%11s",'<'+from+'>').color(from.sum)}#{mt}#{to} #{sy}"
+			else
+				re= "#{sprintf("%15s",'<'+from+'>').color(from.sum)}#{mt}#{to} #{sy}"
+			end
+			$tim_last_pr = Time.now
     else
       re= s.red
     end
     re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
     puts re
+  end
+
+  #写入聊天记录
+  def save_log(s)
+		#p s
   end
 

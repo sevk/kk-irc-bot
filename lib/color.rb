@@ -1,5 +1,8 @@
 #为终端字符串添加颜色
-#
+
+require 'colored'
+require 'Win32/Console/ANSI' if Gem.win_platform?
+
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 
 $yellow="\e[33m";
 $blue="\e[34m"; $pink="\e[35m"; $cyan="\e[36m"; 
@@ -19,24 +22,27 @@ class String
   def black
     "\e[30m#{self}#$normal"
   end
-  def blue
-    "\e[34m#{self}#$normal"
-  end
-  def cyan
-    "\e[36m#{self}#$normal"
+  def red
+    "\e[31m#{self}#$normal"
   end
   def green
     "\e[32m#{self}#$normal"
   end
-  def pink
-    "\e[35m#{self}#$normal"
-  end
-  def red
-    "\e[31m#{self}#$normal"
-  end
   def yellow
     "\e[33m#{self}#$normal"
   end
+  def blue
+    "\e[34m#{self}#$normal"
+  end
+  def pink
+    "\e[35m#{self}#$normal"
+  end
+  def cyan
+    "\e[36m#{self}#$normal"
+  end
+	def color(n)
+    "\e[#{31+n%6}m#{self}#$normal"
+	end
 
   def blueb
     "\e[44m#{self}#$normal"
@@ -48,5 +54,4 @@ class String
     "\e[42m#{self}#$normal"
 	end
 
-    
 end
