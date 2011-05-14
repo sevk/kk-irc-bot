@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+# coding: utf-8
 
 Thread.new do
 	sleep 20
