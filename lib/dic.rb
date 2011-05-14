@@ -127,7 +127,7 @@ end
 
 #字符串编码集猜测
 def guess_charset(str)
-  s=str.force_encoding("ASCII-8BIT").gsub(/[\x0-\x7f]/,'')
+  s=str.gsub(/\w/,'')
   return if s.bytesize < 4
   while s.bytesize < 25
     s << s
@@ -173,8 +173,8 @@ end
 def saveu
   return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
-  File.open("_#{ARGV[0]}.yaml","w") do|io|
-    YAML.dump($u,io)
+  File.open("_#{ARGV[0]}.yaml","w") do |o|
+    YAML.dump($u, o)
   end
   puts ' save u ok'.red
 end
@@ -935,6 +935,9 @@ def osod
   s.gsub!(/<.*?>/,'').unescapeHTML.gb_to_utf8
 end
 
+        #`apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
+        #re="#$3".gsub(/~/,'')
+        # gsub(/xxx/){$&.upcase; gsub(/xxx/,'\2,\1')}
 #get deb info
 def ge name
   agent = Mechanize.new

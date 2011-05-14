@@ -199,9 +199,6 @@ class IRC
       when 'deb'
         return if c !~/^[\w\-\.]+$/#只能是字母,数字,-. "#{$`}<<#{$&}>>#{$'}"
         re = get_deb_info c
-        #`apt-cache show #{c}`.gsub(/\n/,'~').match(/Version:(.*?)~.{4,16}:(.*?)Description[:\-](.*?)~.{4,16}:/i)
-        #re="#$3".gsub(/~/,'')
-        # gsub(/xxx/){$&.upcase; gsub(/xxx/,'\2,\1')}
       when 40
         c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 then re = Help ;c=''
@@ -572,7 +569,7 @@ class IRC
         @count = @tmp.count(' ') + 1
         puts "nick list: #@tmp , #@count ".red
 
-        renew_Readline_complete(@tmp.gsub('@','').split(' '))
+        renew_Readline_complete(@tmp.gsub(/@/,'').split(' '))
         Readline.completion_append_character = ', '
 
         puts "是否检测乱码= #{$need_Check_code}"
@@ -763,13 +760,14 @@ class IRC
         when /^\/nick\s+(.*)$/i
           @nick = $1
           send s.gsub(/^[\/]/,'')
-        when /^[\/\:]/ # 发送 RAW命令
-          if s[0..2] =~ /\/me/i
-            say s.gsub(/\/me/i,"\001ACTION") + "\001"
-          elsif s[0..5] =~ /\/ctcp/i
-            say s.gsub(/ctcp/i,"\001") + "\001"
+        when /^\/(.+)/ # /发送 RAW命令
+					s1=$1
+          if s1 =~ /^me/i
+            say(s.gsub(/\/me/i,"\001ACTION") + "\001")
+          elsif s1 =~ /^ctcp/i
+            say(s1.gsub(/^ctcp/i,"\001") + "\001")
           else
-            send s.gsub(/^[\/\:]/,'')
+            send s1
           end
         when /^`/ #直接执行
           if s[1..-1] =~ />\s(.*)/
