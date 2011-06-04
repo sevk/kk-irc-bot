@@ -40,8 +40,8 @@ class String
   def cyan
     "\e[36m#{self}#$normal"
   end
-	def color(n)
-    "\e[#{31+n%6}m#{self}#$normal"
+	def c_rand(n)
+		"\e[#{31+n%7}m#{self}#$normal"
 	end
 
   def blueb

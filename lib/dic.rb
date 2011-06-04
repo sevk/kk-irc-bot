@@ -18,6 +18,7 @@ class String
     Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
   end
 	alias togb utf8_to_gb
+	alias to_gb utf8_to_gb
   def decode64
     Base64.decode64 self
   end
@@ -76,6 +77,7 @@ require 'rss'
 require 'base64'
 require 'resolv'
 require 'yaml'
+require 'pp'
 load 'do_as_rb19.rb'
 load 'color.rb'
 
@@ -91,7 +93,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
-$re_http=/(....)(:\/\/\S+[^\s<>\\\[\]\^\`\{\}\|\~#"：，])/iu#类似 http://
+$re_http=/(....)(:\/\/.+)\s?$/iu#类似 http://
 # /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 $min_next_say = Time.now
@@ -105,21 +107,21 @@ $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
 #$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 
 
-def URLDecode(str)
-  #str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }
-  URI.unescape(str)
-end
+#def URLDecode(str)
+  ##str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }
+  #URI.unescape(str)
+#end
 
-def URLEncode(str)
-  #str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }
-  URI.escape(str)
-end
+#def URLEncode(str)
+  ##str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }
+  #URI.escape(str)
+#end
 
 def unescapeHTML(str)
   HTMLEntities.new.decode(str) rescue str
@@ -127,7 +129,8 @@ end
 
 #字符串编码集猜测
 def guess_charset(str)
-  s=str.gsub(/\w/,'')
+	s=str.force_encoding("ASCII-8BIT").gsub(/[\x0-\x7f]/,'')
+  #s=str.gsub(/\w/,'')
   return if s.bytesize < 4
   while s.bytesize < 25
     s << s
@@ -159,8 +162,9 @@ def reload_all
 	load 'irc_user.rb'
 	load "ipwry.rb"
 	#load 'irc.rb'
-	#load 'plugin.rb' ✘
+	load 'plugin.rb'
 	loadDic
+	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end
 
 #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
@@ -221,14 +225,13 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     }
   rescue Timeout::Error => e
     p e.message
-    #return e.message[0,60] + ' . IN `new '
     return
   end
 
   $ub=nil
   begin
     feed.items.each { |i|
-      link = i.link.href
+      link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
       des = i.content.to_s
       #date = i.updated.content
       $date = link
@@ -240,8 +243,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       break
     }
   rescue
-    p $!.message
-    p $@[0]
+		log
   end
 
   if $old_feed_date == $date || (!$ub)
@@ -534,8 +536,7 @@ end
 
 def gettitleA(url,from)
 	url = "http#{url}"
-	#\s<>\\\[\]\^\`\{\}\|\~#"：，]
-	url.gsub!(/(，|：).*$/,'')
+	url.gsub!(/([\s<>\\\[\]\^\`\{\}\|\~#"：，]|，|：).*$/,'')
 	puts url.blue
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso$/i
@@ -549,6 +550,7 @@ def gettitleA(url,from)
 
 		#检测是否有其它取标题机器人
 		Thread.new do
+			Thread.current[:name]= 'check say title bot'
 			myti = ti
 			sleep 12
 			if $u.has_said?(myti)
@@ -971,20 +973,22 @@ end
 #公告
 def gg
   t=Time.now
-"
-⿻ 本频道#ubuntu-cn当前log地址是 :
-http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
+#http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
+#https://groups.google.com/group/ircubuntu-cn/topics
+"⿻ 本频道#ubuntu-cn当前log地址是 :
+http://irclogs.ubuntu.com/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
 有需要请浏览 ,
-. #{t.strftime('%H:%M:%S')}
-"
+. #{t.strftime('%H:%M:%S')} "
 end
 #alias say_公告 say_gg
 
 #简单检测代理是否可用
 def check_proxy_status
   Thread.new do
+		Thread.current[:name]= 'check proxy stat'
+		sleep 1
     begin
-      Timeout.timeout(20){TCPSocket.open $proxy_addr,$proxy_port}
+      Timeout.timeout(10){TCPSocket.open $proxy_addr,$proxy_port}
     rescue Timeout::Error
       print $proxy_addr,':',$proxy_port,' ',false,"\n"
       $proxy_status_ok = false
@@ -1089,39 +1093,60 @@ end
   def pr_highlighted(s)
     s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i
+		puts s.red if s=~ /#{Regexp::escape @nick}/i
     case s
     when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
       from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+			need_savelog = false
 			return if $ignore_action =~ /#{Regexp::escape from}/i
-      if mt =~ /privmsg/i
+			case mt
+			when /privmsg/i
         mt= ''
-      else
-        mt= mt[0,1].bold+ ' '
+				if to =~ /#{Regexp::escape @channel}/i
+					to = '' 
+					need_savelog = true
+				end
+				sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
+			when /join|part|quit|nick/i
+				#pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
+        mt= ' ' + mt[0,1].blue + ' '
+				to,sy=sy,''
+				if to =~ /#{Regexp::escape @channel}/i
+					need_savelog = true
+				end
+				to=to.green
+			else
+				pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
+				re= s.pink
+        mt= ' ' + mt[0,1] + ' '
 				sy=sy.green
-      end
-      if to =~ /#{Regexp::escape @channel}/i
-				to = ''
-			else
-				to=to.bold.green if to
+				need_savelog = true
 			end
-      sy= sy.yellow if mt =~ /\s#{Regexp::escape @nick}/i
-			$tim_last_pr = Time.now - 99 unless $tim_last_pr 
-			if Time.now - $tim_last_pr < 3
-				t = $tim_last_pr.strftime('%M%S')
-				re= "#{t}#{sprintf("%11s",'<'+from+'>').color(from.sum)}#{mt}#{to} #{sy}"
+
+			if from.size < 10
+				t = Time.now.strftime('%H:%M:%S')
+				re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(from.sum)}#{mt}#{to} #{sy}"
 			else
-				re= "#{sprintf("%15s",'<'+from+'>').color(from.sum)}#{mt}#{to} #{sy}"
+				re= "#{sprintf("%20s",from).c_rand(from.sum)}#{mt}#{to} #{sy}"
 			end
-			$tim_last_pr = Time.now
     else
       re= s.red
     end
     re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
     puts re
+		savelog re if need_savelog
   end
 
   #写入聊天记录
+	def savelog(s)
+		s.gsub!(/\e\[\d\d?m/i,'')
+		m = Time.now.min
+		m = "%02d" % (m - (m % 30))
+		fn=Time.now.strftime("%y%m%d%H#{m}.txt")
+		#fn=Time.now.strftime("%y%m%d%H.txt")
+		File.open('irclogs/' + fn,'a'){|x|
+			x.puts s
+		}
+	end
   def save_log(s)
-		#p s
-  end
-
+	end

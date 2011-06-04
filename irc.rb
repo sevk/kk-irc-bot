@@ -54,6 +54,7 @@ class IRC
     send "mode #{chan} +#{mode} #{s}"
     $u.set_ban_time(nick)
     Thread.new do
+			Thread.current[:name]= 'autoban'
       sleep time
       send "mode #{chan} -#{mode} #{s}"
     end
@@ -103,17 +104,23 @@ class IRC
       s.addTimCh if add_tim_chr
     end
 		return if s.size < 2
-    @irc.write("#{s.strip}\r\n")
-    #@irc.write("#{s.strip}\n", 0)
+    @irc.send("#{s.strip}\r\n",0)
     $Lsay = Time.now
     puts "----> #{s}".pink
   end
 
   def connect()
+		trap(:INT){myexit 'int'}
     return if @exit
     $need_reconn = false
     @irc.close if @irc
-    @irc = TCPSocket.open(@server, @port)
+		begin
+			Timeout.timeout(5){@irc = TCPSocket.open(@server, @port)}
+		rescue TimeoutError
+			p $!.message
+		retry
+			p 'retry 1'
+		end
 		sleep 0.5
     send "NICK #{@nick}"
     sleep 1
@@ -129,6 +136,7 @@ class IRC
     $min_next_say = Time.now
     do_after_sec(@channel,nil,7,20)
     Thread.new do
+			Thread.current[:name]= 'conn say'
       sleep 300
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
 			send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`}\x01",false)
@@ -166,6 +174,7 @@ class IRC
     end
 
     tSayDic = Thread.new do
+			Thread.current[:name]= 'tSayDic'
       c = words;re=''
       case dic
       when /new/i
@@ -265,7 +274,7 @@ class IRC
       tmp = check_dic(a5,a1,a1)
       if tmp == 1 #not matched check_dic
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,25) if defined?$me
+        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,22) if defined?$me
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -331,7 +340,7 @@ class IRC
         tmp = check_dic(s,from,to)
         case tmp
         when 1 #非字典消息
-					puts '消息以我名字开头'
+					#puts '消息以我名字开头'
 					$otherbot_said=false
 					do_after_sec(to,"#{from}, #{$me.rand(s[1..-1])}",10,35) if $me
           #`sh sound.sh` if File.exist? 'sound.sh'
@@ -426,6 +435,7 @@ class IRC
     case s.strip.force_encoding('utf-8')
     when /^`?> (.+)$/i
       @e=Thread.new($1){|s|
+				Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
         msg to,"#{from}, #{tmp}", 40 if not tmp.empty?
       }
@@ -490,7 +500,7 @@ class IRC
     when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,5})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ....',10,12)
-    when /^`?(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
+    when /^`(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
       return nil if s.bytesize < 12
       sayDic(5,from,to,s)
@@ -510,7 +520,7 @@ class IRC
       $saytitle -= 1 if tmp[2].ord == 48
       $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
-			reload_all
+			reload_all rescue log
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
       msg(from,rt,0)
     else
@@ -620,8 +630,8 @@ class IRC
     #puts s
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
-    pr_highlighted(s) rescue nil #if not $client #简单显示消息
-    save_log(s)
+    pr_highlighted(s) rescue log #if not $client #简单显示消息
+    save_log(s) rescue log
     return if not $bot_on #bot 功能
     return if check_msg(s).class != Fixnum #1 not matched 字典消息
   end
@@ -646,6 +656,7 @@ class IRC
   def do_after_sec(to,sSay,flg,second=18)
     #puts "need_do #{flg} #{second}"
     da=Thread.new do
+			Thread.current[:name]= 'delay say'
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
@@ -711,6 +722,7 @@ class IRC
   #说新帖
   def say_new(to)
     @say_new=Thread.new{
+			Thread.current[:name]= 'say_new'
       tmp = get_feed
       msg(to,tmp,0) if tmp.bytesize > 4
     }
@@ -725,7 +737,7 @@ class IRC
       @daily_done =true
       saveu
       send 'join ' + @channel
-      sleep 2
+      sleep 1
       send('time')
 			reload_all
       msg(@channel, osod.addTimCh ,30)
@@ -737,11 +749,11 @@ class IRC
   #退出软件请输入 :q
   def iSend()
     loop do
-      sleep 0.8
       $stdout.flush
+      sleep 0.4
       #windows 好像不支持Readline
       if win_platform?
-        s = IO.select([$stdin],nil,nil,1)
+        s = IO.select([$stdin],nil,nil,0.1)
         next if !s
         #next if s[0][0] != IO
         s = $stdin.gets
@@ -801,24 +813,28 @@ class IRC
   #timer
   def timer_minly #每分钟一次
     @timer_min = Thread.new do
+			Thread.current[:name]= 'timer min'
       n = 0
       loop do
         sleep 55 + rand(10)
         n+=1
         n=0 if n > 1e8
-        ping if n%2==0
+				next if n%2==0
+        ping
+				next if n%3==0
+        check_proxy_status
       end
     end
   end
   def timer_start
     @timer1 = Thread.new do#timer 1 , interval = 2600
+			Thread.current[:name]= 'timer 30 min'
       n = 0
       loop do
         sleep 60*14 + rand(60*25)  #间隔14+12分钟左右
         timer_daily
         n+=1
-        n=0 if n > 1e8
-        check_proxy_status
+        n=0 if n > 1e6
         next if n%2 ==0
         if Time.now.hour.between? 9,22
           say_new($channel) if $need_say_feed > 0
@@ -831,7 +847,7 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.1
+        sleep 0.2
         return if @exit
         break if $need_reconn
         ready = select([@irc], nil, nil, 0.2)
@@ -868,10 +884,11 @@ if not defined? $u
   $bot_on1 = $bot_on
   $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
+	$server = ARGV[1] if ARGV[1]
+	p $server
 
   irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$name)
   irc.timer_start
-  trap(:INT){irc.myexit 'int'}
 
 	irc.input_start if $client
   loop do
@@ -883,12 +900,13 @@ if not defined? $u
       break if irc.exited?
       log
 			p Time.now
-      sleep 600
+      sleep 300 + rand(800)
+
       restart
     end
     break if irc.exited?
 		p Time.now
-    sleep 240
+    sleep 100 + rand(200)
   end
 	Thread.list.each{|x|(x.kill; x.exit) rescue nil}
 end

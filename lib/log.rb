@@ -8,7 +8,7 @@ Dir.mkdir 'log' if not File.directory? 'log'
 def log(s=nil)
 	if not s
 		if $!
-			s = "#{$!.message} #{$@[0]}" 
+			s = "#{$!.message} #{$@.join("\n")}" 
 		else
 			return
 		end
