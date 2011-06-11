@@ -85,7 +85,7 @@ load 'color.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = '请勿Flood，超过 5行贴至 http://code.bulix.org 图片帖至 http://kimag.es'
+$kick_info = '请勿Flood，超过5行贴至 paste.ubuntu.com 或 code.bulix.org 图片帖至 kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
 Ver='v0.35' unless defined? Ver
@@ -414,13 +414,15 @@ def gettitle(url,proxy=true,mechanize=1)
 
 	if mechanize == 1
 		mechanize = false if url =~ $urlNoMechanize
+	else
+		mechanize = true
 	end
 	mechanize = true if url =~ /www\.google\.com/i
-  mechanize = proxy = true if url =~ $urlProxy
+  mechanize = true if url =~ $urlProxy
   proxy = false if ! $proxy_status_ok
+	mechanize = true if proxy
   print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
 
-  #p url =~ $urlProxy
   #用代理加快速度
   if mechanize
 		#if url =~ /%[A-F0-9]/
@@ -458,9 +460,8 @@ def gettitle(url,proxy=true,mechanize=1)
 				charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
 				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
 			end
-			title = unescapeHTML(title)# rescue title
-			title = URI.decode(title)
-			puts title
+			title = URI.decode(unescapeHTML(title))
+			print 'proxy : ' ,proxy, ' ',  title , "\n"
 			return title
 		rescue Timeout::Error
       return 'time out . IN gettitle '
@@ -471,6 +472,7 @@ def gettitle(url,proxy=true,mechanize=1)
   end
 
 		#puts URI.split url
+		print 'no mechanize , ' , ti , "\n"
     tmp = begin #加入错误处理
       Timeout.timeout(13) {
         $uri = URI.parse(url)
@@ -534,16 +536,16 @@ def gettitle(url,proxy=true,mechanize=1)
     title
 end
 
-def gettitleA(url,from)
+def gettitleA(url,from,proxy=true)
 	url = "http#{url}"
-	url.gsub!(/([\s<>\\\[\]\^\`\{\}\|\~#"：，]|，|：).*$/,'')
-	puts url.blue
+	url.gsub!(/([\x7f-\xff\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
+	#puts url.blue
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso$/i
 	return if $last_ti == url
 	$last_ti = url
 
-		ti= gettitle(url)
+		ti= gettitle(url,proxy)
 		return if ti =~ /\.log$/i
 		return if ti !~ $tiList and url !~ $urlList
 		return if ti.empty?
@@ -563,7 +565,6 @@ def gettitleA(url,from)
 		return if $saytitle < 1
 		if ti
 			ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-			#p 'gettitle ok..'
 			return "⇪ title: #{ti}"
 		end
 end
@@ -977,7 +978,7 @@ def gg
 #https://groups.google.com/group/ircubuntu-cn/topics
 "⿻ 本频道#ubuntu-cn当前log地址是 :
 http://irclogs.ubuntu.com/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
-有需要请浏览 ,
+有需要请浏览 
 . #{t.strftime('%H:%M:%S')} "
 end
 #alias say_公告 say_gg
@@ -996,8 +997,8 @@ def check_proxy_status
     end
     print $proxy_addr,':',$proxy_port,' ',true,"\n"
     $proxy_status_ok = true
-		true
   end
+	true
 end
 
 def addTimCh
@@ -1094,11 +1095,11 @@ end
     s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i
 		puts s.red if s=~ /#{Regexp::escape @nick}/i
+		need_savelog = false
     case s
     when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
       from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
-			need_savelog = false
-			return if $ignore_action =~ /#{Regexp::escape from}/i
+			return if $ignore_action =~ /#{Regexp::escape mt}/i
 			case mt
 			when /privmsg/i
         mt= ''

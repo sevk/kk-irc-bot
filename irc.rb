@@ -446,9 +446,9 @@ class IRC
       url = $2
       case $1
       when /http/i
-				#msg(to,gettitleA(url,from),0)
-				@ti=Thread.start {msg(to,gettitleA(url,from),0) }
-				@ti.priority = 10
+				@ti=Thread.new{ msg(to,gettitleA(url,from),0) }
+				@ti_p=Thread.start{ msg(to,gettitleA(url,from,false),0) }
+				@ti.priority = @ti_p.priority= 9
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -660,6 +660,7 @@ class IRC
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
+				return if second == 0 #如果是非BOT功能,直接send,没延时的,就不说rand_do了.
 				tmp = rand_do
 				return if tmp.tmpty?
         send "PRIVMSG #{to} :#{tmp}"
@@ -820,9 +821,9 @@ class IRC
         n+=1
         n=0 if n > 1e8
 				next if n%2==0
-        ping
+        ping rescue log
 				next if n%3==0
-        check_proxy_status
+        check_proxy_status rescue log
       end
     end
   end
@@ -831,7 +832,7 @@ class IRC
 			Thread.current[:name]= 'timer 30 min'
       n = 0
       loop do
-        sleep 60*14 + rand(60*25)  #间隔14+12分钟左右
+        sleep 60*13 + rand(60*25)  #间隔14+12分钟左右
         timer_daily
         n+=1
         n=0 if n > 1e6
