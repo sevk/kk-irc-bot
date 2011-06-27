@@ -101,7 +101,7 @@ class IRC
       end
       s << ' ...'
     else
-      s.addTimCh if add_tim_chr
+      s.addTimCh + ' <ai>' if add_tim_chr
     end
 		return if s.size < 2
     @irc.send("#{s.strip}\r\n",0)
@@ -119,6 +119,7 @@ class IRC
 		rescue TimeoutError
 			p $!.message
 		retry
+			sleep 30
 			p 'retry 1'
 		end
 		sleep 0.5
@@ -295,8 +296,8 @@ class IRC
       
       if sSay.bytesize > 290
         p sSay.size
-        $u.said(nick,name,ip,1.25)
-        $u.said(nick,name,ip,1.2) if sSay.bytesize > 380
+        $u.said(nick,name,ip,1.3)
+				$u.said(nick,name,ip,1.5) if sSay.bytesize > 380
       end
       if to !~ ChFreePlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
@@ -446,9 +447,9 @@ class IRC
       url = $2
       case $1
       when /http/i
-				@ti=Thread.new{ msg(to,gettitleA(url,from),0) }
-				@ti_p=Thread.start{ msg(to,gettitleA(url,from,false),0) }
-				@ti.priority = @ti_p.priority= 9
+				@ti=Thread.new{p '@ti'; sleep 0.02; msg(to,gettitleA(url,from),0) }
+				@ti_p=Thread.new{p '@ti_p'; msg(to,gettitleA(url,from,false),0) }
+				@ti.priority = @ti_p.priority = 9
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -832,7 +833,7 @@ class IRC
 			Thread.current[:name]= 'timer 30 min'
       n = 0
       loop do
-        sleep 60*13 + rand(60*25)  #间隔14+12分钟左右
+        sleep 60*10 + rand(60*25)  #间隔14+12分钟左右
         timer_daily
         n+=1
         n=0 if n > 1e6
@@ -893,9 +894,9 @@ if not defined? $u
 
 	irc.input_start if $client
   loop do
-    irc.connect()
     check_proxy_status
     begin
+			irc.connect()
       irc.main_loop()
     rescue
       break if irc.exited?

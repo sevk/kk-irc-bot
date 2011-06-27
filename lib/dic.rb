@@ -88,7 +88,7 @@ $_time=0 if not defined?$_time
 $kick_info = '请勿Flood，超过5行贴至 paste.ubuntu.com 或 code.bulix.org 图片帖至 kimag.es'
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.35' unless defined? Ver
+Ver='v0.36' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
@@ -106,8 +106,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-#$tiList=/ub|deb|ux|ix|win|beta|py|ja|qq|dn|pr|qt|tk|ed|re|rt/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|\260\262\327\277|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -305,7 +304,7 @@ def getbody(url)
   #agent.user_agent_alias = 'Linux Mozilla'
 	agent.user_agent_alias = 'Mac Safari'
   agent.max_history = 0
-  agent.open_timeout = 10
+  agent.open_timeout = 17
   agent.cookies
 	page = agent.get(url)
 	#form = page.form_with(:name => 'f')
@@ -436,8 +435,8 @@ def gettitle(url,proxy=true,mechanize=1)
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 0
-    agent.open_timeout = 15
-		agent.read_timeout = 14
+    agent.open_timeout = 17
+		agent.read_timeout = 17
 		agent.keep_alive = false
     #agent.cookies
     #agent.auth('^k^', 'password')
@@ -474,7 +473,7 @@ def gettitle(url,proxy=true,mechanize=1)
 		#puts URI.split url
 		print 'no mechanize , ' , ti , "\n"
     tmp = begin #加入错误处理
-      Timeout.timeout(13) {
+      Timeout.timeout(17) {
         $uri = URI.parse(url)
         #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
@@ -512,7 +511,7 @@ def gettitle(url,proxy=true,mechanize=1)
     if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(13){gettitle("http://#{$uri.host}/#{$2}")}
+        return Timeout.timeout(17){gettitle("http://#{$uri.host}/#{$2}")}
       end
     end
 
@@ -539,11 +538,12 @@ end
 def gettitleA(url,from,proxy=true)
 	url = "http#{url}"
 	url.gsub!(/([\x7f-\xff\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
-	#puts url.blue
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso$/i
-	return if $last_ti == url
-	$last_ti = url
+	$last_ti = {} if $last_ti.class != Hash
+	return if $last_ti[proxy] == url
+	$last_ti[proxy] = url
+	puts url.blue + ' proxy: ' + proxy.to_s
 
 		ti= gettitle(url,proxy)
 		return if ti =~ /\.log$/i
@@ -553,6 +553,7 @@ def gettitleA(url,from,proxy=true)
 		#检测是否有其它取标题机器人
 		Thread.new do
 			Thread.current[:name]= 'check say title bot'
+			p Thread.current[:name]
 			myti = ti
 			sleep 12
 			if $u.has_said?(myti)
@@ -921,7 +922,7 @@ def osod
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
-  agent.open_timeout = 10
+  agent.open_timeout = 17
   agent.cookies
   #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
   t=Time.now
@@ -946,7 +947,7 @@ def ge name
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
-  agent.open_timeout = 10
+  agent.open_timeout = 17
   agent.cookies
   begin
     url = 'http://packages.ubuntu.com/search?&searchon=names&suite=all&section=all&keywords=' + name.strip
