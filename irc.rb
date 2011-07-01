@@ -81,6 +81,7 @@ class IRC
 
   #发送到频道$channel
   def say(s,ch=@channel)
+    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     send "PRIVMSG #{ch} :#{s}"
     isaid
   end
@@ -106,6 +107,7 @@ class IRC
 		return if s.size < 2
     @irc.send("#{s.strip}\r\n",0)
     $Lsay = Time.now
+    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
     puts "----> #{s}".pink
   end
 
@@ -232,6 +234,8 @@ class IRC
     tmp = guess_charset(s)
     return if ! tmp
     if tmp != @charset && tmp !~ /IBM855|windows-1252/i
+			puts tmp
+			puts tmp.togb
       if tmp =~ /^gb./i
         #tmp = 'GBK'
         s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
@@ -275,7 +279,7 @@ class IRC
       tmp = check_dic(a5,a1,a1)
       if tmp == 1 #not matched check_dic
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,22) if defined?$me
+        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,22) if defined? $me
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -447,9 +451,9 @@ class IRC
       url = $2
       case $1
       when /http/i
-				@ti=Thread.new{p '@ti'; sleep 0.02; msg(to,gettitleA(url,from),0) }
-				@ti_p=Thread.new{p '@ti_p'; msg(to,gettitleA(url,from,false),0) }
-				@ti.priority = @ti_p.priority = 9
+				@ti=Thread.new{ sleep 0.02; msg(to,gettitleA(url,from),0) }
+				@ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
+				@ti.priority = @ti_p.priority = 4
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -716,7 +720,7 @@ class IRC
   def myexit(exit_msg = 'optimize')
 		Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
-    send 'quit ' + exit_msg#.gsub(/\s+/,'_')
+    send( 'quit ' + exit_msg) rescue nil
     @exit = true
     puts 'exiting...'.yellow
   end

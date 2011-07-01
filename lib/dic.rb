@@ -15,7 +15,7 @@ class String
     Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
   end
   def utf8_to_gb
-    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
+    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s rescue self
   end
 	alias togb utf8_to_gb
 	alias to_gb utf8_to_gb
@@ -238,7 +238,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 
       next if ti =~ /Re:/i && not_re
       puts i.updated.content
-      $ub = "新⇨ #{ti} #{link} #{des}"
+      $ub = "新 #{ti} #{link} #{des}"
       break
     }
   rescue
@@ -304,7 +304,7 @@ def getbody(url)
   #agent.user_agent_alias = 'Linux Mozilla'
 	agent.user_agent_alias = 'Mac Safari'
   agent.max_history = 0
-  agent.open_timeout = 17
+  agent.open_timeout = 12
   agent.cookies
 	page = agent.get(url)
 	#form = page.form_with(:name => 'f')
@@ -435,13 +435,14 @@ def gettitle(url,proxy=true,mechanize=1)
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 0
-    agent.open_timeout = 17
-		agent.read_timeout = 17
+    agent.open_timeout = 12
+		agent.read_timeout = 12
 		agent.keep_alive = false
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
-      page = agent.get(url)
+			page = nil
+			Timeout.timeout(14){page = agent.get(url) } # 为了防止下载 .tar.gz
 			puts page.header['content-type'] if $DEBUG
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
 			return '' if page.header['content-type']  !~ /text\/html|application\//i
@@ -453,14 +454,22 @@ def gettitle(url,proxy=true,mechanize=1)
 			end
 			#p 'get page ok'
 			title = page.title
+			title.gsub!(/\s+/,' ')
 			charset= guess_charset(title)
-			if charset and charset != 'UTF-8'
-				p charset
-				charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
-				title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
-			end
 			title = URI.decode(unescapeHTML(title))
-			print 'proxy : ' ,proxy, ' ',  title , "\n"
+			charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
+			if charset and charset =~ /#$local_charset/i
+				print 'proxy : ' ,proxy, ' ', title , "\n"
+			else
+				s= Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title) 
+				print 'proxy : ' ,proxy, ' ', s , "\n"
+			end
+
+			if charset and charset =~ /#@charset/i
+				p charset
+				title = Iconv.conv("#{@charset}//IGNORE","#{charset}//IGNORE",title) rescue title
+			end
+
 			return title
 		rescue Timeout::Error
       return 'time out . IN gettitle '
@@ -473,7 +482,7 @@ def gettitle(url,proxy=true,mechanize=1)
 		#puts URI.split url
 		print 'no mechanize , ' , ti , "\n"
     tmp = begin #加入错误处理
-      Timeout.timeout(17) {
+      Timeout.timeout(12) {
         $uri = URI.parse(url)
         #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
@@ -511,7 +520,7 @@ def gettitle(url,proxy=true,mechanize=1)
     if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(17){gettitle("http://#{$uri.host}/#{$2}")}
+        return Timeout.timeout(12){gettitle("http://#{$uri.host}/#{$2}")}
       end
     end
 
@@ -539,13 +548,16 @@ def gettitleA(url,from,proxy=true)
 	url = "http#{url}"
 	url.gsub!(/([\x7f-\xff\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 	return if from =~ $botlist
-	return if url =~ /past|imagebin\.org|\.iso$/i
+	return if url =~ /past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
 	$last_ti = {} if $last_ti.class != Hash
 	return if $last_ti[proxy] == url
 	$last_ti[proxy] = url
-	puts url.blue + ' proxy: ' + proxy.to_s
+	t=Time.now
 
-		ti= gettitle(url,proxy)
+	ti= gettitle(url,proxy)
+	#print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
+	print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
+
 		return if ti =~ /\.log$/i
 		return if ti !~ $tiList and url !~ $urlList
 		return if ti.empty?
@@ -553,7 +565,6 @@ def gettitleA(url,from,proxy=true)
 		#检测是否有其它取标题机器人
 		Thread.new do
 			Thread.current[:name]= 'check say title bot'
-			p Thread.current[:name]
 			myti = ti
 			sleep 12
 			if $u.has_said?(myti)
@@ -922,7 +933,7 @@ def osod
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
-  agent.open_timeout = 17
+  agent.open_timeout = 12
   agent.cookies
   #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
   t=Time.now
@@ -947,7 +958,7 @@ def ge name
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
-  agent.open_timeout = 17
+  agent.open_timeout = 12
   agent.cookies
   begin
     url = 'http://packages.ubuntu.com/search?&searchon=names&suite=all&section=all&keywords=' + name.strip
@@ -977,7 +988,7 @@ def gg
   t=Time.now
 #http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
 #https://groups.google.com/group/ircubuntu-cn/topics
-"⿻ 本频道#ubuntu-cn当前log地址是 :
+"频道 #ubuntu-cn当前log地址是 :
 http://irclogs.ubuntu.com/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
 有需要请浏览 
 . #{t.strftime('%H:%M:%S')} "
@@ -1094,8 +1105,15 @@ end
   #高亮打印消息
   def pr_highlighted(s)
     s=s.force_encoding("utf-8")
-    s=s.gb_to_utf8 if @charset !~ /UTF-8/i
-		puts s.red if s=~ /#{Regexp::escape @nick}/i
+    s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
+		if s=~ /#{Regexp::escape @nick}/i
+			if $local_charset !~ /UTF-8/i
+				puts s.to_gb.red
+			else
+				puts s.red 
+			end
+		end
+
 		need_savelog = false
     case s
     when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
@@ -1127,9 +1145,9 @@ end
 
 			if from.size < 10
 				t = Time.now.strftime('%H:%M:%S')
-				re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(from.sum)}#{mt}#{to} #{sy}"
+				re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			else
-				re= "#{sprintf("%20s",from).c_rand(from.sum)}#{mt}#{to} #{sy}"
+				re= "#{sprintf("%20s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			end
     else
       re= s.red
@@ -1142,9 +1160,9 @@ end
   #写入聊天记录
 	def savelog(s)
 		s.gsub!(/\e\[\d\d?m/i,'')
-		m = Time.now.min
-		m = "%02d" % (m - (m % 30))
-		fn=Time.now.strftime("%y%m%d%H#{m}.txt")
+		#m = Time.now.min
+		#m = "%02d" % (m - (m % 30))
+		fn=Time.now.strftime("%y%m%d.txt")
 		#fn=Time.now.strftime("%y%m%d%H.txt")
 		File.open('irclogs/' + fn,'a'){|x|
 			x.puts s
