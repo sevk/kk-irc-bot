@@ -233,7 +233,7 @@ class IRC
   def check_code(s)
     tmp = guess_charset(s)
     return if ! tmp
-    if tmp != @charset && tmp !~ /IBM855|windows-1252/i
+    if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
 			puts tmp
 			puts tmp.togb
       if tmp =~ /^gb./i
@@ -897,6 +897,7 @@ if not defined? $u
   irc.timer_start
 
 	irc.input_start if $client
+	Thread.current[:name]= 'main'
   loop do
     check_proxy_status
     begin

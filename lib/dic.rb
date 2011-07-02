@@ -31,6 +31,7 @@ class String
 	def rot13
 		self.tr "A-Za-z", "N-ZA-Mn-za-m"
 	end
+	#"\343\213\206" ㏠
   def ii(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
@@ -106,7 +107,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|\260\262\327\277|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|ee|oo|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -546,7 +547,7 @@ end
 
 def gettitleA(url,from,proxy=true)
 	url = "http#{url}"
-	url.gsub!(/([\x7f-\xff\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
+	url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 	return if from =~ $botlist
 	return if url =~ /past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
 	$last_ti = {} if $last_ti.class != Hash
