@@ -1160,7 +1160,9 @@ end
 
   #写入聊天记录
 	def savelog(s)
-		s.gsub!(/\e\[\d\d?m/i,'')
+		#s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
+		#gem install ansi2html
+
 		#m = Time.now.min
 		#m = "%02d" % (m - (m % 30))
 		fn=Time.now.strftime("%y%m%d.txt")

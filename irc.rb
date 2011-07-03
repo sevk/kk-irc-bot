@@ -81,7 +81,7 @@ class IRC
 
   #发送到频道$channel
   def say(s,ch=@channel)
-    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
+    s= Iconv.conv("#{@charset}//IGNORE","#$local_charset//IGNORE",s) if @charset != $local_charset
     send "PRIVMSG #{ch} :#{s}"
     isaid
   end
