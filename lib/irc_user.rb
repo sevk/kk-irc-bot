@@ -163,14 +163,14 @@ class ALL_USER
     index = getindex(nick)
     return unless index
     $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
-		p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood +10
+    p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood+10
     return $timelast6me[index] < $maxfloodme
   end
   def check_flood(nick)
     index = getindex(nick)
     return unless index
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
-    #p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 5
+    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 10
     return $timelast6say[index] < $maxflood
   end
 

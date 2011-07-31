@@ -40,7 +40,7 @@ class IpLocationSeeker
           error_num += 1
         end
       end
-    return "total num:%s,error_num:%s  " %[current_num,error_num]
+    return "total num:%s,error_num:%s  " % [current_num,error_num]
   end
 
   def seek(ip_str) #查询IP

@@ -2,6 +2,7 @@
 # coding: utf-8
 # Sevkme@gmail.com
 
+#require 'slashstring'
 require 'iconv'
 #为字符串添加一些方法
 class String
@@ -15,7 +16,7 @@ class String
     Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
   end
   def utf8_to_gb
-    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s rescue self
+    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
   end
 	alias togb utf8_to_gb
 	alias to_gb utf8_to_gb
@@ -86,7 +87,7 @@ load 'color.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = '请勿Flood，超过5行贴至 paste.ubuntu.com 或 code.bulix.org 图片帖至 kimag.es'
+$kick_info = '请勿Flood，超过5行贴至 paste.ubuntu.com 或 code.bulix.org '
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
 Ver='v0.36' unless defined? Ver
@@ -107,7 +108,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|ee|oo|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|ee|oo|progra|devel|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -129,14 +130,20 @@ end
 
 #字符串编码集猜测
 def guess_charset(str)
-	s=str.force_encoding("ASCII-8BIT").gsub(/[\x0-\x7f]/,'')
+	#s=str.force_encoding("ASCII-8BIT")
+	s=str.clone
+	s.gsub!(/[\x0-\x7f]/,'')
+
   #s=str.gsub(/\w/,'')
-  return if s.bytesize < 4
+  return if s.bytesize < 6
   while s.bytesize < 25
     s << s
   end
   return guess(s)
 end
+
+#sudo gem install charguess
+#require "charguess"
 
 if defined?CharGuess
   def guess(s)
@@ -145,7 +152,8 @@ if defined?CharGuess
 else
   #第二种字符集猜测库
   begin
-		require 'rchardet'
+		require 'rchardet' if RUBY_VERSION < '1.9'
+		require 'rchardet19' if RUBY_VERSION > '1.9'
   rescue LoadError
     s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
     s = s.utf8_to_gb if win_platform?
@@ -153,7 +161,7 @@ else
     puts $!.message + $@[0]
   end
   def guess(s)
-    CharDet.detect(s)['encoding'].upcase
+		CharDet.detect(s)['encoding'].upcase
   end
 end
 
@@ -194,6 +202,7 @@ end
 def safe(level)
 	result = nil
   Thread.start {
+		Thread.current[:name]= 'safe eval thread'
     $SAFE = level
     result = yield
   }.join
@@ -406,7 +415,7 @@ def gettitle(url,proxy=true,mechanize=1)
   charset = ''
   flag = 0
   istxthtml = false
-	if url.force_encoding("ASCII-8BIT") =~ CN_re #有中文
+  if url.force_encoding("ASCII-8BIT") =~ CN_re
     url = URI.encode(url)
   end
 	#url.force_encoding('utf-8')
@@ -436,23 +445,25 @@ def gettitle(url,proxy=true,mechanize=1)
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 0
-    agent.open_timeout = 12
-		agent.read_timeout = 12
+    agent.open_timeout = 10
+		agent.read_timeout = 10
 		agent.keep_alive = false
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
 			page = nil
-			Timeout.timeout(14){page = agent.get(url) } # 为了防止下载 .tar.gz
-			puts page.header['content-type'] if $DEBUG
+			Timeout.timeout(10){page = agent.get(url) } # 为了防止下载 .tar.gz
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
-			return '' if page.header['content-type']  !~ /text\/html|application\//i
+      p page.header['content_type']
+			if page.header['content-type']  !~ /text\/html|application\//i
+				return '' 
+			end
 
       #Content-Type
       if page.class != Mechanize::Page
-				puts 'no page'
-				return
-			end
+        puts 'no page'
+        return
+      end
 			#p 'get page ok'
 			title = page.title
 			title.gsub!(/\s+/,' ')
@@ -466,17 +477,18 @@ def gettitle(url,proxy=true,mechanize=1)
 				print 'proxy : ' ,proxy, ' ', s , "\n"
 			end
 
-			if charset and charset =~ /#@charset/i
+			if charset and charset !~ /#@charset/i
 				p charset
 				title = Iconv.conv("#{@charset}//IGNORE","#{charset}//IGNORE",title) rescue title
 			end
 
 			return title
 		rescue Timeout::Error
-      return 'time out . IN gettitle '
+			Thread.pass
+      return ['time out . IN gettitle ']
     rescue Exception => e
       p $!.message + $@[0]
-      return $!.message[0,60] + ' . IN gettitle'
+      return [$!.message[0,60] + ' . IN gettitle']
     end
   end
 
@@ -546,22 +558,31 @@ def gettitle(url,proxy=true,mechanize=1)
 end
 
 def gettitleA(url,from,proxy=true)
-	url = "http#{url}"
-	url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
-	return if from =~ $botlist
-	return if url =~ /past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
-	$last_ti = {} if $last_ti.class != Hash
-	return if $last_ti[proxy] == url
-	$last_ti[proxy] = url
-	t=Time.now
+  return if from =~ $botlist
+  url = "http#{url}"
+  url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
+  if url =~ /\.jpg|\.png|\.gif|\.jpeg$/i
+    return
+    require "image_size"
+    open(url, "rb") do |fh|
+      return ImageSize.new(fh.read).get_size.join('×')
+    end
+  end
+  return if url =~ /past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
+  $last_ti = {} if $last_ti.class != Hash
+  return if $last_ti[proxy] == url
+  $last_ti[proxy] = url
+  t=Time.now
 
 	ti= gettitle(url,proxy)
 	#print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
-	print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
+	#print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
 
-		return if ti =~ /\.log$/i
+	return if ti =~ /\.log$/i
+	if ti !~ /^[\x0-\x7f]+$/
 		return if ti !~ $tiList and url !~ $urlList
-		return if ti.empty?
+	end
+	return if ti.empty?
 
 		#检测是否有其它取标题机器人
 		Thread.new do
@@ -667,7 +688,7 @@ def getGoogle(word,flg=0)
         when /专业气象台|比价仅作信息参考/
           tmp = html.match(/resultStats.*?\/nobr>(.*?)(class=hd>搜索结果|Google\s+主页)/i)[1]
         when /calc_img\.gif(.*?)Google 计算器详情/i #是计算器
-          tmp = '<' +$1.to_s + ' Google 计算器' #(.*?)<li>
+          tmp = "<#{$1} Google 计算器" #(.*?)<li>
         else
           matched = false
         end
@@ -930,7 +951,7 @@ end
 
 #每日一句英语学习
 def osod
-  return ''
+  return '' if true
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
@@ -979,10 +1000,6 @@ def ge name
   s.unescapeHTML
 end
 alias get_deb_info ge
-
-def restart #Hard Reset
-  exec "#{__FILE__} #$argv0"
-end
 
 #公告
 def gg
@@ -1096,16 +1113,14 @@ def read_proxy_rule
 	$proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
 
-$me=true
-def $me.rand(s)
+def botsay(s)
 	s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
-	s.zh2en.alice_say.en2zh
+	s.zh2en.alice_say.en2zh rescue (log;'休息一下...')
 end
-
 
   #高亮打印消息
   def pr_highlighted(s)
-    s=s.force_encoding("utf-8")
+    #s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
 		if s=~ /#{Regexp::escape @nick}/i
 			if $local_charset !~ /UTF-8/i
@@ -1144,11 +1159,11 @@ end
 				need_savelog = true
 			end
 
-			if from.size < 10
-				t = Time.now.strftime('%H:%M:%S')
-				re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
+			if from.size < 9
+				t = Time.now.strftime('%M%S')
+				re= "#{t}#{("%11s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			else
-				re= "#{sprintf("%20s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
+				re= "#{sprintf("%15s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			end
     else
       re= s.red
@@ -1158,18 +1173,30 @@ end
 		savelog re if need_savelog
   end
 
-  #写入聊天记录
-	def savelog(s)
-		#s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
-		#gem install ansi2html
+#写入聊天记录
+def savelog(s)
+	#s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
+	#gem install ansi2html
 
-		#m = Time.now.min
-		#m = "%02d" % (m - (m % 30))
-		fn=Time.now.strftime("%y%m%d.txt")
-		#fn=Time.now.strftime("%y%m%d%H.txt")
-		File.open('irclogs/' + fn,'a'){|x|
-			x.puts s
-		}
-	end
-  def save_log(s)
-	end
+	#m = Time.now.min
+	#m = "%02d" % (m - (m % 30))
+	fn=Time.now.strftime("%y%m%d.txt")
+	#fn=Time.now.strftime("%y%m%d%H.txt")
+	File.open('irclogs/' + fn,'a'){|x|
+		x.puts s
+	}
+end
+
+#记录自己说话的时间
+def isaid(second=29)
+	$min_next_say=Time.now + $minsaytime + second
+end
+
+#记录频道说话的频率
+def auto_set_ch_baud(ch)
+	@ch_baud ||= Hash.new
+	@ch_baud.default = Hash.new
+  #最后1次发言时间
+	@ch_baud[ch]['last']=Time.now
+end
+

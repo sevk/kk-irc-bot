@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.1 以上, 建议使用linux系统.
+# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上, 建议使用linux系统.
 
 =begin
    * Description:
@@ -8,6 +8,8 @@
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
 
 =end
+#BEGIN {$VERBOSE = true}
+
 
 $: << 'lib'
 $: << '.'
@@ -16,8 +18,7 @@ load 'dic.rb'
 include Math
 require "readline"
 require 'yaml'
-require 'client.rb'
-load "ipwry.rb"
+require "ipwry.rb"
 load 'irc_user.rb'
 load 'plugin.rb'
 load 'log.rb'
@@ -86,7 +87,7 @@ class IRC
     isaid
   end
 
-  #发送tcp数据,如果长度大于460 就自动截断.
+  #发送tcp数据,如果长度大于450 就自动截断.
   def send(s,add_tim_chr=true)
     s.gsub!(/\s+/,' ')
     if s.bytesize > 450
@@ -139,8 +140,8 @@ class IRC
     $min_next_say = Time.now
     do_after_sec(@channel,nil,7,20)
     Thread.new do
-			Thread.current[:name]= 'conn say'
-      sleep 300
+			Thread.current[:name]= 'connect say'
+      sleep 400
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
 			send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`}\x01",false)
     end
@@ -279,7 +280,7 @@ class IRC
       tmp = check_dic(a5,a1,a1)
       if tmp == 1 #not matched check_dic
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{$me.rand(sSay)}",10,22) if defined? $me
+        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,28)
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -347,8 +348,7 @@ class IRC
         when 1 #非字典消息
 					#puts '消息以我名字开头'
 					$otherbot_said=false
-					do_after_sec(to,"#{from}, #{$me.rand(s[1..-1])}",10,35) if $me
-          #`sh sound.sh` if File.exist? 'sound.sh'
+					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,35)
         else #是字典消息
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
@@ -438,7 +438,7 @@ class IRC
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     case s.strip.force_encoding('utf-8')
-    when /^`?> (.+)$/i
+    when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
 				Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
@@ -451,9 +451,8 @@ class IRC
       url = $2
       case $1
       when /http/i
-				@ti=Thread.new{ sleep 0.02; msg(to,gettitleA(url,from),0) }
+				@ti=Thread.new do  msg(to,gettitleA(url,from),0) end
 				@ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
-				@ti.priority = @ti_p.priority = 4
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -488,7 +487,7 @@ class IRC
       sayDic(1,from,to,$1)
     when /^`x\s(.*?)$/i  # plugin
       $otherbot_said=false
-      do_after_sec(to,"#{from}, #{$me.rand($1.to_s)}",10,20) if $me
+      do_after_sec(to,"#{from}, #{botsay($1.to_s)}",10,20)
     when /^`?tq\s(.*?)$/i  # 天气
       sayDic(40,from,to,$1)
     when /^`?d(ef(ine)?)?\s(.*?)$/i#define:
@@ -497,12 +496,12 @@ class IRC
       sayDic(2,from,to,$1)
     when /^`address\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
-    when /^`f\s(.*?)$/i #查某人的老乡
+    when /^`f\s(.*?)$/i #查老乡
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好',10,23)
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,5})$/ui #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,3})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ....',10,12)
     when /^`(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
@@ -531,6 +530,8 @@ class IRC
     else
       return 1#not match dic_event
     end
+	rescue 
+		return 1
   end
 
   #服务器消息
@@ -584,7 +585,7 @@ class IRC
         @count = @tmp.count(' ') + 1
         puts "nick list: #@tmp , #@count ".red
 
-        renew_Readline_complete(@tmp.gsub(/@/,'').split(' '))
+				renew_Readline_complete(@tmp.gsub(/@/,'').split(' '))
         Readline.completion_append_character = ', '
 
         puts "是否检测乱码= #{$need_Check_code}"
@@ -636,15 +637,8 @@ class IRC
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue log #if not $client #简单显示消息
-    save_log(s) rescue log
     return if not $bot_on #bot 功能
     return if check_msg(s).class != Fixnum #1 not matched 字典消息
-  end
-
-
-  #记录自己说话的时间
-  def isaid(second=3)
-    $min_next_say=Time.now + $minsaytime + second
   end
 
   #加入频道
@@ -665,7 +659,7 @@ class IRC
       flag=flg
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
-				return if second == 0 #如果是非BOT功能,直接send,没延时的,就不说rand_do了.
+				return if second == 0 #如果是非BOT功能,直接return
 				tmp = rand_do
 				return if tmp.tmpty?
         send "PRIVMSG #{to} :#{tmp}"
@@ -812,7 +806,9 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-    @input=Thread.start{ iSend }
+    @input=Thread.start{
+			Thread.current[:name]= 'iSend'
+			iSend }
     @input.priority = -16
   end
 
@@ -884,6 +880,7 @@ end
 
 if not defined? $u
   ARGV[0] = 'default.conf' if not ARGV[0]
+	ARGV[0] = '~/.kk-irc-bot.conf' if File.exist? '~/.kk-irc-bot.conf'
   p 'ARGV[0] :' +  ARGV[0]
   $argv0 = ARGV[0]
   load ARGV[0]
@@ -919,4 +916,8 @@ if not defined? $u
 end
 
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
+
+def restart #Hard Reset
+  exec "#{__FILE__} #$argv0"
+end
 
