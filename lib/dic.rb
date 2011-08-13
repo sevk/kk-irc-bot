@@ -139,7 +139,7 @@ def guess_charset(str)
   while s.bytesize < 25
     s << s
   end
-  return guess(s)
+  return guess(s) rescue nil
 end
 
 #sudo gem install charguess
@@ -168,7 +168,6 @@ end
 def reload_all
 	load 'dic.rb'
 	load 'irc_user.rb'
-	load "ipwry.rb"
 	#load 'irc.rb'
 	load 'plugin.rb'
 	loadDic
@@ -193,20 +192,26 @@ end
 
 #使用安全进程进行eval操作,参数level是安全级别.
 def safely(code,l)
-	sandbox = lambda do
-		$SAFE = l
-		eval(code)
-	end
-	sandbox.call.to_s
+  sandbox = lambda do
+    p $SAFE
+    $SAFE = 3
+    p $SAFE
+    eval(code)
+  end
+  sandbox.call.to_s
 end
 def safe(level)
-	result = nil
+  result = nil
   Thread.start {
-		Thread.current[:name]= 'safe eval thread'
+    Thread.current[:name]= 'safe eval thread'
+    #$SAFE = 3
     $SAFE = level
+    p $SAFE
     result = yield
   }.join
-  result
+  return result
+rescue
+  log
 end
 
 def get_Atom(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
@@ -263,7 +268,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     #des = feed.items[0].content
     #$ub = "新⇨ #{ti} #{link} #{des}"
     $ub = "呵呵,逛了一下论坛,暂时无新贴.只有Re: ."
-    $ub = '' if rand > 0.2
+    $ub = '' if rand > 0.1
   else
     $old_feed_date = $date
   end
@@ -294,7 +299,8 @@ class String
     #form.input = 'how old are you ?'
     #page          = agent.submit(form)
     page = agent.post(url,{"input"=> self } )
-    page.body.match(/.+<em>(.+)<\/em>/)[1].gsub(/alice/,' @ ')
+    #p page.body
+    page.body.match(/.+<br>.+:(.+)/m)[1].gsub(/alice/,' @ ')
   end
 
 	def en2zh
@@ -454,7 +460,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			page = nil
 			Timeout.timeout(10){page = agent.get(url) } # 为了防止下载 .tar.gz
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
-      p page.header['content_type']
+      print 'content-type:' , page.header['content-type'] , "\n"
 			if page.header['content-type']  !~ /text\/html|application\//i
 				return '' 
 			end
@@ -568,20 +574,20 @@ def gettitleA(url,from,proxy=true)
       return ImageSize.new(fh.read).get_size.join('×')
     end
   end
-  return if url =~ /past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
+  return if url =~ /bulix\.org|past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
   $last_ti[proxy] = url
   t=Time.now
 
-	ti= gettitle(url,proxy)
-	#print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
-	#print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
+  ti= gettitle(url,proxy)
+  #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
+  #print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
 
 	return if ti =~ /\.log$/i
-	if ti !~ /^[\x0-\x7f]+$/
-		return if ti !~ $tiList and url !~ $urlList
-	end
+  #if ti !~ /^[\x0-\x7f]+$/
+    #return if ti !~ $tiList and url !~ $urlList
+  #end
 	return if ti.empty?
 
 		#检测是否有其它取标题机器人
@@ -597,9 +603,9 @@ def gettitleA(url,from,proxy=true)
 			end
 		end
 		return if $saytitle < 1
-		if ti
-			ti.gsub!(/Ubuntu中文论坛 • 登录/,'对不起,感觉是个水贴')
-			return "⇪ title: #{ti}"
+    if ti
+      ti.gsub!(/Ubuntu中文论坛 • 登录/, '水区水贴? ')
+      return "⇪ title: #{ti}"
 		end
 end
 
@@ -621,18 +627,6 @@ def getPY(c)
   if re=~ CN_re#是中文才返回
     return re
   end
-end
-
-def getTQFromName(nick)
-  ip=$u.getip(nick).to_s
-  p 'getip=' + ip
-  tmp=getProvince(ip).to_s
-  puts 'get province:' + tmp.to_s
-  getTQ(tmp)
-end
-
-def getTQ(s)
-  getGoogle(s + ' tq',0)
 end
 
 def encodeurl(url)
@@ -705,22 +699,6 @@ def getGoogle(word,flg=0)
           tmp.gsub!(/更多有关货币兑换的信息。/,"")
           tmp.gsub!(/<br>/i," ")
           #puts tmp + "\n"
-          case word
-          when /^tq|tq$|天气$|tianqi$/i
-            #puts '天气过滤' + tmp.to_s
-            tmp.gsub!(/.*?<table class="ts std">/i,'')
-            tmp.gsub!(/alt="/,'>')
-            tmp.gsub!(/"?\s?title=|right/,'<')
-            tmp.gsub!(/\s\/\s/,"\/")
-            tmp.gsub!(/级/, '级 ' )
-            tmp.gsub!(/今日\s+/, ' 今日' )
-            tmp.gsub!(/<\/b>/, ' ')
-            tmp.gsub!(/添加到(.*?)当前：/,' ')
-            tmp.gsub!(/相关搜索.*?\-/,' ')
-            #tmp.gsub!(/北京市专业气象台(.*)/, '' )
-            tmp=tmp.match(/.+?°C.+?°C.+?°C/)[0]
-            tmp.gsub!(/°C/,'度 ')
-          end
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
           if tmp.bytesize > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
             re=tmp
@@ -904,9 +882,9 @@ def evaluate(s)
 		#l=2 if s =~ /^`[\w\s\-]+`$/i
 		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
-		Timeout.timeout(5){
-			return safe(l){eval(s).to_s[0,280]}
-			#return safely(s,l)[0,400]
+		Timeout.timeout(6){
+      return safe(l){eval(s).to_s[0,290]}
+      #return safely(s,l)[0,300]
 		}
 	rescue Timeout::Error
 		return 'Timeout'
@@ -1199,4 +1177,18 @@ def auto_set_ch_baud(ch)
   #最后1次发言时间
 	@ch_baud[ch]['last']=Time.now
 end
+
+require 'bfrb' rescue nil
+def bf(s='.')
+  $last_bf=''
+  BfRb::Interpreter.new.run s
+  $last_bf
+end
+
+#.rvm/gems/ruby-1.9.2-p180/gems/bfrb-0.1.5/lib/bfrb/interpreter.rb
+# print value in memory$
+#when "."$
+  #@output_stream.print current_memory.chr
+  #$last_bf << current_memory.chr rescue nil
+
 

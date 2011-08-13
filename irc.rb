@@ -13,6 +13,7 @@
 
 $: << 'lib'
 $: << '.'
+require 'rubygems'
 require 'platform.rb'
 load 'dic.rb'
 include Math
@@ -45,8 +46,8 @@ class IRC
   end
   
   #kick踢出
-  def kick(s)
-    send "kick #@channel #{s} #$kick_info"
+  def kick(n)
+    send "kick #@channel #{n} #$kick_info"
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
@@ -62,8 +63,16 @@ class IRC
   end
 
   def ping
-    $Lping = Time.now
-    send "PING LAG1982067890",false
+    p 'ping'
+    Thread.new do
+      $needrestart = true
+      $Lping = Time.now
+      send "PING #{Time.now.to_i}",false
+      sleep 3
+      send "whois #{@nick}" rescue log
+      sleep 600
+      restart if $needrestart
+    end
   end
   #发送notice消息
   def notice(who,sSay,delay=5)
@@ -143,7 +152,7 @@ class IRC
 			Thread.current[:name]= 'connect say'
       sleep 400
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-			send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`}\x01",false)
+			send("privmsg #{@channel} :\001ACTION #{`uname -r`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
     end
   end
 
@@ -212,8 +221,6 @@ class IRC
       when 'deb'
         return if c !~/^[\w\-\.]+$/#只能是字母,数字,-. "#{$`}<<#{$&}>>#{$'}"
         re = get_deb_info c
-      when 40
-        c == "" ? re= getTQFromName(from) : re= getTQ(c)
       when 99 then re = Help ;c=''
       when 101 then re = dictcn(c);c=''
       end
@@ -269,7 +276,7 @@ class IRC
         return
       end
 
-      if s =~ /help|man|帮助|有什么功能|\??\??/i
+      if s =~ /help|man|\??\??/i
         sSay = '`help |'
       end
 
@@ -280,7 +287,7 @@ class IRC
       tmp = check_dic(a5,a1,a1)
       if tmp == 1 #not matched check_dic
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,28)
+        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,39)
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -348,7 +355,7 @@ class IRC
         when 1 #非字典消息
 					#puts '消息以我名字开头'
 					$otherbot_said=false
-					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,35)
+					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,39)
         else #是字典消息
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
@@ -442,17 +449,17 @@ class IRC
       @e=Thread.new($1){|s|
 				Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
-        msg to,"#{from}, #{tmp}", 40 if not tmp.empty?
+        msg to,"#{from}, #{tmp}", 0 if not tmp.empty?
       }
-      @e.priority = -10
+      @e.priority = -5
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
     when $re_http
       url = $2
       case $1
       when /http/i
-				@ti=Thread.new do  msg(to,gettitleA(url,from),0) end
-				@ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
+        @ti=Thread.new do msg(to,gettitleA(url,from),0) end
+        @ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -485,11 +492,6 @@ class IRC
       sayDic(4,from,to,$1)
     when /^`?g\s(.*?)$/i  # Google
       sayDic(1,from,to,$1)
-    when /^`x\s(.*?)$/i  # plugin
-      $otherbot_said=false
-      do_after_sec(to,"#{from}, #{botsay($1.to_s)}",10,20)
-    when /^`?tq\s(.*?)$/i  # 天气
-      sayDic(40,from,to,$1)
     when /^`?d(ef(ine)?)?\s(.*?)$/i#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
     when /^`b\s(.*?)$/i  # 百度
@@ -510,8 +512,8 @@ class IRC
       sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
-		#when $dic
-	#		msg to,from + ", #$1", 15
+    #when $dic
+      #msg to,from + ", #$1", 15
     when /^`rst\s?(\d*)$/i #restart soft
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
@@ -539,9 +541,12 @@ class IRC
     case s.strip
     when /^PING :(.+)$/i  # ping
       @irc.send "PONG :#{$1}\n", 0
-    when /LAG1982067890/i #LAG
+
+    #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
+    when /\sPONG\s(.+)$/i  # ping
+      $needrestart = false
       $lag=Time.now - $Lping
-      puts "LAG = #{$lag} 秒" if $lag > 3 and $lag < 20
+      puts "LAG = #{$lag} 秒" if $lag > 1
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
       if $ignore_nick =~ Regexp.new('^'+from+'$',Regexp::IGNORECASE)
@@ -560,7 +565,8 @@ class IRC
     when /^:(.+?)\s(\d+)\s(.+?)\s:(.+)/i#motd , names list
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
       # verne.freenode.net 353 ^k^ = #ubuntu-cn :^k^ cocoleo seventh
-      pos=$2.to_i;names=$3;tmp=$4.to_s
+      # :card.freenode.net 319 ^k^ ^k^ :@#ubuntu-cn @#sevk
+      pos=$2.to_i;names=$3;data=tmp=$4.to_s
       puts s
       if pos == 391#对时
         $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
@@ -576,6 +582,10 @@ class IRC
       end
 
       case pos
+      #whois return
+      when 319
+        puts data
+        #$needrestart = false if data =~ /#@channel/
       when 396 #nick verifd
 				joinit
       when 353
@@ -682,8 +692,6 @@ class IRC
         send 'time'
         sleep 1
         send "JOIN #sevk"
-        sleep 1
-        send "JOIN #{@channel}" if @channel != '#sevk'
       when 10#打招呼回复
         send hello_replay(to,sSay)
       when 20#notice
@@ -735,11 +743,9 @@ class IRC
     if Time.now.hour == 6
       return if @daily_done 
       @daily_done =true
+      reload_all
       saveu
-      send 'join ' + @channel
-      sleep 1
       send('time')
-			reload_all
       msg(@channel, osod.addTimCh ,30)
     end
   end
@@ -776,6 +782,8 @@ class IRC
 					s1=$1
           if s1 =~ /^me/i
             say(s.gsub(/\/me/i,"\001ACTION") + "\001")
+          elsif s1 =~ /^ping/i
+            $Lping = Time.now
           elsif s1 =~ /^ctcp/i
             say(s1.gsub(/^ctcp/i,"\001") + "\001")
           else
@@ -821,10 +829,12 @@ class IRC
         sleep 55 + rand(10)
         n+=1
         n=0 if n > 1e8
-				next if n%2==0
-        ping rescue log
-				next if n%3==0
-        check_proxy_status rescue log
+				if n%8==0
+          check_proxy_status rescue log
+        end
+        if n%30==0
+          ping rescue log
+        end
       end
     end
   end
