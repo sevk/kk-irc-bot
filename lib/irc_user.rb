@@ -4,7 +4,7 @@
 
 #刷屏检测阀值,不建议修改.
 $maxfloodme = 65.0 #70
-$maxflood = 35.0  #35.5
+$maxflood = 35.5  #35.5
 $initFlood = 83.0 #83
 $maxNamed = 200
 
@@ -38,9 +38,7 @@ class ALL_USER
     $lastsay=Array.new
   end
 
-  def addr
-    @addr
-  end
+  attr_accessor :addr
 
   def havenick?(nick)
     @index.include?(nick)
@@ -200,7 +198,7 @@ class ALL_USER
     if @index.include?(nick)
       index = getindex(nick)
     else
-      puts '#无此用户'
+      #puts '#无此用户'
       return add(nick,name,ip)
     end
     #~ puts '21 $timelast6say[index]:  index: ' + index.to_s

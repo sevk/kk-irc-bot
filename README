@@ -1,8 +1,8 @@
 需要安装ruby, 安装ruby :
-建议装 1.8 , 小数第一位,偶数表示稳定版本, 1.9 奇数是测试版本.
+建议装 ruby 1.9.2
 
 windows : http://rubyinstaller.org/downloads/
-linux下面一般是 apt-get install ruby-full 之类的,我用的是ubuntu .
+linux下面建议用 rvm 安装ruby : http://beginrescueend.com/
 
 装完ruby后升级 gem, 命令是: gem update --system
 然后安装3个库: gem install htmlentities rchardet mechanize
