@@ -1,4 +1,6 @@
 require 'find'
+include Find
+
 #载入plugin
 
 if File.directory? 'plugin'
@@ -9,3 +11,19 @@ if File.directory? 'plugin'
     end
   end
 end
+
+# +q
+def get_baned
+  re = []
+  Find.find('.') do |f|
+    if f =~ /_baned\.ban/
+      puts ' baned file : ' + f.to_s
+      s = File.read(f)
+      p s
+      re << s
+      File.delete f
+    end
+  end
+  re
+end
+

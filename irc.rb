@@ -24,6 +24,7 @@ require "ipwry.rb"
 load 'irc_user.rb'
 load 'plugin.rb'
 load 'log.rb'
+Socket.do_not_reverse_lookup = true
 
 class IRC
   def initialize(server,port,nick,channel,charset,pass,name="bot kk ver bot :svn Ver bot")
@@ -47,14 +48,30 @@ class IRC
   end
   
   #kick踢出
-  def kick(n)
-    send "kick #@channel #{n} #$kick_info"
+  def kick(n,msg=$kick_info)
+    send "kick #@channel #{n} #{msg}"
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q')
+    if $lag and $lag > 0.7
+      msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟？",6)
+      restart if $lag > 1.5
+      return
+    end
     s="#{nick}!*@*"
     send "mode #{chan} +#{mode} #{s}"
+    f = Time.now.strftime('%H%M%S_baned.ban')
+    File.open(f,'wb'){|x|
+      x.puts "mode #{chan} -#{mode} #{s}"
+    }
+
+    Thread.new(f,time) do |f,time|
+      Thread.current[:name]= 'autoban del file'
+      sleep time + 200
+      File.delete f
+    end
+
     $u.set_ban_time(nick)
     Thread.new do
       Thread.current[:name]= 'autoban'
@@ -65,12 +82,13 @@ class IRC
 
   def ping
     Thread.new do
+      Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      send "PING #{Time.now.to_i}",false
+      send "PING #{Time.now.to_i}",false rescue nil
       #sleep 6
       #send "whois #{@nick}",false  rescue log
-      sleep 30+ rand(100)
+      sleep 6
       #print '$needrestart: ' , $needrestart , "\n"
       $need_reconn = true if $needrestart
     end
@@ -137,7 +155,7 @@ class IRC
 		end
 		sleep 0.5
     send "NICK #{@nick}"
-    sleep 1
+    sleep 0.5
     send "USER #@str_user"
     send identify
     $pass = nil
@@ -146,7 +164,7 @@ class IRC
     do_after_sec(@channel,nil,7,20)
     Thread.new do
 			Thread.current[:name]= 'connect say'
-      sleep 100+rand(300)
+      sleep 150+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
       send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false)
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
@@ -319,19 +337,20 @@ class IRC
         $u.floodreset(nick)
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
-        when 0..60
+        when 0..80
           return
-        when 59..910 #n分钟之前ban过
-          autoban to,nick,300,'q'
+        when 79..1210 #n分钟之前ban过
+          autoban to,nick,400,'q'
           kick a1
         else
-          autoban to,nick
-          msg(to,"#{a1}:..., 有刷屏嫌疑 ,#$kick_info",0)
+          $b_tim = 78
+          autoban to,nick,$b_tim
+          msg(to,"#{a1}:..., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",1)
         end
         notice(nick,"#{a1}: ... #$kick_info",18)
         return
       elsif $u.rep nick
-        msg(to,"#{a1}: .. ..",13)
+        msg(to,"#{a1}: .. ..",20)
       end
 
       #ban ctcp but not /me
@@ -465,6 +484,8 @@ class IRC
       when /http/i
         @ti=Thread.new do msg(to,gettitleA(url,from),0) end
         @ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
+        #@ti.join(20)
+        #@ti_p.join(20)
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -531,7 +552,7 @@ class IRC
       $saytitle -= 1 if tmp[2].ord == 48
       $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
 
-			reload_all rescue log
+      reload_all rescue log
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
       msg(from,rt,0)
     else
@@ -551,7 +572,9 @@ class IRC
     when /\sPONG\s(.+)$/i
       $needrestart = false
       $lag=Time.now - $Lping
-      puts "LAG = #{$lag} 秒" if $lag > 1
+      if $lag > 0.7
+        puts "LAG = #{$lag} 秒" 
+      end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
@@ -653,14 +676,14 @@ class IRC
   end
 
   #加入频道
-	def joinit
-		sleep 1
-		send 'time'
-		sleep 1
-		send "JOIN #sevk"
-		sleep 1
-		send "JOIN #{@channel}" if @channel != '#sevk'
-	end
+  def joinit
+    send 'time'
+    sleep 0.5
+    send "JOIN #sevk"
+    sleep 0.5
+    send "JOIN #{@channel}" if @channel != '#sevk'
+    Thread.new { get_baned.each{|x| sleep 10 ;send x} }
+  end
 
   #延时发送
   def do_after_sec(to,sSay,flag,second=18)
@@ -722,7 +745,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-		Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
+    Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
     @exit = true
@@ -745,7 +768,7 @@ class IRC
     if Time.now.hour == 6
       return if @daily_done 
       @daily_done =true
-      reload_all
+      reload_all rescue nil
       saveu
       send('time')
       msg(@channel, osod.addTimCh ,30)
@@ -758,7 +781,7 @@ class IRC
   def iSend()
     loop do
       $stdout.flush
-      sleep 0.4
+      sleep 0.1
       #windows 好像不支持Readline
       if win_platform?
         s = IO.select([$stdin],nil,nil,0.1)
@@ -777,6 +800,8 @@ class IRC
           send "privmsg #{who} :#{s.strip}"
         when /^\/ns\s+(.*)$/i #发送到nick serv
           send "privmsg nickserv :#{$1.strip}"
+        when /^\/ms\s+(.*)$/i #发送到memo serv
+          send "privmsg memoserv :#{$1.strip}"
         when /^\/nick\s+(.*)$/i
           @nick = $1
           send s.gsub(/^[\/]/,'')
@@ -807,7 +832,7 @@ class IRC
             check_dic(s,@nick,@channel)
           end
         else
-          say s
+          say s.ii
         end
       #end
     end
@@ -833,10 +858,8 @@ class IRC
         #p 'timer minly'
         n+=1
         n=0 if n > 900
-        if n%9==0
-          check_proxy_status rescue log
-        end
-        if n%30==0
+        check_proxy_status rescue log
+        if n%16==0
           ping rescue log
         end
       end
@@ -882,12 +905,12 @@ class IRC
         end
       rescue Exception
         log
-        sleep 10
+        sleep 8
         return
       rescue
-        log if $debug
-        sleep 1
-        puts "#{$!.message} #{$@[0]}"
+        log
+        sleep 2
+        return
       end
     end
   end
@@ -919,12 +942,12 @@ if not defined? $u
       break if irc.exited?
       log
       p Time.now
-      sleep 260+ rand(800)
+      sleep 160+ rand(400)
       restart
     end
     break if irc.exited?
 		p Time.now
-    sleep 90 +rand(200)
+    sleep 50 +rand(160)
   end
 	Thread.list.each{|x|(x.kill; x.exit) rescue nil}
 end
@@ -932,6 +955,7 @@ end
 # vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
 def restart #Hard Reset
+  send 'quit lag' rescue nil
   p "exec #{__FILE__} #$argv0"
   sleep 5
   exec "#{__FILE__} #$argv0"

@@ -15,6 +15,7 @@ class String
   def gb_to_utf8
     Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
   end
+  alias to_utf8 gb_to_utf8
   def utf8_to_gb
     Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
   end
@@ -33,7 +34,7 @@ class String
 		self.tr "A-Za-z", "N-ZA-Mn-za-m"
 	end
 	#"\343\213\206" ㏠
-  def ii(s=['☘',"\322\211"][rand(2)])
+  def ii(s=['☘',"\322\211",rand(10).to_s][rand(3)])
     self.split(//u).join(s)
   end
   def addTimCh
@@ -87,11 +88,11 @@ load 'color.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = '请勿Flood，超过5行贴至paste.ubuntu.com 或 code.bulix.org '
+$kick_info = "请勿Flood，超过5行贴至paste.ubuntu.com ."
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.36' unless defined? Ver
-UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/9.10 (karmic) kk-bot/#{Ver}" unless defined? UserAgent
+Ver='v0.38' unless defined? Ver
+UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1]} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
@@ -168,15 +169,16 @@ end
 def reload_all
 	load 'dic.rb'
 	load 'irc_user.rb'
+  load 'color.rb'
 	#load 'irc.rb'
-	load 'plugin.rb'
+	load 'plugin.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end
 
 #'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
 def loadDic
-  $str1 = IO.read('UBUNTU新手资料.txt') rescue ''
+  $str1 = IO.read('U.txt') rescue ''
   puts 'Dic load [ok]'
 end
 
@@ -194,7 +196,7 @@ def safe_eval(str)
   Thread.start {
     Thread.current[:name]= 'safe eval thread'
     $SAFE=4
-    eval(str).to_s rescue $!.message
+    eval(str).to_s[0,100] rescue $!.message
   }.value # can be retrieved using "value" method
 end
 def safe(level)
@@ -271,7 +273,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   end
 
   $ub.gsub!(/\s+/,' ')
-  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML
+  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML.icolor(3)
 end
 
 class String
@@ -455,7 +457,7 @@ def gettitle(url,proxy=true,mechanize=1)
     #agent.auth('^k^', 'password')
     begin
 			page = nil
-			Timeout.timeout(10){page = agent.get(url) } # 为了防止下载 .tar.gz
+			page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
 			if page.header['content-type']  !~ /text\/html|application\//i
@@ -473,11 +475,12 @@ def gettitle(url,proxy=true,mechanize=1)
 			charset= guess_charset(title)
 			title = URI.decode(unescapeHTML(title))
 			charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
+      t = Time.now.strftime('%M%S')
 			if charset and charset =~ /#$local_charset/i
-				print 'proxy : ' ,proxy, ' ', title , "\n"
+				print t + ' proxy : ' ,proxy, ' ', title , "\n"
 			else
 				s= Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title) 
-				print 'proxy : ' ,proxy, ' ', s , "\n"
+				print t + ' proxy : ' ,proxy, ' ', s , "\n"
 			end
 
 			if charset and charset !~ /#@charset/i
@@ -486,9 +489,6 @@ def gettitle(url,proxy=true,mechanize=1)
 			end
 
 			return title
-		rescue Timeout::Error
-			Thread.pass
-      return ['time out . IN gettitle ']
     rescue Exception => e
       p $!.message + $@[0]
       return [$!.message[0,60] + ' . IN gettitle']
@@ -577,7 +577,13 @@ def gettitleA(url,from,proxy=true)
   $last_ti[proxy] = url
   t=Time.now
 
-  ti= gettitle(url,proxy)
+  begin
+    ti = Timeout.timeout(11){gettitle(url,proxy)}
+  rescue Timeout::Error
+    Thread.pass
+    sleep 1
+    return ['time out . IN gettitle ']
+  end
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
   #print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
 
@@ -594,7 +600,7 @@ def gettitleA(url,from,proxy=true)
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
-				$saytitle -=0.1 if $saytitle > 0
+				$saytitle -=0.05 if $saytitle > 0
 			else
 				$saytitle +=0.6 if $saytitle < 1
 			end
@@ -602,7 +608,7 @@ def gettitleA(url,from,proxy=true)
 		return if $saytitle < 1
     if ti
       ti.gsub!(/Ubuntu中文论坛 • 登录/, '水区水贴? ')
-      return "⇪ title: #{ti}"
+      return "\x033⇪ ti: #{ti}\x030"
 		end
 end
 
@@ -654,8 +660,8 @@ def getGoogle(word,flg=0)
 	url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
 	s=getbody(url)
 	puts s.size
-	s = s.match(/<div id=resultStats>.+/i)[0]
-	#File.open('tmp.html','wb').puts s
+  s = s.match(/<div id=resultStats>.+/i)[0]
+  File.open('tmp.html','wb').puts s
 	#puts s.match(/.+?<div id=foot>/i)[0]
 	#return
 	url = encodeurl(url)
@@ -735,6 +741,7 @@ class Dic
 	def geted2kinfo(url)
 		url.match(/^:\/\/\|(.+?)\|(\S+?)\|(.+?)\|.*$/)
 		name=$2.to_s;size=$3.to_f
+    p url
 		return if $1 == 'server'
 		return if not $3
 		#return if url !~ $urlList
@@ -875,8 +882,8 @@ def evaluate(s)
 		l=2 if s =~ /^`(aptitude search|aptitude show) [a-z\-~]+`$/i
 		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
-		Timeout.timeout(12){
-      return safe_eval(s)
+		Timeout.timeout(6){
+      return safe_eval(s).icolor(rand(99))
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
 		}
@@ -885,7 +892,7 @@ def evaluate(s)
 	rescue Exception
 		return ''#$!.message[0,28] # + $@[1..2].join(' ')
 	rescue
-		return $!.message[0,28] #+ $@[1..2].join(' ')
+		return $!.message[0,28]#+ $@[1..2].join(' ')
 	end
 end
 
@@ -988,18 +995,22 @@ end
 #简单检测代理是否可用
 def check_proxy_status
   Thread.new do
-		Thread.current[:name]= 'check proxy stat'
-		sleep 1
+    Thread.current[:name]= 'check proxy stat'
     begin
-      Timeout.timeout(10){TCPSocket.open $proxy_addr,$proxy_port}
+      Timeout.timeout(10){
+        a=TCPSocket.open($proxy_addr,$proxy_port) 
+        a.send('s',0)
+        a.close
+      }
     rescue Timeout::Error
       print $proxy_addr,':',$proxy_port,' ',false,"\n"
       $proxy_status_ok = false
-      return false
+      break
     end
+    #print $proxy_addr,':',$proxy_port,' ',true,"\n"
     $proxy_status_ok = true
   end
-	true
+  true
 end
 
 def addTimCh
@@ -1075,31 +1086,31 @@ def gettitle_proxy(url)
 end
 
 def update_proxy_rule
-	File.open('gfwlist.txt','w'){ |x|
-	  url = "nUE0pQbiY2S1qT9jpz94rF1aMaqfnKA0Yzqio2qfMJAiMTHhL29gY3A2ov90\npaIhnl9aMaqfnKA0YaE4qN==\n".rot13.ub64
-	  x.write Mechanize.new.get(url).body
-	}
+  File.open('gfwlist.txt','w'){ |x|
+    url = "nUE0pQbiY2S1qT9jpz94rF1aMaqfnKA0Yzqio2qfMJAiMTHhL29gY3A2ov90\npaIhnl9aMaqfnKA0YaE4qN==\n".rot13.ub64
+    x.write Mechanize.new.get(url).body
+  }
 end
 def read_proxy_rule
-	$proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
+  $proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
 
 def botsay(s)
-	s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
-	s.zh2en.alice_say.en2zh rescue (log;'休息一下...')
+  s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
+  s.zh2en.alice_say.en2zh rescue (log;'休息一下...')
 end
 
   #高亮打印消息
   def pr_highlighted(s)
     #s=s.force_encoding("utf-8")
     s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
-		if s=~ /#{Regexp::escape @nick}/i
-			if $local_charset !~ /UTF-8/i
-				puts s.to_gb.red
-			else
-				puts s.red 
-			end
-		end
+		#if s=~ /#{Regexp::escape @nick}/i
+			#if $local_charset !~ /UTF-8/i
+				#puts s.to_gb.red
+			#else
+				#puts s.red 
+			#end
+		#end
 
 		need_savelog = false
     case s
@@ -1146,14 +1157,14 @@ end
 
 #写入聊天记录
 def savelog(s)
-	#s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
+  s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
 	#gem install ansi2html
 
 	#m = Time.now.min
 	#m = "%02d" % (m - (m % 30))
 	fn=Time.now.strftime("%y%m%d.txt")
 	#fn=Time.now.strftime("%y%m%d%H.txt")
-	File.open('irclogs/' + fn,'a'){|x|
+	File.open('irclogs/' + fn,'ab'){|x|
 		x.puts s
 	}
 end

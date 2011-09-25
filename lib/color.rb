@@ -54,4 +54,12 @@ class String
     "\e[42m#{self}#$normal"
 	end
 
+  #irc color
+  def icolor(n)
+    "\x03#{n}#{self}\x03#{n}"
+  end
+  def iblue
+    "\x033#{self}\x030"
+  end
+
 end
