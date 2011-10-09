@@ -27,7 +27,7 @@ load 'log.rb'
 Socket.do_not_reverse_lookup = true
 
 class IRC
-  def initialize(server,port,nick,channel,charset,pass,name="bot kk ver bot :svn Ver bot")
+  def initialize(server,port,nick,channel,charset,name="bot kk ver bot :svn Ver bot")
     $_hour = $_min = $_sec = 0
     @count=0
     @nicks = Set.new
@@ -54,9 +54,10 @@ class IRC
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q')
-    if $lag and $lag > 0.7
-      msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟？",6)
-      restart if $lag > 1.5
+    if $lag and $lag > 0.8
+      msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟",0)
+      sleep 0.1
+      restart if $lag > 3
       return
     end
     s="#{nick}!*@*"
@@ -85,10 +86,11 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      send "PING #{Time.now.to_i}",false rescue nil
+      @irc.send("PING #{Time.now.to_i}\n",0)
+      #send "PING #{Time.now.to_i}",false rescue nil
       #sleep 6
       #send "whois #{@nick}",false  rescue log
-      sleep 6
+      sleep 2
       #print '$needrestart: ' , $needrestart , "\n"
       $need_reconn = true if $needrestart
     end
@@ -157,26 +159,30 @@ class IRC
     send "NICK #{@nick}"
     sleep 0.5
     send "USER #@str_user"
-    send identify
-    $pass = nil
+      Thread.new{
+        sleep 22
+        identify
+      }
     $bot_on = $bot_on1
     $min_next_say = Time.now
     do_after_sec(@channel,nil,7,20)
     Thread.new do
 			Thread.current[:name]= 'connect say'
-      sleep 150+rand(400)
+      sleep 220+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false)
+      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 3
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
     end
   end
-  def identify
+  def identify(n=false)
     File.open(ARGV[0]).each { |line|
       if line =~ /pass/
         eval line
       end
     }
-    "PRIVMSG nickserv :id #{$pass}"
+    send "PRIVMSG nickserv :id #{$pass}"
+
+    $pass = nil
   end
 
   #发送字典结果 ,取字典,可以用>之类的重定向,向某人提供字典数据
@@ -473,7 +479,7 @@ class IRC
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
-        msg to,"#{from}, #{tmp}", 0 if not tmp.empty?
+        msg to,"#{from}, #{tmp}", 10 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -482,7 +488,7 @@ class IRC
       url = $2
       case $1
       when /http/i
-        @ti=Thread.new do msg(to,gettitleA(url,from),0) end
+        @ti=Thread.new do msg(from,gettitleA(url,from),0) end
         @ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
         #@ti.join(20)
         #@ti_p.join(20)
@@ -564,7 +570,17 @@ class IRC
 
   #服务器消息
   def check_irc_event(s)
+    #:NickServ!NickServ@services. NOTICE ^k^ :You are now identified for [ub].
+    #:NickServ!NickServ@services. NOTICE kk :You have 30 seconds to identify to your nickname before it is changed.
+    #This nickname is registered
     case s.strip
+    when /^:NickServ!NickServ@services\.\sNOTICE.+?:(This nickname is registered)|(You have 30 seconds to identify)/i
+      puts s
+      identify
+
+    when /^:NickServ!NickServ@services\.\sNOTICE.+?:(You are already logged in as)|(You are now identified for)/i
+      puts s
+      joinit
     when /^PING :(.+)$/i  # ping
       @irc.send "PONG :#{$1}\n", 0
 
@@ -572,12 +588,13 @@ class IRC
     when /\sPONG\s(.+)$/i
       $needrestart = false
       $lag=Time.now - $Lping
-      if $lag > 0.7
+      if $lag > 0.8
         puts "LAG = #{$lag} 秒" 
       end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
+      #puts s
       if $ignore_nick =~ Regexp.new('^'+from+'$',Regexp::IGNORECASE)
         print 'ignore_nick ' , from,"\n" if $debug
         return 'ignore_nick'
@@ -595,6 +612,7 @@ class IRC
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
       # verne.freenode.net 353 ^k^ = #ubuntu-cn :^k^ cocoleo seventh
       # :card.freenode.net 319 ^k^ ^k^ :@#ubuntu-cn @#sevk
+      #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
       pos=$2.to_i;names=$3;data=tmp=$4.to_s
       puts s
       if pos == 391#对时
@@ -616,7 +634,8 @@ class IRC
         puts data
         #$needrestart = false if data =~ /#@channel/
       when 396 #nick verifd
-        joinit
+        puts '396 verifed '.red
+        #joinit
       when 353
         p 'all nick:' + tmp
         @nicks.merge tmp.split(/ /)
@@ -630,6 +649,20 @@ class IRC
         puts "是否检测乱码= #{$need_Check_code}"
         print "feed功能= " , $need_say_feed, "\n"
         print 'saytitle= ' , $saytitle, 10.chr
+
+      when 437,433
+      #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
+      #:wolfe.freenode.net 433 * [ub] :Nickname is already in use.
+      #
+        @nick = $nick[rand $nick.size]
+        Thread.new{
+          sleep 10
+          send "NICK #{@nick}"
+        }
+      when 376 #end of /motd
+        send 'time'
+        sleep 0.5
+        send "JOIN #sevk"
       end
 
       #自动 whois 返回
@@ -653,11 +686,11 @@ class IRC
 
       puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
-      sleep 1
       puts s.red
+      sleep 2
       return if @exit
       log s
-      $need_reconn=true if s =~ /:Closing/i
+      $need_reconn=true
     else
       return nil #not matched, go on
     end #end case
@@ -677,12 +710,9 @@ class IRC
 
   #加入频道
   def joinit
-    send 'time'
-    sleep 0.5
-    send "JOIN #sevk"
     sleep 0.5
     send "JOIN #{@channel}" if @channel != '#sevk'
-    Thread.new { get_baned.each{|x| sleep 10 ;send x} }
+    Thread.new {sleep 40; get_baned.each{|x| sleep 10 ;send x} }
   end
 
   #延时发送
@@ -713,9 +743,9 @@ class IRC
       when 0
         send "PRIVMSG #{to} :#{sSay}"
       when 7
-        sleep 1
+        sleep 0.5
         send 'time'
-        sleep 1
+        sleep 0.5
         send "JOIN #sevk"
       when 10#打招呼回复
         send hello_replay(to,sSay)
@@ -748,8 +778,9 @@ class IRC
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
-    @exit = true
+    log 'my exit '
     puts 'exiting...'.yellow
+    @exit = true
   end
 
   #说新帖
@@ -781,10 +812,10 @@ class IRC
   def iSend()
     loop do
       $stdout.flush
-      sleep 0.1
+      sleep 0.2
       #windows 好像不支持Readline
       if win_platform?
-        s = IO.select([$stdin],nil,nil,0.1)
+        s = IO.select([$stdin],nil,nil,0.2)
         next if !s
         #next if s[0][0] != IO
         s = $stdin.gets
@@ -832,7 +863,7 @@ class IRC
             check_dic(s,@nick,@channel)
           end
         else
-          say s.ii
+          say s
         end
       #end
     end
@@ -858,10 +889,10 @@ class IRC
         #p 'timer minly'
         n+=1
         n=0 if n > 900
-        check_proxy_status rescue log
-        if n%16==0
-          ping rescue log
+        if n % 20 == 0
+          check_proxy_status rescue log
         end
+        ping rescue log
       end
     end
   end
@@ -887,14 +918,14 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.2
+        sleep 0.05
         return if @exit
         break if $need_reconn
-        ready = select([@irc], nil, nil, 0.2)
+        ready = select([@irc], nil, nil, 0.1)
         next if not ready
         for s in ready[0]
           next if s != @irc
-          x = @irc.recvfrom(2048)[0]
+          x = @irc.recvfrom(1480)[0]
           if x.empty?
             p ' x.empty, must be lose conn '
             return 
@@ -928,7 +959,7 @@ if not defined? $u
 	$server = ARGV[1] if ARGV[1]
 	p $server
 
-  irc = IRC.new($server,$port,$nick,$channel,$charset,$pass,$name)
+  irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
   irc.timer_start
 
 	irc.input_start if $client
@@ -936,16 +967,17 @@ if not defined? $u
   loop do
     check_proxy_status
     begin
-      irc.connect()
-      irc.main_loop()
+      irc.connect
+      irc.main_loop
     rescue
       break if irc.exited?
       log
       p Time.now
-      sleep 160+ rand(400)
       restart
     end
     break if irc.exited?
+    #p ' exit main_loop'
+    p $need_reconn
 		p Time.now
     sleep 50 +rand(160)
   end
@@ -956,6 +988,7 @@ end
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
+  sleep 110+ rand(300)
   p "exec #{__FILE__} #$argv0"
   sleep 5
   exec "#{__FILE__} #$argv0"

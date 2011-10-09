@@ -1,6 +1,6 @@
 #为终端字符串添加颜色
 
-require 'colored'
+require 'colored' rescue log
 require 'Win32/Console/ANSI' if Gem.win_platform?
 
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 

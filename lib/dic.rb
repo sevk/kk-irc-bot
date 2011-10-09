@@ -34,7 +34,7 @@ class String
 		self.tr "A-Za-z", "N-ZA-Mn-za-m"
 	end
 	#"\343\213\206" ㏠
-  def ii(s=['☘',"\322\211",rand(10).to_s][rand(3)])
+  def ii(s=['☘',"\322\211"][rand(2)])
     self.split(//u).join(s)
   end
   def addTimCh
@@ -433,7 +433,6 @@ def gettitle(url,proxy=true,mechanize=1)
 	end
 	mechanize = true if url =~ /www\.google\.com/i
   mechanize = true if url =~ $urlProxy
-  proxy = false if ! $proxy_status_ok
 	mechanize = true if proxy
   print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
 
@@ -447,7 +446,11 @@ def gettitle(url,proxy=true,mechanize=1)
     #agent.user_agent_alias = 'Windows IE 7'
     if proxy
 			#print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
-      agent.set_proxy($proxy_addr,$proxy_port)
+      if $proxy_status_ok
+        agent.set_proxy($proxy_addr2,$proxy_port2)
+      else
+        agent.set_proxy($proxy_addr,$proxy_port)
+      end
     end
     agent.max_history = 0
     agent.open_timeout = 10
@@ -998,16 +1001,16 @@ def check_proxy_status
     Thread.current[:name]= 'check proxy stat'
     begin
       Timeout.timeout(10){
-        a=TCPSocket.open($proxy_addr,$proxy_port) 
-        a.send('s',0)
+        a=TCPSocket.open($proxy_addr2,$proxy_port2) 
+        a.send('?',0)
         a.close
       }
     rescue Timeout::Error
-      print $proxy_addr,':',$proxy_port,' ',false,"\n"
+      print $proxy_addr2,':',$proxy_port2,' ',false,"\n"
       $proxy_status_ok = false
       break
     end
-    #print $proxy_addr,':',$proxy_port,' ',true,"\n"
+    #print $proxy_addr2,':',$proxy_port2,' ',true,"\n"
     $proxy_status_ok = true
   end
   true
@@ -1125,9 +1128,8 @@ end
 					need_savelog = true
 				end
 				sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
-			when /join|part|quit|nick/i
-				#pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
-        mt= ' ' + mt[0,1].blue + ' '
+			when /join|part|quit|nick|notice|kick/i
+        mt= ' ' + mt[0,2].blue + ' '
 				to,sy=sy,''
 				if to =~ /#{Regexp::escape @channel}/i
 					need_savelog = true

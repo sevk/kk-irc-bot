@@ -2,7 +2,7 @@
 # sevkme@gmail.com
 
 require 'logger'
-Dir.mkdir 'log' if not File.directory? 'log'
+Dir.mkdir 'log' if not Dir.exist? 'log'
 
 #记录到日志文件，参数是要记录的内容，不给参数则记录当前错误描述，未出错就是空。
 def log(s=nil)

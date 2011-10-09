@@ -3,8 +3,8 @@
 # sevkme@gmail.com
 
 #刷屏检测阀值,不建议修改.
-$maxfloodme = 72.0 #70
-$maxflood = 34.4  #35.5
+$maxfloodme = 77.0 #70
+$maxflood = 33.0  #35.5
 $initFlood = 83.0 #83
 $maxNamed = 200
 
