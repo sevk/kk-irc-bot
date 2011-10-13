@@ -90,7 +90,7 @@ class IRC
       #send "PING #{Time.now.to_i}",false rescue nil
       #sleep 6
       #send "whois #{@nick}",false  rescue log
-      sleep 2
+      sleep 5
       #print '$needrestart: ' , $needrestart , "\n"
       $need_reconn = true if $needrestart
     end
@@ -170,12 +170,12 @@ class IRC
 			Thread.current[:name]= 'connect say'
       sleep 220+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 3
+      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 5
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
     end
   end
   def identify(n=false)
-    File.open(ARGV[0]).each { |line|
+    File.open(ARGV[0],'rb').each { |line|
       if line =~ /pass/
         eval line
       end
@@ -488,8 +488,8 @@ class IRC
       url = $2
       case $1
       when /http/i
-        @ti=Thread.new do msg(from,gettitleA(url,from),0) end
-        @ti_p=Thread.new{ msg(to,gettitleA(url,from,false),0) }
+        @ti=Thread.new do msg(to,from + gettitleA(url,from),0) end
+        @ti_p=Thread.new{ msg(to,from + gettitleA(url,from,false),0) }
         #@ti.join(20)
         #@ti_p.join(20)
       when /ed2k/i
@@ -900,13 +900,9 @@ class IRC
     timer_minly
     @timer1 = Thread.new do#timer 1 , interval = 2600
 			Thread.current[:name]= 'timer 30 min'
-      n = 0
       loop do
         sleep 60*10+ rand(60*25)  #间隔14+12分钟左右
         timer_daily
-        n+=1
-        n=0 if n > 1e6
-        next if n%2 ==0
         if Time.now.hour.between? 9,22
           say_new($channel) if $need_say_feed > 0
         end
@@ -956,7 +952,7 @@ if not defined? $u
   $bot_on1 = $bot_on
   $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
-	$server = ARGV[1] if ARGV[1]
+  Dir.mkdir('irclogs') unless Dir.exist?('irclogs')
 	p $server
 
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)

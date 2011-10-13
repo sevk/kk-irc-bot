@@ -92,7 +92,7 @@ $kick_info = "请勿Flood，超过5行贴至paste.ubuntu.com ."
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
 Ver='v0.38' unless defined? Ver
-UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1]} (ub) kk-bot/#{Ver}" unless defined? UserAgent
+UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
@@ -611,7 +611,8 @@ def gettitleA(url,from,proxy=true)
 		return if $saytitle < 1
     if ti
       ti.gsub!(/Ubuntu中文论坛 • 登录/, '水区水贴? ')
-      return "\x033⇪ ti: #{ti}\x030"
+      return " \x033⇪ t: #{ti}\x030" if proxy
+      return " \x033⇪ ti: #{ti}\x030"
 		end
 end
 
@@ -1144,10 +1145,10 @@ end
 			end
 
 			if from.size < 9
-				t = Time.now.strftime('%M%S')
-				re= "#{t}#{("%11s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
+				t = Time.now.strftime('%H%M%S')
+				re= "#{t}#{("%13s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			else
-				re= "#{sprintf("%15s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
+				re= "#{sprintf("%17s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
 			end
     else
       re= s.red
@@ -1184,7 +1185,10 @@ def auto_set_ch_baud(ch)
 	@ch_baud[ch]['last']=Time.now
 end
 
-require 'bfrb' rescue nil
+begin
+  require 'bfrb'
+rescue LoadError
+end
 def bf(s='.')
   $last_bf=''
   BfRb::Interpreter.new.run s
