@@ -213,7 +213,7 @@ rescue
   log
 end
 
-def get_Atom(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+def get_Atom(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
   buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
   document = Document.new(buffer)
   elements = REXML::XPath.match(document.root, "//atom:entry/atom:title/text()","atom" => "http://www.w3.org/2005/Atom")
@@ -221,7 +221,7 @@ def get_Atom(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   puts titles.join("\n")
 end
 
-def get_Atom_n(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+def get_Atom_n(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
   buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
   #Nokogiri.new()
   document = Nokogiri::XML(buffer)
@@ -230,8 +230,8 @@ def get_Atom_n(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   puts titles.join("\n")
 end
 
-#取ubuntu.org.cn的 feed.
-def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+#取ubuntu.com.cn的 feed.
+def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
   feed = begin
     Timeout.timeout(20) {
       RSS::Parser.parse(url)
