@@ -170,7 +170,7 @@ class IRC
 			Thread.current[:name]= 'connect say'
       sleep 220+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 5
+      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 3
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
     end
   end
@@ -402,7 +402,7 @@ class IRC
       tmp = check_dic(sSay,from,to)
       case tmp
       when 1 #非字典消息
-      when 2 #是title
+      when 2,5 #是title , pinyin
       else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           $u.floodmereset(a1)
@@ -535,13 +535,9 @@ class IRC
     when /^`?(大家好(...)?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好',10,23)
-    when /^`?((有人(...)?(吗|不|么|否)((...)?|\??))|test.{0,5}|测试(下|中)?.{0,3})$/ui #有人吗?
+    when /^`?((有人(...)?(吗|不|么|否))|test.{0,3}|测试(下|中)?.{0,3})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', ....',10,12)
-    when /^`(bu|wo|ni|ta|shi|ru|zen|hai|neng|shen|shang|wei|guo|qing|mei|xia|zhuang|geng|zai)\s(.+)$/i  #拼音
-      return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
-      return nil if s.bytesize < 12
-      sayDic(5,from,to,s)
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic
@@ -561,6 +557,13 @@ class IRC
       reload_all rescue log
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
       msg(from,rt,0)
+
+    #拼音
+    when /^`(b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(o|ao|e|iu|i|ei|ui|ou|iu|ie|an|en|in|un|ang|eng|ing|ong)/
+      return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
+      return nil if s.bytesize < 12
+      sayDic(5,from,to,s)
+      return 5
     else
       return 1#not match dic_event
     end
@@ -899,7 +902,7 @@ class IRC
   def timer_start
     timer_minly
     @timer1 = Thread.new do#timer 1 , interval = 2600
-			Thread.current[:name]= 'timer 30 min'
+      Thread.current[:name]= 'timer 30 min'
       loop do
         sleep 60*10+ rand(60*25)  #间隔14+12分钟左右
         timer_daily
@@ -977,10 +980,7 @@ if not defined? $u
 		p Time.now
     sleep 50 +rand(160)
   end
-	Thread.list.each{|x|(x.kill; x.exit) rescue nil}
 end
-
-# vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
@@ -990,3 +990,5 @@ def restart #Hard Reset
   exec "#{__FILE__} #$argv0"
 end
 
+
+# vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:

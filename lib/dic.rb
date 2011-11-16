@@ -613,10 +613,11 @@ def gettitleA(url,from,proxy=true)
       ti.gsub!(/Ubuntu中文论坛 • 登录/, '水区水贴? ')
       return " \x033⇪ t: #{ti}\x030" if proxy
       return " \x033⇪ ti: #{ti}\x030"
-		end
+    end
 end
 
 def getPY(c)
+  p 'getPY'
   c=' '+ c
   c.gsub!(/\sfirefox(.*?)\s/i,' huohuliulanqi ')
   c.gsub!(/\subuntu/i,' wu ban tu ')
@@ -627,7 +628,8 @@ def getPY(c)
     needAddKub=true
     c.gsub!(/\skubuntu/i,' ')
   end
-  re = google_py(c)
+  #re = google_py(c)
+  re = youdao_py(c)
   re = re + ' Kubuntu' if needAddKub==true
   re.gsub!(/还原/i,'换源')
 
@@ -644,6 +646,7 @@ def encodeurl(url)
 end
 
 def google_py(word)
+  p 'google_py'
     re=''
     url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
     url = encodeurl(url)
@@ -660,6 +663,29 @@ def google_py(word)
     }
 end
 
+#拼音转中文
+def youdao_py(words)
+  url = "http://www.youdao.com/search?q=#{words}&ue=utf8&keyfrom=web.index"
+  geturl(url)
+end
+def geturl(url,type=1)
+  agent = Mechanize.new
+  agent.user_agent_alias = 'Linux Mozilla'
+  agent.max_history = 0
+  agent.open_timeout = 12
+  agent.cookies
+  begin
+    page = agent.get_file(url)
+  rescue Exception => e
+    return e.message[0,60] + ' . IN geturl.'
+  end
+  puts page
+  s = page.force_encoding('utf-8').match(/您是不是要找.*?<strong>(.*?)<\/strong>/im)[1]
+  s.gsub!(/\s+/,' ')
+  #puts s
+  s.gsub!(/<.*?>/,'')#.unescapeHTML.gb_to_utf8
+  s
+end
 def getGoogle(word,flg=0)
 	url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
 	s=getbody(url)
