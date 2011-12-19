@@ -47,9 +47,9 @@ class IRC
     mystart
   end
   
-  #kick踢出
-  def kick(n,msg=$kick_info)
-    send "kick #@channel #{n} #{msg}"
+  #踢出
+  def kick(ch,n,msg=$kick_info)
+    send "kick #{ch} #{n} #{msg}"
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
@@ -57,7 +57,7 @@ class IRC
     if $lag and $lag > 0.8
       msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
-      restart if $lag > 3
+      restart if $lag > 5
       return
     end
     s="#{nick}!*@*"
@@ -347,7 +347,7 @@ class IRC
           return
         when 79..1210 #n分钟之前ban过
           autoban to,nick,400,'q'
-          kick a1
+          kick to,a1
         else
           $b_tim = 78
           autoban to,nick,$b_tim
@@ -454,7 +454,7 @@ class IRC
       $need_say_feed -= 1 if new =~ $botlist_ub_feed
       $saytitle -= 1 if new =~ $botlist_title
       renew_Readline_complete($u.all_nick)
-    when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i #KICK 
+    when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i
       #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
       from=$1;chan=$4;tag=$5;reason=$6
       return if chan =~ /#sevk/i

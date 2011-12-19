@@ -109,7 +109,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debia|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|ee|oo|progra|devel|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|progra|devel|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -196,7 +196,7 @@ def safe_eval(str)
   Thread.start {
     Thread.current[:name]= 'safe eval thread'
     $SAFE=4
-    eval(str).to_s[0,100] rescue $!.message
+    eval(str).to_s[0,100].gsub(/\s+/,' ') rescue $!.message
   }.value # can be retrieved using "value" method
 end
 def safe(level)
@@ -273,7 +273,7 @@ def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
   end
 
   $ub.gsub!(/\s+/,' ')
-  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML.icolor(3)
+  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML.icolor(7)
 end
 
 class String
@@ -286,7 +286,7 @@ class String
       'Accept'=>'text/html',
       'Referer'=> URI.escape(url),
       'Accept-Language'=>'zh-cn',
-      'Keep-alive' => 0.chr,
+      #'Keep-alive' => 0.chr,
       'User-Agent'=> UserAgent
     )
 
@@ -592,7 +592,7 @@ def gettitleA(url,from,proxy=true)
 
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    #return if ti !~ $tiList and url !~ $urlList
+    return " 非linux网址?  #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
 	return if ti.empty?
 
@@ -1156,7 +1156,7 @@ end
 				end
 				sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
 			when /join|part|quit|nick|notice|kick/i
-        mt= ' ' + mt[0,2].blue + ' '
+        mt= ' ' + mt[0,2].red_on_white + ' '
 				to,sy=sy,''
 				if to =~ /#{Regexp::escape @channel}/i
 					need_savelog = true
@@ -1165,7 +1165,7 @@ end
 			else
 				#pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
 				re= s.pink
-        mt= ' ' + mt[0,1] + ' '
+        mt= ' ' + mt[0,2].blue + ' '
 				sy=sy.green
 				need_savelog = true
 			end
