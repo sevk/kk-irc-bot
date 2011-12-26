@@ -131,7 +131,7 @@ class IRC
         #非utf-8的聊天室就直接截断了
         s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
       end
-      s << ' ...'
+      s << ' …'
     else
       s.addTimCh + ' <ai>' if add_tim_chr
     end
@@ -283,7 +283,7 @@ class IRC
       #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;sSay=$5.to_s.untaint
-        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from}:say #{sSay} in #{tmp} ? We use #{@charset} !" if $need_Check_code
+        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from} say: #{sSay} in #{tmp} ? We use #{@charset} !" if $need_Check_code
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset'
       end
@@ -301,7 +301,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"...不要玩机器人...谢谢.... ",11 if rand(10) > 5
+        msg from,"..不要玩机器人..谢谢.. .. ",11 if rand(10) > 5
         return
       end
 
@@ -476,6 +476,7 @@ class IRC
     case s.strip.force_encoding('utf-8')
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
+        return if s =~ /出售/
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
@@ -488,8 +489,12 @@ class IRC
       url = $2
       case $1
       when /http/i
-        @ti=Thread.new do msg(to,from + gettitleA(url,from),0) end
-        @ti_p=Thread.new{ msg(to,from + gettitleA(url,from,false),0) }
+        @ti=Thread.new do 
+          msg(to,from + gettitleA(url,from),0)
+        end
+        @ti_p=Thread.new{ 
+          msg(to,from + gettitleA(url,from,false),0)
+        }
         #@ti.join(20)
         #@ti_p.join(20)
       when /ed2k/i
@@ -537,7 +542,7 @@ class IRC
       do_after_sec(to,from + ',  好',10,23)
     when /^`?((有人(...)?(吗|不|么|否))|test.{0,3}|测试(下|中)?.{0,3})$/ui #有人吗?
       $otherbot_said=false
-      do_after_sec(to,from + ', ....',10,12)
+      do_after_sec(to,from + ', .. ..',10,12)
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic

@@ -109,7 +109,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|xorg|wine|sql|android|安卓|progra|devel|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|安卓|progra|google|devel|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -455,7 +455,7 @@ def gettitle(url,proxy=true,mechanize=1)
     agent.max_history = 0
     agent.open_timeout = 10
 		agent.read_timeout = 10
-		agent.keep_alive = false
+		agent.keep_alive = true
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -463,6 +463,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
+			return if page.header['content-type']  =~ /application\/zip/i
 			if page.header['content-type']  !~ /text\/html|application\//i
 				return '' 
 			end
@@ -474,6 +475,7 @@ def gettitle(url,proxy=true,mechanize=1)
       end
 			#p 'get page ok'
 			title = page.title
+      return unless title
 			title.gsub!(/\s+/,' ')
 			charset= guess_charset(title)
 			title = URI.decode(unescapeHTML(title))
@@ -581,7 +583,7 @@ def gettitleA(url,from,proxy=true)
   t=Time.now
 
   begin
-    ti = Timeout.timeout(11){gettitle(url,proxy)}
+    ti = Timeout.timeout(9){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     sleep 1
@@ -590,11 +592,12 @@ def gettitleA(url,from,proxy=true)
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
   #print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
 
+  return unless ti
+	return if ti.empty?
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    return " 非linux网址?  #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return ",啥网址吆? #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
-	return if ti.empty?
 
 		#检测是否有其它取标题机器人
 		Thread.new do
