@@ -96,7 +96,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
-$re_http=/(....)(:\/\/.+)\s?$/iu#类似 http://
+$re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http://
 # /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 $min_next_say = Time.now
@@ -452,14 +452,13 @@ def gettitle(url,proxy=true,mechanize=1)
         agent.set_proxy($proxy_addr,$proxy_port)
       end
     end
-    agent.max_history = 0
-    agent.open_timeout = 10
-		agent.read_timeout = 10
-		agent.keep_alive = true
+    agent.max_history = 2
+    agent.open_timeout = 8
+		agent.read_timeout = 8
+		#agent.keep_alive = true
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
-			page = nil
 			page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
@@ -470,7 +469,7 @@ def gettitle(url,proxy=true,mechanize=1)
 
       #Content-Type
       if page.class != Mechanize::Page
-        puts 'no page'
+        p 'no page'
         return
       end
 			#p 'get page ok'
@@ -496,6 +495,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			return title
     rescue Exception => e
       p $!.message + $@[0]
+      return if $!.message =~ /connection refused/
       return [$!.message[0,60] + ' . IN gettitle']
     end
   end
@@ -567,7 +567,7 @@ end
 
 def gettitleA(url,from,proxy=true)
   return if from =~ $botlist
-  url = "http#{url}"
+  #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
   if url =~ /\.jpg|\.png|\.gif|\.jpeg$/i
     return
@@ -586,7 +586,7 @@ def gettitleA(url,from,proxy=true)
     ti = Timeout.timeout(9){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
-    sleep 1
+    sleep 2
     return ['time out . IN gettitle ']
   end
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
@@ -596,7 +596,7 @@ def gettitleA(url,from,proxy=true)
 	return if ti.empty?
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    return ",啥网址吆? #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return ",啥网址吆 #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
 
 		#检测是否有其它取标题机器人

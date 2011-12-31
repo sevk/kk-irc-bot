@@ -196,6 +196,7 @@ class IRC
       words=$1;direction=$2;b7=$3
       if b7
         b7 =$u.completename(b7)
+        p b7
       end
     else
       words=s
@@ -385,6 +386,8 @@ class IRC
 					#puts '消息以我名字开头'
 					$otherbot_said=false
 					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,39)
+        when String
+          msg to,tmp 
         else #是字典消息
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
@@ -403,6 +406,8 @@ class IRC
       case tmp
       when 1 #非字典消息
       when 2,5 #是title , pinyin
+      when String
+        msg to,tmp 
       else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           $u.floodmereset(a1)
@@ -471,12 +476,15 @@ class IRC
     print $!.message, $@[0], 10.chr
   end
 
+  #return 1 , 非字典
+  #       2 , http
+  #  String , 发送
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     case s.strip.force_encoding('utf-8')
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
-        return if s =~ /出售/
+        return 'no ad ' if s =~ /出售/ and rand(10)>2
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
@@ -486,9 +494,9 @@ class IRC
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
     when $re_http
-      url = $2
+      url = $1+$2
       case $1
-      when /http/i
+      when /https?/i
         @ti=Thread.new do 
           msg(to,from + gettitleA(url,from),0)
         end

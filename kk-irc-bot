@@ -1,0 +1,16 @@
+#!/bin/bash -e
+
+echo run kk-irc-bot in screen and proxy.py
+
+#git clone --depth 1 git://github.com/phus/goagent.git
+#sudo -ukk -i bash -c "cd /home/kk/dev/sevkfg/phus-goagent-9ce888c/local ; screen -d -m ./proxy.py & "
+sudo -ukk -i bash -c "cd /home/kk/dev/sevkfg/goagent/local ; screen -d -m ./proxy.py & "
+sudo -ukk -i bash -c "cd /home/kk/dev/kk-irc-bot ; screen -d -m ./irc.rb ub.conf & "
+exit 0;
+#screen -d -m `which ruby` irc.rb ub.conf & "
+#export PATH=$PATH:`rvm gemdir` ;
+#`which ruby` irc.rb ub.conf & "
+#gem install bundler ;
+#bundle install ;
+
+
