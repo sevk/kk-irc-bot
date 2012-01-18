@@ -57,7 +57,7 @@ class IRC
     if $lag and $lag > 0.8
       msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
-      restart if $lag > 5
+      restart if $lag > 6
       return
     end
     s="#{nick}!*@*"
@@ -174,6 +174,7 @@ class IRC
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
     end
   end
+
   def identify(n=false)
     File.open(ARGV[0],'rb').each { |line|
       if line =~ /pass/
@@ -625,6 +626,7 @@ class IRC
     #when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
       #send "NOTICE #{$1} :\001PONG#{$4}\001"
     when /^:(.+?)\s(\d+)\s(.+?)\s:(.+)/i#motd , names list
+      #:calvino.freenode.net 404 kk #ubuntu-cn :Cannot send to channel
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
       # verne.freenode.net 353 ^k^ = #ubuntu-cn :^k^ cocoleo seventh
       # :card.freenode.net 319 ^k^ ^k^ :@#ubuntu-cn @#sevk
@@ -675,6 +677,9 @@ class IRC
           sleep 10
           send "NICK #{@nick}"
         }
+      when 404
+        puts s
+        identify
       when 376 #end of /motd
         send 'time'
         sleep 0.5
@@ -707,6 +712,9 @@ class IRC
       return if @exit
       log s
       $need_reconn=true
+    when /.+?404\s#{@nick}\s#{@channel}\s:Cannot send to channel/
+      puts s
+      identify
     else
       return nil #not matched, go on
     end #end case

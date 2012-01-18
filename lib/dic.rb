@@ -109,7 +109,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|安卓|progra|google|devel|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -596,7 +596,7 @@ def gettitleA(url,from,proxy=true)
 	return if ti.empty?
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    return ",啥网址吆 #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return ",啥网址y #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
 
 		#检测是否有其它取标题机器人
@@ -1069,7 +1069,7 @@ def rand_do
 end
 
 def hello_replay(to,sSay)
-	tmp = Time.parse('2011-02-02 00:00:00+08:00')-Time.now
+	tmp = Time.parse('2012-01-23 00:00:00+08:00')-Time.now
 	if tmp < 0 #不用显示倒计时
 		return if sSay =~ /\s$/
 		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
