@@ -167,7 +167,11 @@ class ALL_USER
   def check_flood(nick)
     index = getindex(nick)
     return unless index
-    $timelast6say[index] = $initFlood if ! $timelast6say[index]
+    if ! $timelast6say[index]
+      $timelast6say[index] = $initFlood 
+    elsif $timelast6say[index] < 0
+      $timelast6say[index] = $initFlood 
+    end
     p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 10
     return $timelast6say[index] < $maxflood
   end

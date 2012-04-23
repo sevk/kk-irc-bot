@@ -317,6 +317,8 @@ class IRC
 
       tmp = check_dic(a5,a1,a1)
       if tmp == 1 #not matched check_dic
+        #没到下次说话时间，就不处理botsay
+        return if Time.now < $min_next_say
         $otherbot_said=false
         do_after_sec(to,"#{from}, #{botsay(sSay)}",10,49)
       end
@@ -363,8 +365,9 @@ class IRC
 
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
-        if sSay[1,6] != /ACTION/i then
-          $u.said(nick,name,ip,1.25)
+        if sSay[1,6] != /ACTION/i
+          log sSay
+          #$u.said(nick,name,ip,1.25)
         end
         return
       end
@@ -385,6 +388,8 @@ class IRC
         case tmp
         when 1 #非字典消息
 					#puts '消息以我名字开头'
+          #没到下次说话时间，就不处理botsay
+          return if Time.now < $min_next_say
 					$otherbot_said=false
 					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,39)
         when String
@@ -510,7 +515,7 @@ class IRC
         msg(to,Dic.new.geted2kinfo(url),0)
       end
       return 2
-    when /^`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
+    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}"
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #dict_cn
       sayDic(101,from,to,$1)
@@ -548,7 +553,7 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好(...)?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ',  好',10,23)
+      do_after_sec(to,from + ',  好.. .',10,23)
     when /^`?((有人(...)?(吗|不|么|否))|test.{0,3}|测试(下|中)?.{0,3})$/ui #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ', .. ..',10,12)
@@ -612,7 +617,8 @@ class IRC
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
       #puts s
-      if $ignore_nick =~ Regexp.new('^'+from+'$',Regexp::IGNORECASE)
+      #/#{Regexp::escape str1}/i
+      if $ignore_nick =~ Regexp.new(Regexp::escape('^'+from+'$'),Regexp::IGNORECASE)
         print 'ignore_nick ' , from,"\n" if $debug
         return 'ignore_nick'
       end

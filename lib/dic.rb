@@ -91,7 +91,7 @@ $_time=0 if not defined?$_time
 $kick_info = "请勿Flood，超过5行贴至paste.ubuntu.com ."
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.38' unless defined? Ver
+Ver='v0.39' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
@@ -109,7 +109,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|java|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -273,7 +273,14 @@ def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
   end
 
   $ub.gsub!(/\s+/,' ')
-  return $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ').unescapeHTML.icolor(7)
+  n = $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ')
+    .unescapeHTML
+  if n.size < 5
+    p $ub
+    p n
+    return 
+  end
+  return n.icolor(11)
 end
 
 class String
@@ -291,15 +298,18 @@ class String
     )
 
     agent = Mechanize.new
-    # Get the flickr sign in page
+    agent.user_agent_alias = 'Linux Mozilla'
+    agent.max_history = 1
+    agent.open_timeout = 7
+		agent.read_timeout = 7
+    agent.cookies
     page  = agent.get(url)
-
-    form          = page.form_with(:name => 'f')
+    #form          = page.form_with(:name => 'f')
     #form.input = 'how old are you ?'
     #page          = agent.submit(form)
     page = agent.post(url,{"input"=> self } )
     #p page.body
-    page.body.match(/.+<br>.+:(.+)/m)[1].gsub(/alice/,' @ ')
+    page.body.match(/.+<br>.+:(.+)/m)[1].gsub(/alice/i,' @ ') rescue '休息一下..'
   end
 
 	def en2zh
@@ -452,10 +462,10 @@ def gettitle(url,proxy=true,mechanize=1)
         agent.set_proxy($proxy_addr,$proxy_port)
       end
     end
-    agent.max_history = 2
-    agent.open_timeout = 8
-		agent.read_timeout = 8
-		#agent.keep_alive = true
+    agent.max_history = 1
+    agent.open_timeout = 7
+		agent.read_timeout = 7
+    #agent.keep_alive = true
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -612,8 +622,9 @@ def gettitleA(url,from,proxy=true)
 			end
 		end
 		return if $saytitle < 1
+    #登录 • Ubuntu中文论坛
     if ti
-      ti.gsub!(/Ubuntu中文论坛 • 登录/, '水区水贴? ')
+      ti.gsub!(/登录/, '水区水贴? ')
       return " \x033⇪ t: #{ti}\x030" if proxy
       return " \x033⇪ ti: #{ti}\x030"
     end
@@ -1032,7 +1043,7 @@ def check_proxy_status
     begin
       Timeout.timeout(10){
         a=TCPSocket.open($proxy_addr2,$proxy_port2) 
-        a.send('?',0)
+        a.send('get',0)
         a.close
       }
     rescue Timeout::Error
@@ -1086,7 +1097,7 @@ def hello_replay(to,sSay)
 		tmp="#{tmp/60/60/24}天"
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
-	return "privmsg #{to} :#{sSay} #{chr_hour} #{addTimCh} \0039新年快乐，除夕还有 #{tmp}\017"
+	return "privmsg #{to} :#{sSay} #{chr_hour} #{addTimCh} \0039新年快乐，还有 #{tmp}\017"
 end
 
 def gettitle_https(url)
@@ -1202,7 +1213,7 @@ def savelog(s)
 end
 
 #记录自己说话的时间
-def isaid(second=32)
+def isaid(second=300)
 	$min_next_say=Time.now + $minsaytime + second
 end
 
