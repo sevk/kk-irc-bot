@@ -18,7 +18,6 @@ require 'platform.rb'
 load 'dic.rb'
 include Math
 require "readline"
-require 'set'
 require 'yaml'
 require "ipwry.rb"
 load 'irc_user.rb'
@@ -30,7 +29,7 @@ class IRC
   def initialize(server,port,nick,channel,charset,name="bot kk ver bot :svn Ver bot")
     $_hour = $_min = $_sec = 0
     @count=0
-    @nicks = Set.new
+    @nicks = []
     @exit = false
     $otherbot_said = nil
     @Motded = false
@@ -120,16 +119,15 @@ class IRC
   #发送tcp数据,如果长度大于450 就自动截断.
   def send(s,add_tim_chr=true)
     s.gsub!(/\s+/,' ')
+    s.slice!(450..-1)
     if s.bytesize > 450
-      s.chop!.chop! while s.bytesize > 450
       if @charset == 'UTF-8'
-        #s.scan(/./u)[0,150].join # 也可以用//u
-        while not s[-3,1].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
+        while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
           s.chop!
         end
       else
         #非utf-8的聊天室就直接截断了
-        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s[0,450])
+        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s)
       end
       s << ' …'
     else
@@ -320,7 +318,7 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,49)
+        Thread.new{sleep 1; do_after_sec(to,"#{from}, #{botsay(sSay)}",10,48) }
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -662,10 +660,11 @@ class IRC
         #joinit
       when 353
         p 'all nick:' + tmp
-        @nicks.merge tmp.split(/ /)
+        @nicks << tmp.split(/ /)
+        @nicks.flatten!
       when 366#End of /NAMES list.
         @count = @nicks.count
-        puts "nick list: #@nicks.collect.join(' ') , #@count ".red
+        puts "nick list: #{ @nicks.join(' ') } , #@count ".red
 
         renew_Readline_complete(@nicks.to_a)
         Readline.completion_append_character = ', '
