@@ -38,7 +38,7 @@ class String
     self.split(//u).join(s)
   end
   def addTimCh
-    self + Time.now.hm.to_s
+    self << Time.now.hm.to_s
   end
 
   #整理html里的 &nbsp; 等转义串，需要安装
@@ -300,8 +300,8 @@ class String
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     agent.max_history = 1
-    agent.open_timeout = 7
-		agent.read_timeout = 7
+    agent.open_timeout = 11
+		agent.read_timeout = 11
     agent.cookies
     page  = agent.get(url)
     #form          = page.form_with(:name => 'f')
@@ -624,7 +624,7 @@ def gettitleA(url,from,proxy=true)
 		return if $saytitle < 1
     #登录 • Ubuntu中文论坛
     if ti
-      ti.gsub!(/登录/, '水区水贴? ')
+      ti.gsub!(/登录 •/, '水区水贴? ')
       return " \x033⇪ t: #{ti}\x030" if proxy
       return " \x033⇪ ti: #{ti}\x030"
     end
@@ -1097,7 +1097,7 @@ def hello_replay(to,sSay)
 		tmp="#{tmp/60/60/24}天"
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
-	return "privmsg #{to} :#{sSay} #{chr_hour} #{addTimCh} \0039新年快乐，还有 #{tmp}\017"
+	return "privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐，还有 #{tmp}\017"
 end
 
 def gettitle_https(url)
@@ -1141,7 +1141,7 @@ end
 
 def botsay(s)
   s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
-  s.zh2en.alice_say.en2zh rescue (log;'休息一下...')
+  s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
 end
 
   #高亮打印消息

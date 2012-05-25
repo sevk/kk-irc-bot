@@ -85,13 +85,19 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      @irc.send("PING #{Time.now.to_i}\n",0)
-      #send "PING #{Time.now.to_i}",false rescue nil
+      begin
+      Timeout.timeout(6){
+        @irc.send("PING #{Time.now.to_i}\n",false)
+      }
+      rescue TimeoutError
+      end
       #sleep 6
       #send "whois #{@nick}",false  rescue log
       sleep 5
-      #print '$needrestart: ' , $needrestart , "\n"
-      $need_reconn = true if $needrestart
+      if $needrestart
+        print '$needrestart: true' , "\n"
+        $need_reconn = true 
+      end
     end
   end
   #发送notice消息
@@ -117,10 +123,11 @@ class IRC
   end
 
   #发送tcp数据,如果长度大于450 就自动截断.
-  def send(s,add_tim_chr=true)
+  def send(s,add_tim_chr=false)
     s.gsub!(/\s+/,' ')
-    s.slice!(450..-1)
-    if s.bytesize > 450
+    if s.bytesize > 400
+      #s.chop!.chop! while s.bytesize > 400
+      s.slice!(-2..-1) while s.bytesize > 400
       if @charset == 'UTF-8'
         while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
           s.chop!
@@ -131,7 +138,7 @@ class IRC
       end
       s << ' …'
     else
-      s.addTimCh + ' <ai>' if add_tim_chr
+      #s.addTimCh if add_tim_chr
     end
 		return if s.size < 2
     @irc.send("#{s.strip}\r\n",0)
@@ -660,7 +667,7 @@ class IRC
         #joinit
       when 353
         p 'all nick:' + tmp
-        @nicks << tmp.split(/ /)
+        @nicks |= tmp.split(/ /)
         @nicks.flatten!
       when 366#End of /NAMES list.
         @count = @nicks.count
@@ -762,7 +769,7 @@ class IRC
         return if second == 0 #如果是非BOT功能,直接return,不做rand_do
 				tmp = rand_do
 				return if tmp.tmpty?
-        send "PRIVMSG #{to} :#{tmp}"
+        send("PRIVMSG #{to} :#{tmp}" , true)
         Thread.exit
       else
         isaid(second)
@@ -770,14 +777,14 @@ class IRC
 
       case flag
       when 0
-        send "PRIVMSG #{to} :#{sSay}"
+        send "PRIVMSG #{to} :#{sSay}",true
       when 7
         sleep 0.5
         send 'time'
         sleep 0.5
         send "JOIN #sevk"
       when 10#打招呼回复
-        send hello_replay(to,sSay)
+        send(hello_replay(to,sSay),true)
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
       end
@@ -844,8 +851,8 @@ class IRC
       sleep 0.2
       #windows 好像不支持Readline
       if win_platform?
-        s = IO.select([$stdin],nil,nil,0.2)
-        next if !s
+        s = select([$stdin],nil,nil,0.2)
+        next unless s
         #next if s[0][0] != IO
         s = $stdin.gets
       else
@@ -915,13 +922,13 @@ class IRC
       n = 0
       loop do
         sleep 55+rand(10)
-        #p 'timer minly'
         n+=1
-        n=0 if n > 900
+        n=0 if n > 9000
+        ping rescue log
         if n % 20 == 0
+          p 'timer minly check proxy'
           check_proxy_status rescue log
         end
-        ping rescue log
       end
     end
   end
@@ -943,14 +950,14 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.05
+        sleep 0.02
         return if @exit
         break if $need_reconn
-        ready = select([@irc], nil, nil, 0.1)
-        next if not ready
-        for s in ready[0]
-          next if s != @irc
-          x = @irc.recvfrom(1480)[0]
+        ready = select([@irc], nil, nil, 0.01)
+        next unless ready
+        ready[0].each{|s|
+          next unless s == @irc
+          x = @irc.recvfrom(1980)[0]
           if x.empty?
             p ' x.empty, must be lose conn '
             return 
@@ -958,7 +965,7 @@ class IRC
           x.split(/\r?\n/).each{|s|
             handle_server_input(s)
           }
-        end
+        }
       rescue Exception
         log
         sleep 8

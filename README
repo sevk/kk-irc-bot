@@ -5,7 +5,7 @@ windows : http://rubyinstaller.org/downloads/
 linux下面建议用 rvm 安装ruby : http://beginrescueend.com/
 
 装完ruby后升级 gem, 命令是: gem update --system
-然后安装5个库: gem install htmlentities rchardet19 mechanize colored 
+然后安装库: bundle
 如果是windows, 要多装个库：win32console
 
 运行:
