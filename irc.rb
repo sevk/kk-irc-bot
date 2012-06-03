@@ -17,6 +17,7 @@ require 'rubygems'
 require 'platform.rb'
 load 'dic.rb'
 include Math
+require 'timeout'
 require "readline"
 require 'yaml'
 require "ipwry.rb"
@@ -86,18 +87,19 @@ class IRC
       $needrestart = true
       $Lping = Time.now
       begin
-      Timeout.timeout(6){
-        @irc.send("PING #{Time.now.to_i}\n",false)
-      }
+        Timeout.timeout(16){
+          @irc.send("PING #{Time.now.to_i}\n",false)
+        }
       rescue TimeoutError
       end
       #sleep 6
       #send "whois #{@nick}",false  rescue log
-      sleep 5
+      sleep 20
       if $needrestart
         print '$needrestart: true' , "\n"
-        $need_reconn = true 
+        $need_reconn = true
       end
+      print "-\|/"[rand(4)]
     end
   end
   #发送notice消息

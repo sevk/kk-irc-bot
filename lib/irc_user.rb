@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# coding: utf-8
+# -*- coding: utf-8 -*-
 # sevkme@gmail.com
 
 #刷屏检测阀值,不建议修改.

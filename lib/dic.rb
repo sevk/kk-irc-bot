@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# coding: utf-8
+# -*- coding: utf-8 -*-
 # Sevkme@gmail.com
 
 #require 'slashstring'
@@ -46,7 +46,6 @@ class String
     HTMLEntities.new.decode(self) rescue self
   end
 	alias dir public_methods
-	
 end
 
 require 'ipwry.rb'
@@ -109,7 +108,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -293,7 +292,6 @@ class String
       'Accept'=>'text/html',
       'Referer'=> URI.escape(url),
       'Accept-Language'=>'zh-cn',
-      #'Keep-alive' => 0.chr,
       'User-Agent'=> UserAgent
     )
 
@@ -465,14 +463,13 @@ def gettitle(url,proxy=true,mechanize=1)
     agent.max_history = 1
     agent.open_timeout = 7
 		agent.read_timeout = 7
-    #agent.keep_alive = true
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
 			page = agent.get(url)
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
-			return if page.header['content-type']  =~ /application\/zip/i
+			return if page.header['content-type'] =~ /application\/zip/i
 			if page.header['content-type']  !~ /text\/html|application\//i
 				return '' 
 			end
@@ -502,23 +499,21 @@ def gettitle(url,proxy=true,mechanize=1)
 				title = Iconv.conv("#{@charset}//IGNORE","#{charset}//IGNORE",title) rescue title
 			end
 
-			return title
-    rescue Exception => e
+    rescue Exception
       p $!.message + $@[0]
       return if $!.message =~ /connection refused/
       return [$!.message[0,60] + ' . IN gettitle']
     end
+    return title
   end
 
-		#puts URI.split url
-		print 'no mechanize , ' , ti , "\n"
-    tmp = begin #加入错误处理
+  #puts URI.split url
+  print 'no mechanize , ' , ti , "\n"
+  tmp = begin #加入错误处理
       Timeout.timeout(12) {
         $uri = URI.parse(url)
-        #$uri.open{|f| puts f.read.match(/title.+title/i)[0]};exit
         $uri.open(
 					'Accept'=>'text/html , application/*',
-					#'Cookie' => 'a',
 					'Range' => 'bytes=0-9999',
 					#'Cookie' => cookie,
 					'User-Agent'=> UserAgent
@@ -580,7 +575,7 @@ def gettitleA(url,from,proxy=true)
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
   if url =~ /\.jpg|\.png|\.gif|\.jpeg$/i
-    return
+    #return
     require "image_size"
     open(url, "rb") do |fh|
       return ImageSize.new(fh.read).get_size.join('×')
@@ -1135,6 +1130,7 @@ def update_proxy_rule
     x.write Mechanize.new.get(url).body
   }
 end
+
 def read_proxy_rule
   $proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
@@ -1144,59 +1140,59 @@ def botsay(s)
   s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
 end
 
-  #高亮打印消息
-  def pr_highlighted(s)
-    #s=s.force_encoding("utf-8")
-    s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
-		#if s=~ /#{Regexp::escape @nick}/i
-			#if $local_charset !~ /UTF-8/i
-				#puts s.to_gb.red
-			#else
-				#puts s.red 
-			#end
-		#end
+#高亮打印消息
+def pr_highlighted(s)
+  #s=s.force_encoding("utf-8")
+  s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
+  #if s=~ /#{Regexp::escape @nick}/i
+    #if $local_charset !~ /UTF-8/i
+      #puts s.to_gb.red
+    #else
+      #puts s.red 
+    #end
+  #end
 
-		need_savelog = false
-    case s
-    when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
-      from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
-			return if $ignore_action =~ /#{Regexp::escape mt}/i
-			case mt
-			when /privmsg/i
-        mt= ''
-				if to =~ /#{Regexp::escape @channel}/i
-					to = '' 
-					need_savelog = true
-				end
-				sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
-			when /join|part|quit|nick|notice|kick/i
-        mt= ' ' + mt[0,2].red_on_white + ' '
-				to,sy=sy,''
-				if to =~ /#{Regexp::escape @channel}/i
-					need_savelog = true
-				end
-				to=to.green
-			else
-				#pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
-				re= s.pink
-        mt= ' ' + mt[0,2].blue + ' '
-				sy=sy.green
-				need_savelog = true
-			end
-
-			if from.size < 9
-				t = Time.now.strftime('%H%M%S')
-				re= "#{t}#{("%13s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
-			else
-				re= "#{sprintf("%17s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
-			end
+  need_savelog = false
+  case s
+  when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
+    from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+    return if $ignore_action =~ /#{Regexp::escape mt}/i
+    case mt
+    when /privmsg/i
+      mt= ''
+      if to =~ /#{Regexp::escape @channel}/i
+        to = '' 
+        need_savelog = true
+      end
+      sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
+    when /join|part|quit|nick|notice|kick/i
+      mt= ' ' + mt[0,2].red_on_white + ' '
+      to,sy=sy,''
+      if to =~ /#{Regexp::escape @channel}/i
+        need_savelog = true
+      end
+      to=to.green
     else
-      re= s.red
+      #pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
+      re= s.pink
+      mt= ' ' + mt[0,2].blue + ' '
+      sy=sy.green
+      need_savelog = true
     end
-    re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
-    puts re
-		savelog re if need_savelog
+
+    if from.size < 9
+      t = Time.now.strftime('%H%M%S')
+      re= "#{t}#{("%13s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
+    else
+      re= "#{sprintf("%17s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
+    end
+  else
+    re= s.red
   end
+  re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
+  puts re
+  savelog re if need_savelog
+end
 
 #写入聊天记录
 def savelog(s)

@@ -1,4 +1,5 @@
 #让ruby1.8兼容1.9的写法
+# -*- coding: utf-8 -*-
 
 if RUBY_VERSION < '1.9'
   #为字符串类添加force_encoding和ord方法
