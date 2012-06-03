@@ -327,7 +327,7 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        Thread.new{sleep 1; do_after_sec(to,"#{from}, #{botsay(sSay)}",10,48) }
+        Thread.new{sleep 1; do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$minsaytime*3) }
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel

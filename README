@@ -1,17 +1,16 @@
 需要安装ruby, 安装ruby :
-建议装 ruby 1.9.2
+建议装 ruby 1.9.3
 
-windows : http://rubyinstaller.org/downloads/
+windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 linux下面建议用 rvm 安装ruby : http://beginrescueend.com/
 
-装完ruby后升级 gem, 命令是: gem update --system
-然后安装库: bundle
+装完ruby后升级 gem, 命令: gem update --system
+然后安装库, 命令: gem install bundle && bundle
 如果是windows, 要多装个库：win32console
 
 运行:
 ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
-
 
 生成文档：
 rdoc --charset utf-8 *.rb
