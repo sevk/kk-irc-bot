@@ -86,22 +86,18 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      begin
-        Timeout.timeout(16){
-          @irc.send("PING #{Time.now.to_i}\n",false)
-        }
-      rescue TimeoutError
-      end
-      #sleep 6
-      #send "whois #{@nick}",false  rescue log
-      sleep 20
+      p 'ping ing '
+      @irc.send("PING 1 \r\n", 0 ) rescue log
+      p 'ping ed '
+      sleep 14
+      print "-\|/"[rand(4)]
       if $needrestart
-        print '$needrestart: true' , "\n"
+        print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
       end
-      print "-\|/"[rand(4)]
     end
   end
+
   #发送notice消息
   def notice(who,sSay,delay=5)
     $otherbot_said=false
@@ -125,7 +121,7 @@ class IRC
   end
 
   #发送tcp数据,如果长度大于450 就自动截断.
-  def send(s,add_tim_chr=false)
+  def send(s)
     s.gsub!(/\s+/,' ')
     if s.bytesize > 400
       #s.chop!.chop! while s.bytesize > 400
@@ -139,10 +135,8 @@ class IRC
         s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s)
       end
       s << ' …'
-    else
-      #s.addTimCh if add_tim_chr
     end
-		return if s.size < 2
+		return if s.bytesize < 2
     @irc.send("#{s.strip}\r\n",0)
     $Lsay = Time.now
     s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
@@ -150,17 +144,18 @@ class IRC
   end
 
   def connect()
+    p 'irc.conn'
     trap(:INT){myexit 'int'}
     return if @exit
     $need_reconn = false
-    @irc.close if @irc
+    @irc.close rescue nil
 		begin
-			Timeout.timeout(5){@irc = TCPSocket.open(@server, @port)}
+			Timeout.timeout(6){@irc = TCPSocket.open(@server, @port)}
 		rescue TimeoutError
 			p $!.message
 		retry
 			sleep 50
-			p 'retry 1'
+			p 'retry conn'
 		end
 		sleep 0.5
     send "NICK #{@nick}"
@@ -176,9 +171,9 @@ class IRC
     Thread.new do
 			Thread.current[:name]= 'connect say'
       sleep 220+rand(400)
-      #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ",false)
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01",false) if rand(10) < 3
-      #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01",false)
+      #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
+      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01") if rand(10) < 3
+      #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
     end
   end
 
@@ -250,7 +245,7 @@ class IRC
           $from_whois = from
           $to_whois = to
           $s_whois = s
-          send('whois ' + c,false)
+          send('whois ' + c)
           return
         end
         re = "#{$u.getname(c)} #{hostA(ip)}"
@@ -610,12 +605,10 @@ class IRC
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(You are already logged in as)|(You are now identified for)/i
       puts s
       joinit
-    when /^PING :(.+)$/i  # ping
-      @irc.send "PONG :#{$1}\n", 0
-
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
+      p ' << pong '
       $lag=Time.now - $Lping
       if $lag > 0.8
         puts "LAG = #{$lag} 秒" 
@@ -623,8 +616,6 @@ class IRC
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
-      #puts s
-      #/#{Regexp::escape str1}/i
       if $ignore_nick =~ Regexp.new(Regexp::escape('^'+from+'$'),Regexp::IGNORECASE)
         print 'ignore_nick ' , from,"\n" if $debug
         return 'ignore_nick'
@@ -636,6 +627,9 @@ class IRC
         return 'match version'
       end
       return nil
+    when /^PING :(.+)$/i  # ping
+      @irc.send "PONG :#{$1}\n", 0
+
     #when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
       #send "NOTICE #{$1} :\001PONG#{$4}\001"
     when /^:(.+?)\s(\d+)\s(.+?)\s:(.+)/i#motd , names list
@@ -721,10 +715,9 @@ class IRC
 
       puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
-      puts s.red
+      log s
       sleep 2
       return if @exit
-      log s
       $need_reconn=true
     when /.+?404\s#{@nick}\s#{@channel}\s:Cannot send to channel/
       puts s
@@ -771,7 +764,7 @@ class IRC
         return if second == 0 #如果是非BOT功能,直接return,不做rand_do
 				tmp = rand_do
 				return if tmp.tmpty?
-        send("PRIVMSG #{to} :#{tmp}" , true)
+        send("PRIVMSG #{to} :#{tmp}" )
         Thread.exit
       else
         isaid(second)
@@ -779,14 +772,14 @@ class IRC
 
       case flag
       when 0
-        send "PRIVMSG #{to} :#{sSay}",true
+        send "PRIVMSG #{to} :#{sSay}"
       when 7
         sleep 0.5
         send 'time'
         sleep 0.5
         send "JOIN #sevk"
       when 10#打招呼回复
-        send(hello_replay(to,sSay),true)
+        send(hello_replay(to,sSay))
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
       end
@@ -880,7 +873,7 @@ class IRC
             say(s.gsub(/\/me/i,"\001ACTION") + "\001")
           elsif s1 =~ /^ping/i
             $Lping = Time.now
-            send s1
+            send s1+' 1'
           elsif s1 =~ /^ctcp/i
             say(s1.gsub(/^ctcp/i,"\001") + "\001")
           else
@@ -926,7 +919,9 @@ class IRC
         sleep 55+rand(10)
         n+=1
         n=0 if n > 9000
-        ping rescue log
+        if n % 4 == 0
+          ping rescue log
+        end
         if n % 20 == 0
           p 'timer minly check proxy'
           check_proxy_status rescue log
@@ -939,7 +934,7 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 60*10+ rand(60*25)  #间隔14+12分钟左右
+        sleep 60*15 + rand(60*50)
         timer_daily
         if Time.now.hour.between? 9,22
           say_new($channel) if $need_say_feed > 0
@@ -952,16 +947,16 @@ class IRC
   def main_loop()
     loop do
       begin
-        sleep 0.02
         return if @exit
-        break if $need_reconn
+        #p '$need_reconn' if $need_reconn
+        return if $need_reconn
         ready = select([@irc], nil, nil, 0.01)
         next unless ready
         ready[0].each{|s|
           next unless s == @irc
-          x = @irc.recvfrom(1980)[0]
+          x = @irc.recvfrom(1990)[0]
           if x.empty?
-            p ' x.empty, must be lose conn '
+            log ' x.empty, must be lose conn '
             return 
           end
           x.split(/\r?\n/).each{|s|
@@ -1007,17 +1002,18 @@ if not defined? $u
       break if irc.exited?
       log
       p Time.now
-      restart
     end
     break if irc.exited?
+    restart
     #p ' exit main_loop'
     p $need_reconn
 		p Time.now
-    sleep 50 +rand(160)
+    sleep 60 +rand(160)
   end
 end
 
 def restart #Hard Reset
+  p 'restart '
   send 'quit lag' rescue nil
   sleep 110+ rand(300)
   p "exec #{__FILE__} #$argv0"

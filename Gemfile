@@ -5,6 +5,7 @@ gem "mechanize"
 gem "htmlentities"
 gem "rchardet19"
 gem "image_size"
-gem "bfrb"
+#gem "bfrb"
+#gem "morse"
 
 

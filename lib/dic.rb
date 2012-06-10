@@ -96,7 +96,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
 $re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http://
-# /http:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
+# /....s?:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 $min_next_say = Time.now
 $Lsay=Time.now; $Lping=Time.now
