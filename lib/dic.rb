@@ -169,7 +169,7 @@ def reload_all
 	load 'dic.rb'
 	load 'irc_user.rb'
   load 'color.rb'
-	#load 'irc.rb'
+  #load 'irc.rb'
 	load 'plugin.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }

@@ -86,9 +86,9 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      p 'ping ing '
+      #p 'ping ing '
       @irc.send("PING 1 \r\n", 0 ) rescue log
-      p 'ping ed '
+      #p 'ping ed '
       sleep 14
       print "-\|/"[rand(4)]
       if $needrestart
@@ -608,7 +608,7 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      p ' << pong '
+      p ' << pong ' if $DEBUG
       $lag=Time.now - $Lping
       if $lag > 0.8
         puts "LAG = #{$lag} 秒" 
@@ -949,7 +949,7 @@ class IRC
       begin
         return if @exit
         #p '$need_reconn' if $need_reconn
-        return if $need_reconn
+        break if $need_reconn
         ready = select([@irc], nil, nil, 0.01)
         next unless ready
         ready[0].each{|s|
