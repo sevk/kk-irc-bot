@@ -265,7 +265,7 @@ def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
     #$date = link
     #des = feed.items[0].content
     #$ub = "新⇨ #{ti} #{link} #{des}"
-    $ub = "呵呵,逛了一下论坛,暂时无新贴.只有Re: ."
+    $ub = ".. 逛了一下论坛,暂时无新贴.只有Re: ."
     $ub = '' if rand > 0.1
   else
     $old_feed_date = $date
@@ -1209,7 +1209,7 @@ def savelog(s)
 end
 
 #记录自己说话的时间
-def isaid(second=300)
+def isaid(second=150)
 	$min_next_say=Time.now + $minsaytime + second
 end
 

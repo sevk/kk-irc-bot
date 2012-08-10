@@ -55,7 +55,7 @@ class IRC
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q')
     if $lag and $lag > 0.8
-      msg(to,"#{a1}:..., 有刷屏嫌疑 , 或我的网络有延迟",0)
+      msg(to,"#{a1}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
       restart if $lag > 6
       return
@@ -357,9 +357,9 @@ class IRC
         else
           $b_tim = 78
           autoban to,nick,$b_tim
-          msg(to,"#{a1}:..., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",1)
+          msg(to,"#{a1}:. .., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",1)
         end
-        notice(nick,"#{a1}: ... #$kick_info",18)
+        notice(nick,"#{a1}: . .. #$kick_info",18)
         return
       elsif $u.rep nick
         msg(to,"#{a1}: .. ..",20)
@@ -400,7 +400,7 @@ class IRC
           if $u.saidAndCheckFloodMe(a1,a2,a3)
             #$u.floodmereset(a1)
             $otherbot_said=true
-            msg to ,"#{from}, 不要玩机器人 ...",0 if rand(10) > 5
+            msg to ,"#{from}, 不要玩机器人 . ..",0 if rand(10) > 5
             return
           end
         end
@@ -533,7 +533,7 @@ class IRC
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w} |")
-    when /^(.*?)?[:,]?(.+)是什么(\?|...)?$/i #是什么
+    when /^(.*?)?[:,]?(.+)是什么\?.{0,3}$/i #是什么
       w = $1.delete '`'
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
@@ -553,12 +553,13 @@ class IRC
       sayDic(22,from,to,$1)
     when /^`f\s(.*?)$/i #查老乡
       sayDic(23,from,to,$1)
-    when /^`?(大家好(...)?|hi(.all)?.?|hello)$/i
+    when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好.. .',10,23)
-    when /^`?((有人(...)?(吗|不|么|否))|test.{0,3}|测试(下|中)?.{0,3})$/ui #有人吗?
+    when /^`?((有人.?.?(吗|不|么|否))|test.{0,2}|测试(下|中)?.{0,2})$/ui #有人吗?
+      #ruby1.9一个汉字是一个: /./  ;而1.8是 3个: /.../
       $otherbot_said=false
-      do_after_sec(to,from + ', .. ..',10,12)
+      do_after_sec(to,from + ', 点点点.',10,12)
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic
@@ -683,6 +684,7 @@ class IRC
         @nick = $nick[rand $nick.size]
         Thread.new{
           sleep 10
+          send "PRIVMSG nickserv :ghost #{@nick}"
           send "NICK #{@nick}"
         }
       when 404
@@ -810,7 +812,6 @@ class IRC
     saveu
     send( 'quit ' + exit_msg) rescue nil
     log 'my exit '
-    puts 'exiting...'.yellow
     @exit = true
   end
 
@@ -855,7 +856,7 @@ class IRC
       end
       #lock.synchronize do
         case s
-        when /^[:\/]q(uit)?\s?(.*)?$/i #:q退出
+        when /^[:\/]quit\s?(.*)?$/i #:q退出
           myexit $2
         when /^\/msg\s(.+?)\s(.+)$/i
           who = $1;s=$2
@@ -1004,7 +1005,7 @@ if not defined? $u
       p Time.now
     end
     break if irc.exited?
-    restart
+    restart rescue log
     #p ' exit main_loop'
     p $need_reconn
 		p Time.now
