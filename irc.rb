@@ -17,7 +17,7 @@ require 'rubygems'
 require 'platform.rb'
 load 'dic.rb'
 include Math
-require 'timeout'
+#require 'timeout'
 require "readline"
 require 'yaml'
 require "ipwry.rb"
@@ -143,6 +143,7 @@ class IRC
     puts "----> #{s}".pink
   end
 
+  #连接irc
   def connect()
     p 'irc.conn'
     trap(:INT){myexit 'int'}
@@ -177,6 +178,7 @@ class IRC
     end
   end
 
+  #/ns id pass
   def identify(n=false)
     File.open(ARGV[0],'rb').each { |line|
       if line =~ /pass/
@@ -840,7 +842,7 @@ class IRC
 
   #检测用户输入,实现IRC客户端功能.
   #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
-  #退出软件请输入 :q
+  #退出软件请输入 :quit
   def iSend()
     loop do
       $stdout.flush

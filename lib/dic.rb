@@ -286,15 +286,14 @@ class String
   def alice_say
     return if self.empty?
     url = 'http://www.pandorabots.com/pandora/talk?botid=f5d922d97e345aa1&skin=custom_input'
-    $uri = uri=URI.parse(url)
-    $uri.open(
-      'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-      'Accept'=>'text/html',
-      'Referer'=> URI.escape(url),
-      'Accept-Language'=>'zh-cn',
-      'User-Agent'=> UserAgent
-    )
-
+    #$uri = uri=URI.parse(url)
+    #$uri.open(
+      #'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+      #'Accept'=>'text/html',
+      #'Referer'=> URI.escape(url),
+      #'Accept-Language'=>'zh-cn',
+      #'User-Agent'=> UserAgent
+    #)
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     agent.max_history = 1
@@ -409,7 +408,7 @@ rescue
   return $!.message
 end
 
-def url_fetch(uri_str, limit = 3)
+def url_fetch_del(uri_str, limit = 3)
   # You should choose better exception.
   raise ArgumentError, 'HTTP redirect too deep' if limit == 0
 
@@ -460,7 +459,7 @@ def gettitle(url,proxy=true,mechanize=1)
         agent.set_proxy($proxy_addr,$proxy_port)
       end
     end
-    agent.max_history = 1
+    agent.max_history = 0
     agent.open_timeout = 7
 		agent.read_timeout = 7
     #agent.cookies
