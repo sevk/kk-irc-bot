@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 # Sevkme@gmail.com
 
+$: << '.'
+$: << 'lib' | [] # | [] 是去掉重复的
 #require 'slashstring'
-require 'iconv'
+require 'utf.rb'
 #为字符串添加一些方法
 class String
   def utf8
@@ -80,6 +82,9 @@ require 'base64'
 require 'resolv'
 require 'yaml'
 require 'pp'
+require 'openssl'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+require 'mechanize'
 load 'do_as_rb19.rb'
 load 'color.rb'
 
@@ -131,10 +136,10 @@ end
 #字符串编码集猜测
 def guess_charset(str)
 	#s=str.force_encoding("ASCII-8BIT")
-	s=str.clone
-	s.gsub!(/[\x0-\x7f]/,'')
+	#s=str.clone
+   #s.gsub!(/\w/,'')
 
-  #s=str.gsub(/\w/,'')
+  s=str.gsub(/\w/,'') rescue str.clone
   return if s.bytesize < 6
   while s.bytesize < 25
     s << s
@@ -448,7 +453,11 @@ def gettitle(url,proxy=true,mechanize=1)
 		#if url =~ /%[A-F0-9]/
 			#url = URI.decode(url)
 		#end
-    agent = Mechanize.new
+    if url =~ /^https/i
+       agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+    else
+       agent = Mechanize.new
+    end
     agent.user_agent_alias = 'Linux Mozilla'
     #agent.user_agent_alias = 'Windows IE 7'
     if proxy
@@ -479,31 +488,37 @@ def gettitle(url,proxy=true,mechanize=1)
         return
       end
 			#p 'get page ok'
-			title = page.title
+      title = page.title
       return unless title
-			title.gsub!(/\s+/,' ')
+         #p title.encoding
 			charset= guess_charset(title)
-			title = URI.decode(unescapeHTML(title))
-			charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
-      t = Time.now.strftime('%M%S')
+         #p charset
+         charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
+         #charset='GB2312' if charset =~ /^IBM855|windows-1252/i
+         #title.force_encoding(charset) rescue nil
+         t = Time.now.strftime('%M%S')
 			if charset and charset =~ /#$local_charset/i
 				print t + ' proxy : ' ,proxy, ' ', title , "\n"
 			else
-				s= Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title) 
-				print t + ' proxy : ' ,proxy, ' ', s , "\n"
+            #print('charset=',charset,' local_charset=', $local_charset,"\n" )
+				s= Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title) rescue title
+				print t + ' proxy : ' ,proxy, ' ', s, "\n"
 			end
 
 			if charset and charset !~ /#@charset/i
-				p charset
+				#p charset
 				title = Iconv.conv("#{@charset}//IGNORE","#{charset}//IGNORE",title) rescue title
 			end
+			title = URI.decode(unescapeHTML(title))
+			title.gsub!(/\s+/,' ')
+         puts title
+       return title
 
     rescue Exception
-      p $!.message + $@[0]
       return if $!.message =~ /connection refused/
-      return [$!.message[0,60] + ' . IN gettitle']
+      log
+      #p [$!.message[0,60] + ' . IN gettitle']
     end
-    return title
   end
 
   #puts URI.split url
@@ -561,7 +576,7 @@ def gettitle(url,proxy=true,mechanize=1)
     #return title.force_encoding(charset)
 
     if charset != 'UTF-8'
-      charset='GB18030' if charset =~ /^gb|iso-8859-/i
+      #charset='GB18030' if charset =~ /^gb|iso-8859-/i
       title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
     end
     title = unescapeHTML(title) rescue title
@@ -573,7 +588,7 @@ def gettitleA(url,from,proxy=true)
   return if from =~ $botlist
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
-  if url =~ /\.jpg|\.png|\.gif|\.jpeg$/i
+  if url =~ /(\.jpg|\.png|\.gif|\.jpeg)$/i
     #return
     require "image_size"
     open(url, "rb") do |fh|

@@ -10,9 +10,8 @@
 =end
 #BEGIN {$VERBOSE = true}
 
-
 $: << 'lib'
-$: << '.'
+$: << '.' | []
 require 'rubygems'
 require 'platform.rb'
 load 'dic.rb'
@@ -276,6 +275,7 @@ class IRC
   def check_code(s)
     tmp = guess_charset(s)
     return if ! tmp
+    return if tmp == 'ASCII'
     if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
 			puts tmp
 			puts tmp.togb
@@ -834,6 +834,7 @@ class IRC
       return if @daily_done 
       @daily_done =true
       reload_all rescue nil
+      send "NICK #{$nick[0]}"
       saveu
       send('time')
       msg(@channel, osod.addTimCh ,30)
@@ -1024,5 +1025,4 @@ def restart #Hard Reset
   exec "#{__FILE__} #$argv0"
 end
 
-
-# vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
+# vim:set shiftwidth=3 tabstop=3 expandtab textwidth=79:
