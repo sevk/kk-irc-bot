@@ -137,9 +137,7 @@ end
 def guess_charset(str)
 	#s=str.force_encoding("ASCII-8BIT")
 	#s=str.clone
-   #s.gsub!(/\w/,'')
-
-  s=str.gsub(/\w/,'') rescue str.clone
+   s=str.gsub(/[\x0-\x7f]/,'') rescue str.clone
   return if s.bytesize < 6
   while s.bytesize < 25
     s << s

@@ -42,6 +42,9 @@ class IRC
     @channel = channel
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
+    @send_nick=Proc.new{
+       send "NICK #{@nick}"
+    }
     loadDic
     mystart
   end
@@ -158,7 +161,8 @@ class IRC
 			p 'retry conn'
 		end
 		sleep 0.5
-    send "NICK #{@nick}"
+    #send "NICK #{@nick}"
+    @send_nick.call
     sleep 0.5
     send "USER #@str_user"
       Thread.new{
@@ -370,7 +374,7 @@ class IRC
       #ban ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          log sSay
+          #log sSay
           #$u.said(nick,name,ip,1.25)
         end
         return
@@ -687,7 +691,8 @@ class IRC
         Thread.new{
           sleep 10
           send "PRIVMSG nickserv :ghost #{@nick}"
-          send "NICK #{@nick}"
+          #send "NICK #{@nick}"
+          @send_nick.call
         }
       when 404
         puts s
@@ -834,7 +839,9 @@ class IRC
       return if @daily_done 
       @daily_done =true
       reload_all rescue nil
-      send "NICK #{$nick[0]}"
+      @nick = $nick[0]
+      #send "NICK #{@nick}"
+      @send_nick.call
       saveu
       send('time')
       msg(@channel, osod.addTimCh ,30)
