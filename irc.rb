@@ -275,20 +275,20 @@ class IRC
     end #Thread
   end
 
-  #utf8等乱码检测
+  #utf8等,乱码检测
   def check_code(s)
     tmp = guess_charset(s)
     return if ! tmp
+    p tmp
     return if tmp == 'ASCII'
     if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
 			puts tmp
 			puts tmp.togb
       if tmp =~ /^gb./i
-        #tmp = 'GBK'
-        s=Iconv.conv("#{@charset}//IGNORE","GB18030//IGNORE",s).strip
+         s=s.gbtoX(@charset).strip
       else
-        p tmp
-        s=Iconv.conv("#{@charset}//IGNORE","#{tmp}//IGNORE",s).strip rescue s
+         p tmp
+         s=s.code_a2b(tmp,@charset).strip rescue s
       end
       #p s
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
@@ -987,6 +987,14 @@ class IRC
   end
 end
 
+def restart #Hard Reset
+  send 'quit lag' rescue nil
+  sleep 110+ rand(300)
+  p "exec #{$0} #$argv0"
+  sleep 5
+  exec "#{$0} #$argv0"
+end
+
 if not defined? $u
   ARGV[0] = 'default.conf' if not ARGV[0]
 	ARGV[0] = '~/.kk-irc-bot.conf' if File.exist? '~/.kk-irc-bot.conf'
@@ -1021,15 +1029,6 @@ if not defined? $u
 		p Time.now
     sleep 60 +rand(160)
   end
-end
-
-def restart #Hard Reset
-  p 'restart '
-  send 'quit lag' rescue nil
-  sleep 110+ rand(300)
-  p "exec #{__FILE__} #$argv0"
-  sleep 5
-  exec "#{__FILE__} #$argv0"
 end
 
 # vim:set shiftwidth=3 tabstop=3 expandtab textwidth=79:

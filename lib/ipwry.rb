@@ -5,7 +5,7 @@
 # =KK= 修改
 #
 
-require 'iconv'
+require 'utf.rb'
 
 class IpLocationSeeker
   def initialize()

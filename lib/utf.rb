@@ -18,7 +18,16 @@ else
 end
 
 class String
-   #自动判断
+   def gbtoX(code)
+      tmp = Encoding::Converter.new("GB2312",code, :universal_newline => true)
+      return tmp.convert self if RUBY_VERSION > '1.9.2'
+      Iconv.conv("#{@charset}#{Ig}","GB18030#{Ig}",self)
+   end
+   def code_a2b(a,b)
+      tmp = Encoding::Converter.new(a,b, :universal_newline => true)
+      return tmp.convert self if RUBY_VERSION > '1.9.2'
+      Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
+   end
    def togb2312
       return $ec2.convert self if RUBY_VERSION > '1.9.2'
       Iconv.conv("CP20936#{Ig}","UTF-8#{Ig}",self)
@@ -52,5 +61,8 @@ class String
       Iconv.conv("UTF-8#{Ig}","GB18030#{Ig}",self)
    end
 end
-#p '中文'.togbk
+
+if $0 == __FILE__
+   puts '中文'.togbk
+end
 

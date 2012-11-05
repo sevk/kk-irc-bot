@@ -8,21 +8,6 @@ $: << 'lib' | [] # | [] 是去掉重复的
 require 'utf.rb'
 #为字符串添加一些方法
 class String
-  def utf8
-    self.force_encoding("utf-8")
-  end
-  def gb
-    self.force_encoding("gb18030")
-  end
-  def gb_to_utf8
-    Iconv.conv("UTF-8//IGNORE","GB18030//IGNORE",self).to_s
-  end
-  alias to_utf8 gb_to_utf8
-  def utf8_to_gb
-    Iconv.conv("GB18030//IGNORE","UTF-8//IGNORE",self).to_s
-  end
-	alias togb utf8_to_gb
-	alias to_gb utf8_to_gb
   def decode64
     Base64.decode64 self
   end
@@ -47,6 +32,7 @@ class String
   def unescapeHTML
     HTMLEntities.new.decode(self) rescue self
   end
+
 	alias dir public_methods
 end
 
@@ -593,7 +579,7 @@ def gettitleA(url,from,proxy=true)
       return ImageSize.new(fh.read).get_size.join('×')
     end
   end
-  return if url =~ /bulix\.org|past|imagebin\.org|\.iso|\.jpg|\.png|\.gif$/i
+  return if url =~ /bulix\.org|past|imagebin\.org|(\.iso|.bz2|\.jpg|\.png|\.gif)$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
   $last_ti[proxy] = url
@@ -707,6 +693,7 @@ def geturl(url,type=1)
   s.gsub!(/<.*?>/,'')#.unescapeHTML.gb_to_utf8
   s
 end
+
 def getGoogle(word,flg=0)
 	url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
 	s=getbody(url)
@@ -792,7 +779,7 @@ class Dic
 	def geted2kinfo(url)
 		url.match(/^:\/\/\|(.+?)\|(\S+?)\|(.+?)\|.*$/)
 		name=$2.to_s;size=$3.to_f
-    p url
+      p url
 		return if $1 == 'server'
 		return if not $3
 		#return if url !~ $urlList
@@ -1249,4 +1236,7 @@ end
   #@output_stream.print current_memory.chr
   #$last_bf << current_memory.chr rescue nil
 
+if __FILE__ == $0
+   p rand_do
+end
 
