@@ -8,6 +8,12 @@ $: << 'lib' | [] # | [] 是去掉重复的
 require 'utf.rb'
 #为字符串添加一些方法
 class String
+   def uri_decode
+      URI.decode self
+   end
+   def uri_encode
+      URI.encode self
+   end
   def decode64
     Base64.decode64 self
   end
@@ -184,7 +190,7 @@ def safe_eval(str)
   Thread.start {
     Thread.current[:name]= 'safe eval thread'
     $SAFE=4
-    eval(str).to_s[0,100].gsub(/\s+/,' ') rescue $!.message
+    eval(str).to_s[0,76].gsub(/\s+/,' ') rescue $!.message
   }.value # can be retrieved using "value" method
 end
 def safe(level)
@@ -599,7 +605,7 @@ def gettitleA(url,from,proxy=true)
 	return if ti.empty?
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    return ",啥网址y #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " wakaka, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
 
 		#检测是否有其它取标题机器人

@@ -57,7 +57,7 @@ class IRC
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q')
     if $lag and $lag > 0.8
-      msg(to,"#{a1}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
+      msg(nick,"#{a1}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
       restart if $lag > 6
       return
@@ -278,12 +278,11 @@ class IRC
   #utf8等,乱码检测
   def check_code(s)
     tmp = guess_charset(s)
-    return if ! tmp
-    p tmp
+    return unless tmp
+    #p tmp if $DEBUG
     return if tmp == 'ASCII'
     if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
-			puts tmp
-			puts tmp.togb
+       puts tmp
       if tmp =~ /^gb./i
          s=s.gbtoX(@charset).strip
       else
@@ -291,7 +290,8 @@ class IRC
          s=s.code_a2b(tmp,@charset).strip rescue s
       end
       #p s
-      if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i#需要提示
+      #需要提示
+      if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;sSay=$5.to_s.untaint
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from} say: #{sSay} in #{tmp} ? We use #{@charset} !" if $need_Check_code
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
@@ -361,7 +361,7 @@ class IRC
           autoban to,nick,400,'q'
           kick to,a1
         else
-          $b_tim = 78
+          $b_tim = 51
           autoban to,nick,$b_tim
           msg(to,"#{a1}:. .., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",1)
         end

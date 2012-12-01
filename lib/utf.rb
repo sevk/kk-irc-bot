@@ -19,7 +19,7 @@ end
 
 class String
    def gbtoX(code)
-      tmp = Encoding::Converter.new("GB2312",code, :universal_newline => true)
+      tmp = Encoding::Converter.new("GB18030",code, :universal_newline => true)
       return tmp.convert self if RUBY_VERSION > '1.9.2'
       Iconv.conv("#{@charset}#{Ig}","GB18030#{Ig}",self)
    end
