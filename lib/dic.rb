@@ -5,7 +5,7 @@
 $: << '.'
 $: << 'lib' | [] # | [] 是去掉重复的
 #require 'slashstring'
-require 'utf.rb'
+load 'utf.rb'
 #为字符串添加一些方法
 class String
    def uri_decode
@@ -166,6 +166,7 @@ def reload_all
   load 'color.rb'
   #load 'irc.rb'
 	load 'plugin.rb' rescue log
+	load 'utf.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end

@@ -60,6 +60,10 @@ class String
       return $ec1.convert self if RUBY_VERSION > '1.9.2'
       Iconv.conv("UTF-8#{Ig}","GB18030#{Ig}",self)
    end
+   def to_hex(s=' ')
+      self.each_byte.map{|b| "%02X" % b}.join(s)
+    #self.each_byte.map{|x| x < 16 ? '0' + x.to_s(16) : x.to_s(16) }.join(s)
+   end
 end
 
 if $0 == __FILE__
