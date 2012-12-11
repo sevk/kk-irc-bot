@@ -105,7 +105,7 @@ $botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
-$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|编译/i
+$urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
@@ -606,7 +606,7 @@ def gettitleA(url,from,proxy=true)
 	return if ti.empty?
 	return if ti =~ /\.log$/i
   #if ti !~ /^[\x0-\x7f]+$/
-    return " wakaka, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " 啥标题, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
   #end
 
 		#检测是否有其它取标题机器人
@@ -951,15 +951,14 @@ def oneday
   86400
 end
 
+#重定义Time.now
 unless defined?Time._now
   p 'redefine Time.now'
   class Time
-    class << self
       alias _now now if not defined?_now
       def now
         _now - $_time
       end
-    end
   end
 end
 
