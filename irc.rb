@@ -947,7 +947,7 @@ class IRC
       loop do
         sleep 60*15 + rand(60*50)
         timer_daily
-        if Time.now.hour.between? 9,22
+        if Time.now.hour.between? 8,22
           say_new($channel) if $need_say_feed > 0
         end
       end

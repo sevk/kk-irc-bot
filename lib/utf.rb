@@ -62,7 +62,6 @@ class String
    end
    def to_hex(s=' ')
       self.each_byte.map{|b| "%02X" % b}.join(s)
-    #self.each_byte.map{|x| x < 16 ? '0' + x.to_s(16) : x.to_s(16) }.join(s)
    end
 end
 

@@ -955,9 +955,11 @@ end
 unless defined?Time._now
   p 'redefine Time.now'
   class Time
-      alias _now now if not defined?_now
-      def now
-        _now - $_time
+      class << self
+         alias _now now if not defined?_now
+         def now
+           _now - $_time
+         end
       end
   end
 end
