@@ -52,11 +52,11 @@ begin
   require 'mechanize'
 
 rescue LoadError
-  s="载入库错误, 建议运行 bundle \n"
-  s = s.utf8_to_gb if win_platform?
-  puts s
   puts $!.message
   puts $@[0]
+  s="载入库错误, 建议运行 bundle , 如果没有openssl: rvm pkg install openssl \n"
+  s = s.utf8_to_gb if win_platform?
+  puts s
 end
 
 begin
