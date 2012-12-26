@@ -593,7 +593,7 @@ def gettitleA(url,from,proxy=true)
   t=Time.now
 
   begin
-    ti = Timeout.timeout(9){gettitle(url,proxy)}
+    ti = Timeout.timeout(10){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     sleep 2
