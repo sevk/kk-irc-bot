@@ -945,7 +945,7 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 60*15 + rand(60*50)
+        sleep 60*10 + rand(60*40)
         timer_daily
         if Time.now.hour.between? 8,22
           say_new($channel) if $need_say_feed > 0
