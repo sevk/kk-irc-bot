@@ -52,7 +52,7 @@ begin
   require 'mechanize'
 
 rescue LoadError
-  s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install htmlentities; #安装htmlentities库\n否则html &nbsp; 之类的字符串转化可能失效.  \n\n"
+  s="载入库错误, 建议运行 bundle \n"
   s = s.utf8_to_gb if win_platform?
   puts s
   puts $!.message
