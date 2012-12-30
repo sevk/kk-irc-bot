@@ -229,9 +229,9 @@ class IRC
       to=from if !pub
     end
 
-    tSayDic = Thread.new do
+    Thread.new(words) do |c|
 			Thread.current[:name]= 'tSayDic'
-      c = words;re=''
+      re=''
       case dic
       when /new/i
         re = get_feed
@@ -336,8 +336,7 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        Thread.new{
-           sleep 1
+        Thread.new(to,from,sSay){|to,from,sSay|
            do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$minsaytime*2+13)
         }
       end
@@ -529,10 +528,10 @@ class IRC
       url = $1+$2
       case $1
       when /https?/i
-        @ti=Thread.new do 
+        @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
         end
-        @ti_p=Thread.new{ 
+        @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
         }
         #@ti.join(20)
@@ -636,7 +635,7 @@ class IRC
       p ' << pong ' if $DEBUG
       $lag=Time.now - $Lping
       if $lag > 0.8
-        puts "LAG = #{$lag} 秒" 
+        puts "LAG = #{$lag} sec" 
       end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
@@ -715,7 +714,7 @@ class IRC
         puts s
         identify
       when 376 #end of /motd
-        #do_after_sec(@channel,nil,7,20) #send time , send join #sevk
+         #send time , send join #sevk
         send 'time'
         sleep 1
         send "JOIN #sevk"
@@ -800,11 +799,6 @@ class IRC
       case flag
       when 0
         send "PRIVMSG #{to} :#{sSay}"
-      when 7
-        sleep 0.5
-        send 'time'
-        sleep 0.5
-        send "JOIN #sevk"
       when 10
          #打招呼回复, 新年问好
         send(hello_replay(to,sSay))
@@ -844,11 +838,11 @@ class IRC
 
   #说新帖
   def say_new(to)
-    @say_new=Thread.new{
-			Thread.current[:name]= 'say_new'
-      tmp = get_feed
-      msg(to,tmp,0) if tmp.bytesize > 4
-    }
+     @say_new(to)=Thread.new{|to|
+        Thread.current[:name]= 'say_new'
+        tmp = get_feed
+        msg(to,tmp,0) if tmp.bytesize > 4
+     }
   end
 
   #大约每天一次

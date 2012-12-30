@@ -616,9 +616,8 @@ def gettitleA(url,from,proxy=true)
   #end
 
 		#检测是否有其它取标题机器人
-		Thread.new do
+		Thread.new(ti) do |myti|
 			Thread.current[:name]= 'check say title bot'
-			myti = ti
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
