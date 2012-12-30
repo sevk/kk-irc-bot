@@ -26,6 +26,7 @@ include Math
 require "readline"
 require 'yaml'
 require "ipwry.rb"
+require 'time'
 Socket.do_not_reverse_lookup = true
 
 class IRC
@@ -364,7 +365,7 @@ class IRC
       end
       if to !~ ChFreePlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
-        return if $write_list =~ /#{nick}/i
+        return if $white_list =~ /#{nick}/i
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
         when 0..80
@@ -672,11 +673,7 @@ class IRC
          puts s
       end
       if pos == 391#对时
-        $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
-        $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
-        $_hour %= 24
-        t = Time.new
-        $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
+        $_time=Time.now- Time.parse(tmp)
         puts Time.now.to_s.green
       end
       if pos == 376 #moted

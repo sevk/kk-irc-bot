@@ -5,7 +5,7 @@
 $: << '.'
 $: << 'lib' | [] # | [] 是去掉重复的
 load 'color.rb'
-#load 'showpic.rb' rescue nil
+load 'showpic.rb' rescue nil
 
 class String
    def uri_decode
@@ -471,9 +471,10 @@ def gettitle(url,proxy=true,mechanize=1)
       print 'content-type:' , page.header['content-type'] , "\n"
 			return if page.header['content-type'] =~ /application\/zip/i
 
-         #if page.header['content-type']  =~ /image\/jpe?g/i
-            #showpic(url)
-         #end
+         if page.header['content-type']  =~ /image\/./i
+            showpic(url)
+            return
+         end
          if page.header['content-type']  !~ /text\/html|application\//i
             return '' 
          end
@@ -588,9 +589,10 @@ def gettitleA(url,from,proxy=true)
   #url 带后缀名
   if url =~ /\.....?$/
   end
-  #if url =~ /(\.jpe?g|\.png|\.gif|\.jpeg)$/i
-     #showpic(url)
-  #end
+  if url =~ /(\.jpe?g|\.png|\.gif|\.jpeg)$/i
+     showpic(url)
+     return
+  end
   return if url =~ /bulix\.org|past|imagebin\.org|(\.iso|.bz2|\.jpg|\.png|\.gif)$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
