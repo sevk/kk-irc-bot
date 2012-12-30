@@ -838,7 +838,7 @@ class IRC
 
   #说新帖
   def say_new(to)
-     @say_new(to)=Thread.new{|to|
+     @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
         msg(to,tmp,0) if tmp.bytesize > 4
