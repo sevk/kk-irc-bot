@@ -1,6 +1,6 @@
-#!/usr/bin/env ruby
-# coding: utf-8
-# 版本需ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上, 建议使用linux系统.
+﻿#!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
+#需要ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上, 建议使用linux系统.
 
 =begin
    * Description:
@@ -13,16 +13,19 @@
 $: << 'lib'
 $: << '.' | []
 require 'rubygems'
+require 'fileutils'
+include FileUtils
 require 'platform.rb'
 load 'dic.rb'
+load 'log.rb'
+load 'plugin.rb'
+load 'irc_user.rb'
+load 'utf.rb'
 include Math
 #require 'timeout'
 require "readline"
 require 'yaml'
 require "ipwry.rb"
-load 'irc_user.rb'
-load 'plugin.rb'
-load 'log.rb'
 Socket.do_not_reverse_lookup = true
 
 class IRC
@@ -108,7 +111,7 @@ class IRC
 
   #发送msg消息,随机 delay 秒数.
   #sSay 不能为空
-  def msg(who,sSay,delay=20)
+  def msg(who,sSay,delay=$msg_delay|| 3)
     return if sSay.class != String
     return if sSay.empty?
     $otherbot_said=false
@@ -116,9 +119,8 @@ class IRC
   end
 
   #发送到频道$channel
-  def say(s,ch=@channel)
-    s= Iconv.conv("#{@charset}//IGNORE","#$local_charset//IGNORE",s) if @charset != $local_charset
-    send "PRIVMSG #{ch} :#{s}"
+  def say(s,chan=@channel)
+    send "PRIVMSG #{chan} :#{s}"
     isaid
   end
 
@@ -141,7 +143,10 @@ class IRC
 		return if s.bytesize < 2
     @irc.send("#{s.strip}\r\n",0)
     $Lsay = Time.now
-    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
+    if @charset != $local_charset
+       s=s.code_a2b(@charset,$local_charset)
+       #s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) 
+    end
     puts "----> #{s}".pink
   end
 
@@ -171,12 +176,12 @@ class IRC
       }
     $bot_on = $bot_on1
     $min_next_say = Time.now
-    do_after_sec(@channel,nil,7,20)
+    do_after_sec(@channel,nil,7,20) #send time , send join #sevk
     Thread.new do
 			Thread.current[:name]= 'connect say'
       sleep 220+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01") if rand(10) < 3
+      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d rescue '' `} \x01") if rand(10) < 3
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
     end
   end
@@ -303,7 +308,10 @@ class IRC
 
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
-    s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) if @charset != $local_charset
+    if @charset != $local_charset
+       s=s.code_a2b(@charset,$local_charset)
+    end
+
     case s
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
       from=a1=$1;to=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
@@ -328,7 +336,10 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        Thread.new{sleep 1; do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$minsaytime*3) }
+        Thread.new{
+           sleep 1
+           do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$minsaytime*2+13)
+        }
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -353,6 +364,7 @@ class IRC
       end
       if to !~ ChFreePlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
+        return if $write_list =~ /#{nick}/i
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
         when 0..80
@@ -395,25 +407,26 @@ class IRC
         tmp = check_dic(s,from,to)
         case tmp
         when 1 #非字典消息
-					#puts '消息以我名字开头'
-          #没到下次说话时间，就不处理botsay
-          return if Time.now < $min_next_say
-					$otherbot_said=false
-					do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,39)
+           #puts '消息以我名字开头'
+           #没到下次说话时间，就不处理botsay
+           return if Time.now < $min_next_say
+           $otherbot_said=false
+           #bot say
+           do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay)
         when String
-          msg to,tmp 
+           msg to,tmp
         else #是字典消息
-          if $u.saidAndCheckFloodMe(a1,a2,a3)
-            #$u.floodmereset(a1)
-            $otherbot_said=true
-            msg to ,"#{from}, 不要玩机器人 . ..",0 if rand(10) > 5
-            return
-          end
+           if $u.saidAndCheckFloodMe(a1,a2,a3)
+              #$u.floodmereset(a1)
+              $otherbot_said=true
+              msg to ,"#{from}, 不要玩机器人 . ..",0 if rand(10) > 5
+              return
+           end
         end
         return 'msg with my name:.+'
       else
-        ##不处理gateway用户
-        return if a3=~ /^gateway\//i && $black_gateway
+         ##不处理gateway用户
+         return if a3=~ /^gateway\//i && $black_gateway
       end
 
       tmp = check_dic(sSay,from,to)
@@ -502,8 +515,13 @@ class IRC
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
+        # " end " * 999999 bug
+        p tmp
+        p to
         msg to,"#{from}, #{tmp}", 10 if not tmp.empty?
       }
+      p 2
+      p to
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
@@ -561,11 +579,11 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ',  好.. .',10,23)
+      do_after_sec(to,from + ',  好.. .',10,$msg_delay)
     when /^`?((有人.?.?(吗|不|么|否))|test.{0,2}|测试(下|中)?.{0,2})$/ui #有人吗?
       #ruby1.9一个汉字是一个: /./  ;而1.8是 3个: /.../
       $otherbot_said=false
-      do_after_sec(to,from + ', 点点点.',10,12)
+      do_after_sec(to,from + ', 点点点.',10,$msg_delay)
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic
@@ -639,6 +657,8 @@ class IRC
 
     #when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
       #send "NOTICE #{$1} :\001PONG#{$4}\001"
+
+    #motd ed
     when /^:(.+?)\s(\d+)\s(.+?)\s:(.+)/i#motd , names list
       #:calvino.freenode.net 404 kk #ubuntu-cn :Cannot send to channel
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
@@ -646,7 +666,11 @@ class IRC
       # :card.freenode.net 319 ^k^ ^k^ :@#ubuntu-cn @#sevk
       #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
       pos=$2.to_i;names=$3;data=tmp=$4.to_s
-      puts s
+      if @charset != $local_charset
+         puts s.code_a2b( @charset,$local_charset)
+      else
+         puts s
+      end
       if pos == 391#对时
         $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
         $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
@@ -661,6 +685,7 @@ class IRC
       end
 
       case pos
+
       #whois return
       when 319
         puts data
@@ -679,9 +704,9 @@ class IRC
         renew_Readline_complete(@nicks.to_a)
         Readline.completion_append_character = ', '
 
-        puts "是否检测乱码= #{$need_Check_code}"
-        print "feed功能= " , $need_say_feed, "\n"
-        print 'saytitle= ' , $saytitle, 10.chr
+        puts "$need_Check_code= #{$need_Check_code}"
+        print "$need_say_feed= " , $need_say_feed, "\n"
+        print '$saytitle= ' , $saytitle, 10.chr
 
       when 437,433
       #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
@@ -756,7 +781,7 @@ class IRC
   end
 
   #延时发送
-  def do_after_sec(to,sSay,flag,second=18)
+  def do_after_sec(to,sSay,flag,second=3)
     Thread.new do
       Thread.current[:name]= 'delay say'
       if second !=0
@@ -787,7 +812,8 @@ class IRC
         send 'time'
         sleep 0.5
         send "JOIN #sevk"
-      when 10#打招呼回复
+      when 10
+         #打招呼回复, 新年问好
         send(hello_replay(to,sSay))
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
@@ -818,6 +844,7 @@ class IRC
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
+    sleep 0.2
     log 'my exit '
     @exit = true
   end
@@ -834,9 +861,11 @@ class IRC
   #大约每天一次
   def timer_daily
     puts Time.now.to_s.blue
-    @daily_done = false if Time.now.hour < 5
-    if Time.now.hour == 6
-      return if @daily_done 
+    #大约每天6点执行
+    if Time.now.hour < 5
+       @daily_done = false
+    else
+      return if @daily_done
       @daily_done =true
       reload_all rescue nil
       @nick = $nick[0]
@@ -852,72 +881,69 @@ class IRC
   #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
   #退出软件请输入 :quit
   def iSend()
-    loop do
-      $stdout.flush
-      sleep 0.2
-      #windows 好像不支持Readline
-      if win_platform?
-        s = select([$stdin],nil,nil,0.2)
-        next unless s
-        #next if s[0][0] != IO
-        s = $stdin.gets
-      else
-        s = Readline.readline('[' + @channel + '] ')
-      end
-      #lock.synchronize do
-        case s
-        when /^[:\/]quit\s?(.*)?$/i #:q退出
-          myexit $2
-        when /^\/msg\s(.+?)\s(.+)$/i
-          who = $1;s=$2
-          send "privmsg #{who} :#{s.strip}"
-        when /^\/ns\s+(.*)$/i #发送到nick serv
-          send "privmsg nickserv :#{$1.strip}"
-        when /^\/ms\s+(.*)$/i #发送到memo serv
-          send "privmsg memoserv :#{$1.strip}"
-        when /^\/nick\s+(.*)$/i
-          @nick = $1
-          send s.gsub(/^[\/]/,'')
-        when /^\/(.+)/ # /发送 RAW命令
-					s1=$1
-          if s1 =~ /^me/i
-            say(s.gsub(/\/me/i,"\001ACTION") + "\001")
-          elsif s1 =~ /^ping/i
-            $Lping = Time.now
-            send s1+' 1'
-          elsif s1 =~ /^ctcp/i
-            say(s1.gsub(/^ctcp/i,"\001") + "\001")
-          else
-            send s1
-          end
-        when /^`/ #直接执行
-          if s[1..-1] =~ />\s(.*)/
-						p s
-						begin
-							tmp=eval($1.to_s)
-							say tmp if tmp.class == String
-						rescue Exception
-							p $!.message
-						#rescue
-							#p $!.message
-						end
-          else
-            check_dic(s,@nick,@channel)
-          end
+     $stdout.flush
+     s = Readline.readline('[' + @channel + ']')
+     return if not s
+     #p s.encoding
+     s.force_encoding($local_charset)
+     if @charset != $local_charset
+        s=s.code_a2b($local_charset,@charset)
+     end
+     #lock.synchronize do
+     case s
+     when /^[:\/]quit\s?(.*)?$/i #:q退出
+        myexit $2
+     when /^\/msg\s(.+?)\s(.+)$/i
+        who = $1;s=$2
+        send "privmsg #{who} :#{s.strip}"
+     when /^\/ns\s+(.*)$/i #发送到nick serv
+        send "privmsg nickserv :#{$1.strip}"
+     when /^\/ms\s+(.*)$/i #发送到memo serv
+        send "privmsg memoserv :#{$1.strip}"
+     when /^\/nick\s+(.*)$/i
+        @nick = $1
+        send s.gsub(/^[\/]/,'')
+     when /^\/(.+)/ # /发送 RAW命令
+        s1=$1
+        if s1 =~ /^me/i
+           say(s.gsub(/\/me/i,"\001ACTION") + "\001")
+        elsif s1 =~ /^ping/i
+           $Lping = Time.now
+           send s1+' 1'
+        elsif s1 =~ /^ctcp/i
+           say(s1.gsub(/^ctcp/i,"\001") + "\001")
         else
-          say s
+           send s1
         end
-      #end
-    end
-  rescue
-    print $!.message, $@[0], "\n"
+     when /^`/ #直接执行
+        if s[1..-1] =~ />\s(.*)/
+           p s
+        begin
+           tmp=eval($1.to_s)
+           say tmp if tmp.class == String
+        rescue Exception
+           p $!.message
+           #rescue
+           #p $!.message
+        end
+        else
+           check_dic(s,@nick,@channel)
+        end
+     else
+        say s
+     end
+     #end
   end
 
   #客户端输入并发送.
   def input_start
     @input=Thread.start{
 			Thread.current[:name]= 'iSend'
-			iSend }
+         loop do
+            sleep 0.01
+            iSend rescue log("")
+         end
+    }
     @input.priority = -16
   end
 
@@ -989,7 +1015,7 @@ end
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
-  sleep 110+ rand(300)
+  sleep 90+ rand(300)
   p "exec #{$0} #$argv0"
   sleep 5
   exec "#{$0} #$argv0"
@@ -1004,7 +1030,7 @@ if not defined? $u
   $bot_on1 = $bot_on
   $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
-  Dir.mkdir('irclogs') unless Dir.exist?('irclogs')
+  mkdir_p 'irclogs'
 	p $server
 
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
@@ -1023,11 +1049,10 @@ if not defined? $u
       p Time.now
     end
     break if irc.exited?
-    restart rescue log
-    #p ' exit main_loop'
+    #restart rescue log
     p $need_reconn
 		p Time.now
-    sleep 60 +rand(160)
+    sleep 30 +rand(160)
   end
 end
 

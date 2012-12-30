@@ -4,7 +4,8 @@ gem "colored"
 gem "mechanize"
 gem "htmlentities"
 gem "rchardet19"
-gem "image_size"
+#gem 'fxruby' #if need show pic on irc chat
+#gem "image_size"
 #gem "bfrb"
 #gem "morse"
 

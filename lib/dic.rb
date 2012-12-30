@@ -4,9 +4,9 @@
 
 $: << '.'
 $: << 'lib' | [] # | [] 是去掉重复的
-#require 'slashstring'
-load 'utf.rb'
-#为字符串添加一些方法
+load 'color.rb'
+#load 'showpic.rb' rescue nil
+
 class String
    def uri_decode
       URI.decode self
@@ -78,7 +78,7 @@ require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 require 'mechanize'
 load 'do_as_rb19.rb'
-load 'color.rb'
+#load 'color.rb'
 
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
@@ -92,7 +92,7 @@ UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
-$re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http://
+$re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http:// https:// ed2k://
 # /....s?:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
 $min_next_say = Time.now
@@ -101,7 +101,7 @@ $last_save = Time.now - 110
 $proxy_status_ok = false if not defined? $proxy_status_ok
 
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
-$botlist=/bot|fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
+$botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
 $botlist_title=/raybot|\^?[Ou]_[ou]/i
@@ -164,9 +164,8 @@ def reload_all
 	load 'dic.rb'
 	load 'irc_user.rb'
   load 'color.rb'
-  #load 'irc.rb'
+  load 'irc.rb'
 	load 'plugin.rb' rescue log
-	load 'utf.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end
@@ -445,7 +444,8 @@ def gettitle(url,proxy=true,mechanize=1)
 			#url = URI.decode(url)
 		#end
     if url =~ /^https/i
-       agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+       #agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+       agent = Mechanize.new
     else
        agent = Mechanize.new
     end
@@ -466,12 +466,17 @@ def gettitle(url,proxy=true,mechanize=1)
     #agent.auth('^k^', 'password')
     begin
 			page = agent.get(url)
+         p page.class
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
 			return if page.header['content-type'] =~ /application\/zip/i
-			if page.header['content-type']  !~ /text\/html|application\//i
-				return '' 
-			end
+
+         #if page.header['content-type']  =~ /image\/jpe?g/i
+            #showpic(url)
+         #end
+         if page.header['content-type']  !~ /text\/html|application\//i
+            return '' 
+         end
 
       #Content-Type
       if page.class != Mechanize::Page
@@ -579,13 +584,13 @@ def gettitleA(url,from,proxy=true)
   return if from =~ $botlist
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
-  if url =~ /(\.jpg|\.png|\.gif|\.jpeg)$/i
-    #return
-    require "image_size"
-    open(url, "rb") do |fh|
-      return ImageSize.new(fh.read).get_size.join('×')
-    end
+
+  #url 带后缀名
+  if url =~ /\.....?$/
   end
+  #if url =~ /(\.jpe?g|\.png|\.gif|\.jpeg)$/i
+     #showpic(url)
+  #end
   return if url =~ /bulix\.org|past|imagebin\.org|(\.iso|.bz2|\.jpg|\.png|\.gif)$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
@@ -1196,8 +1201,12 @@ def pr_highlighted(s)
   else
     re= s.red
   end
-  re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
-  puts re
+  re = "\r" << re
+  if $local_charset !~ /UTF-8/i
+     puts re.code_a2b('utf-8',$local_charset)
+  else
+     puts re
+  end
   savelog re if need_savelog
 end
 
