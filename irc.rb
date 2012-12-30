@@ -33,6 +33,7 @@ class IRC
   def initialize(server,port,nick,channel,charset,name="bot kk ver bot :svn Ver bot")
     $_hour = $_min = $_sec = 0
     @count=0
+    @daily_done =true
     @nicks = []
     @exit = false
     $otherbot_said = nil
@@ -868,7 +869,7 @@ class IRC
   #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
   #退出软件请输入 :quit
   def iSend()
-     $stdout.flush
+     #$stdout.flush
      s = Readline.readline('[' + @channel + ']')
      return if not s
      #p s.encoding
@@ -931,7 +932,6 @@ class IRC
             iSend rescue log("")
          end
     }
-    @input.priority = -16
   end
 
   #timer
