@@ -177,7 +177,6 @@ class IRC
       }
     $bot_on = $bot_on1
     $min_next_say = Time.now
-    do_after_sec(@channel,nil,7,20) #send time , send join #sevk
     Thread.new do
 			Thread.current[:name]= 'connect say'
       sleep 220+rand(400)
@@ -676,10 +675,6 @@ class IRC
         $_time=Time.now- Time.parse(tmp)
         puts Time.now.to_s.green
       end
-      if pos == 376 #moted
-        #$min_next_say=Time.now
-        #do_after_sec(@channel,nil,7,1)
-      end
 
       case pos
 
@@ -720,8 +715,9 @@ class IRC
         puts s
         identify
       when 376 #end of /motd
+        #do_after_sec(@channel,nil,7,20) #send time , send join #sevk
         send 'time'
-        sleep 0.5
+        sleep 1
         send "JOIN #sevk"
       end
 
@@ -841,7 +837,7 @@ class IRC
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
-    sleep 0.2
+    sleep 0.3
     log 'my exit '
     @exit = true
   end
