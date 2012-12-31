@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env ruby
+#!/usr/bin/env ruby
 # -*- coding: utf-8 -*-
 #需要ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上, 建议使用linux系统.
 
