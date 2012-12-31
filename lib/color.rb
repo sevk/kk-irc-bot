@@ -1,7 +1,9 @@
 #为终端字符串添加颜色
 
 require 'colored' rescue log
-require 'Win32/Console/ANSI' if Gem.win_platform?
+if Gem.win_platform?
+   require 'Win32/Console/ANSI' 
+end
 
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 
 $yellow="\e[33m";
@@ -17,7 +19,7 @@ $b_yellow="\e[43m";
 $b_blue="\e[44m"; $b_pink="\e[45m"; $b_cyan="\e[46m"; 
 $b_white="\e[47m";
 
-#windows下面可以安装 msysGit-fullinstall-1.6.3.2-preview.exe 包含 MINGW32 :)
+#windows下面可以安装 msysGit-fullinstall-preview.exe 包含 MINGW32 :)
 class String
   def black
     "\e[30m#{self}#$normal"

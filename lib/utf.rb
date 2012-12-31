@@ -25,9 +25,14 @@ class String
    end
    #s.encode!("gbk")
    def code_a2b(a,b)
+      #print a, ' to ', b , "\n"
+      #p self
       tmp = Encoding::Converter.new(a,b, :universal_newline => true)
-      return tmp.convert self if RUBY_VERSION > '1.9.2'
-      Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
+      if RUBY_VERSION > '1.9.2'
+         return tmp.convert self
+      else
+         Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
+      end
    end
    def togb2312
       return $ec2.convert self if RUBY_VERSION > '1.9.2'

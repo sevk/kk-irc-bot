@@ -256,7 +256,7 @@ class ALL_USER
     return @name[getindex(nick)]
   end
   def all_nick
-    @index.keys
+    @index.keys.map{|x| x.delete '@'}
   end
 
   def completename(s)
