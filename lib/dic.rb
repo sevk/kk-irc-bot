@@ -1196,6 +1196,7 @@ def pr_highlighted(s)
   else
     re= s.red
   end
+  #re.gsub!(/\002|\003|\005/,'')
   re = re.utf8_to_gb if $local_charset !~ /UTF-8/i
   puts re
   savelog re if need_savelog

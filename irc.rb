@@ -166,19 +166,19 @@ class IRC
     sleep 0.5
     send "USER #@str_user"
       Thread.new{
-        sleep 22
+        sleep 20
         identify
       }
     $bot_on = $bot_on1
     $min_next_say = Time.now
     do_after_sec(@channel,nil,7,20)
-    Thread.new do
-			Thread.current[:name]= 'connect say'
-      sleep 220+rand(400)
+    #Thread.new do
+			#Thread.current[:name]= 'connect say'
+      #sleep 220+rand(400)
       #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-      send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01") if rand(10) < 3
+      #send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d`} \x01") if rand(10) < 3
       #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
-    end
+    #end
   end
 
   #/ns id pass
@@ -599,16 +599,22 @@ class IRC
 		return 1
   end
 
+  Notices_head = "^:NickServ!NickServ@services\.\sNOTICE.+?:"
   #服务器消息
   def check_irc_event(s)
     #:NickServ!NickServ@services. NOTICE ^k^ :You are now identified for [ub].
     #:NickServ!NickServ@services. NOTICE kk :You have 30 seconds to identify to your nickname before it is changed.
     #This nickname is registered
     case s.strip
+    when Regexp.new((Notices_head + $need_identify).force_encoding('ASCII-8BIT'))
+      p s
+      identify
+    when Regexp.new((Notices_head + $need_join).force_encoding('ASCII-8BIT'))
+      p s
+      joinit
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(This nickname is registered)|(You have 30 seconds to identify)/i
       puts s
       identify
-
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(You are already logged in as)|(You are now identified for)/i
       puts s
       joinit
@@ -648,11 +654,7 @@ class IRC
       pos=$2.to_i;names=$3;data=tmp=$4.to_s
       puts s
       if pos == 391#对时
-        $_hour,$_min,$_sec,tmp1 = tmp.match(/(\d+):(..):(..)\s(.\d+)\:/)[1..4]
-        $_hour = $_hour.to_i + (Time.now.utc_offset - tmp1.to_i * 3600 ) / 3600
-        $_hour %= 24
-        t = Time.new
-        $_time= t - Time.mktime(t.year,t.month,t.day,$_hour,$_min,$_sec)
+        $_time=Time.now - Time.parse(tmp)
         puts Time.now.to_s.green
       end
       if pos == 376 #moted
@@ -815,6 +817,8 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
+    stty_save = `stty -g`.chomp
+    system "stty", stty_save ;
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
@@ -853,8 +857,9 @@ class IRC
   #退出软件请输入 :quit
   def iSend()
     loop do
-      $stdout.flush
-      sleep 0.2
+      #$stdout.flush
+      sleep 0.01
+      break if @exit
       #windows 好像不支持Readline
       if win_platform?
         s = select([$stdin],nil,nil,0.2)
@@ -864,6 +869,7 @@ class IRC
       else
         s = Readline.readline('[' + @channel + '] ')
       end
+      p s
       #lock.synchronize do
         case s
         when /^[:\/]quit\s?(.*)?$/i #:q退出
@@ -909,16 +915,14 @@ class IRC
         end
       #end
     end
-  rescue
-    print $!.message, $@[0], "\n"
   end
 
   #客户端输入并发送.
   def input_start
     @input=Thread.start{
 			Thread.current[:name]= 'iSend'
-			iSend }
-    @input.priority = -16
+         iSend rescue log
+    }
   end
 
   #timer
@@ -1007,14 +1011,16 @@ if not defined? $u
   Dir.mkdir('irclogs') unless Dir.exist?('irclogs')
 	p $server
 
+
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
   irc.timer_start
 
-	irc.input_start if $client
+   irc.input_start if $client
 	Thread.current[:name]= 'main'
   loop do
     check_proxy_status
     begin
+       exit if @exit
       irc.connect
       irc.main_loop
     rescue
@@ -1027,6 +1033,7 @@ if not defined? $u
     #p ' exit main_loop'
     p $need_reconn
 		p Time.now
+      p 'sleep for reconnect'
     sleep 60 +rand(160)
   end
 end

@@ -91,6 +91,7 @@ class ALL_USER
     #$ban_time=read_from_db
     $ban_time[@pos_write]=Time.now - 7200
     $mode[@pos_write]=nil
+    @RP[1][@pos_write] = 0
 
     if @pos_write == $maxNamed
       @pos_write = 0
@@ -99,6 +100,7 @@ class ALL_USER
     else
       @pos_write += 1
     end
+    @pos_write
   end
 
   def isBlocked?(nick)
@@ -120,6 +122,7 @@ class ALL_USER
   end
   def setLastSay(nick,w)
     i=getindex(nick)
+    i ||= add(nick)
     if w == $lastsay[i]
       @RP[1][i] +=1
     else
