@@ -4,8 +4,6 @@
 
 $: << '.'
 $: << 'lib' | [] # | [] 是去掉重复的
-load 'color.rb'
-load 'showpic.rb' rescue nil
 
 class String
    def uri_decode
@@ -50,11 +48,13 @@ begin
   require 'htmlentities'
   #gem install mechanize
   require 'mechanize'
+   load 'color.rb'
+   load 'showpic.rb'
 
 rescue LoadError
   puts $!.message
   puts $@[0]
-  s="载入库错误, 建议运行 bundle , 如果没有openssl: rvm pkg install openssl \n"
+  s="载入库错误, 建议运行gem install bundle && bundle , 如果没有openssl: rvm pkg install openssl \n"
   s = s.utf8_to_gb if win_platform?
   puts s
 end
