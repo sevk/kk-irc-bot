@@ -41,6 +41,7 @@ class String
 end
 
 require 'ipwry.rb'
+
 begin
   #apt-get install rubygems
 	require 'rubygems' #以便引用相关的库
@@ -50,11 +51,10 @@ begin
   require 'mechanize'
    load 'color.rb'
    load 'showpic.rb'
-
 rescue LoadError
   puts $!.message
   puts $@[0]
-  s="载入库错误, 建议运行gem install bundle && bundle , 如果没有openssl: rvm pkg install openssl \n"
+s="载入库错误, 建议运行gem install bundle && bundle , 如果没有openssl: rvm pkg install openssl \n"
   s = s.utf8_to_gb if win_platform?
   puts s
 end

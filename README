@@ -1,5 +1,9 @@
-需要安装ruby, 安装ruby :
-建议装 ruby 1.9
+# kk-irc-bot
+irc-bot , like a human
+
+### Installation and usage
+需要安装ruby :
+建议装 ruby 1.9.3
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/
@@ -7,13 +11,15 @@ linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/
 装完ruby后升级 gem, 命令: gem update --system
 然后安装库, 命令: gem install bundle && bundle
 
-运行:
+###运行:
 ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
 
-===========
-比如加入 avplayer 频道：
+### 比如加入 avplayer 频道：
 * cp default.conf av.conf
 修改av.conf
 * ./irc.rb av.conf
+
+### Core Team Members
+ sevk
 

@@ -26,7 +26,6 @@ include Math
 require "readline"
 require 'yaml'
 require "ipwry.rb"
-require 'time'
 Socket.do_not_reverse_lookup = true
 
 class IRC
@@ -182,7 +181,7 @@ class IRC
         Thread.current[:name]= 'connect say'
         sleep 220+rand(400)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d rescue '' `} \x01") if rand(10) < 3
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } \x01") if rand(10) < 3
         #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
      end
   end
@@ -617,18 +616,20 @@ class IRC
 		return 1
   end
 
-  Notices_head = "^:NickServ!NickServ@services\.\sNOTICE.+?:"
+  Notices_head = "^:NickServ!\\w+?@\\w+?.+?\sNOTICE.+?"
   #服务器消息
   def check_irc_event(s)
     #:NickServ!NickServ@services. NOTICE ^k^ :You are now identified for [ub].
     #:NickServ!NickServ@services. NOTICE kk :You have 30 seconds to identify to your nickname before it is changed.
     #This nickname is registered
+    #p s.strip
+    notices_head = Notices_head + "#{@nick}\s?:"
     case s.strip
-    when Regexp.new((Notices_head + $need_identify).force_encoding('ASCII-8BIT'))
-      p s
+    when Regexp.new((notices_head + $need_identify).force_encoding('ASCII-8BIT'))
+      p s.green
       identify
-    when Regexp.new((Notices_head + $need_join).force_encoding('ASCII-8BIT'))
-      p s
+    when Regexp.new((notices_head + $need_join).force_encoding('ASCII-8BIT'))
+      p s.green
       joinit
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(This nickname is registered)|(You have 30 seconds to identify)/i
       puts s
@@ -1029,7 +1030,7 @@ if not defined? $u
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
   irc.timer_start
 
-   irc.input_start if $client
+   #irc.input_start if $client
 	Thread.current[:name]= 'main'
   loop do
     check_proxy_status

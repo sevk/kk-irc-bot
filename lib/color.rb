@@ -1,6 +1,6 @@
 #为终端字符串添加颜色
 
-require 'colored' rescue log
+require 'colored'
 if Gem.win_platform?
    require 'Win32/Console/ANSI' 
 end
