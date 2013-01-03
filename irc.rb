@@ -361,9 +361,12 @@ class IRC
         p sSay.size
         $u.said(nick,name,ip,1.3)
       end
-      if to !~ ChFreePlay and $u.saidAndCheckFlood(nick,name,ip,sSay)
+
+      if $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
-        return if $white_list =~ /#{nick}/i
+        if $white_list =~ /#{nick}/i or to !~ ChFreePlay
+           return 
+        end
         tmp = Time.now - $u.get_ban_time(nick)
         case tmp
         when 0..80
