@@ -507,7 +507,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			end
 			title = URI.decode(unescapeHTML(title))
 			title.gsub!(/\s+/,' ')
-         puts title
+         #puts title
        return title
 
     rescue Exception
@@ -611,9 +611,6 @@ def gettitleA(url,from,proxy=true)
   return unless ti
 	return if ti.empty?
 	return if ti =~ /\.log$/i
-  #if ti !~ /^[\x0-\x7f]+$/
-    return " 啥标题, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
-  #end
 
 		#检测是否有其它取标题机器人
 		Thread.new(ti) do |myti|
@@ -621,12 +618,14 @@ def gettitleA(url,from,proxy=true)
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
-				$saytitle -=0.05 if $saytitle > 0
+				$saytitle -=1 if $saytitle > 0
 			else
-				$saytitle +=0.6 if $saytitle < 1
+				$saytitle +=0.4 if $saytitle < 1
 			end
 		end
 		return if $saytitle < 1
+
+    return " 啥标题, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')
@@ -1087,8 +1086,8 @@ def rand_do
 end
 
 def hello_replay(to,sSay)
-	tmp = Time.parse('2012-01-23 00:00:00+08:00')-Time.now
-	if tmp < 0 #不用显示倒计时
+	tmp = Time.parse('2013-02-10 00:00:00+08:00')-Time.now
+	if tmp > 86400*30 or tmp < 0 #不用显示倒计时
 		return if sSay =~ /\s$/
 		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
 	end
@@ -1104,7 +1103,7 @@ def hello_replay(to,sSay)
 		tmp="#{tmp/60/60/24}天"
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
-	return "privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐，还有 #{tmp}\017"
+	"privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐，春节: #{tmp}\017"
 end
 
 def gettitle_https(url)

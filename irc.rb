@@ -80,7 +80,7 @@ class IRC
     end
 
     $u.set_ban_time(nick)
-    Thread.new do
+    Thread.new(time) do |time|
       Thread.current[:name]= 'autoban'
       sleep time
       send "mode #{chan} -#{mode} #{s}"
@@ -811,7 +811,7 @@ class IRC
       when 0
         send "PRIVMSG #{to} :#{sSay}"
       when 10
-         #打招呼回复, 新年问好
+         #打招呼回复, 春节问好
         send(hello_replay(to,sSay))
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
@@ -840,7 +840,7 @@ class IRC
   #自定义退出
   def myexit(exit_msg = 'optimize')
     stty_save = `stty -g`.chomp
-    system "stty", stty_save ;
+    system "stty", $stty_save ;
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
@@ -878,13 +878,28 @@ class IRC
   end
 
   #检测用户输入,实现IRC客户端功能.
-  #iSend = Proc.new do |a, *b| b.collect {|i| i*a } end
+  #i Send = Proc.new do |a, *b| b.collect {|i| i*a } end
   #退出软件请输入 :quit
   def iSend()
      #$stdout.flush
+     sleep 0.1
      s = Readline.readline('[' + @channel + ']')
+     sleep 0.1
      return if not s
      #p s.encoding
+
+     begin
+        if Readline::HISTORY[Readline::HISTORY.length-2] == s
+           Readline::HISTORY.pop
+        end
+     rescue IndexError
+     end
+
+     Readline::HISTORY.push(s)
+     if Readline::HISTORY.size > 200
+        Readline::HISTORY.pop
+     end
+
      s.force_encoding($local_charset)
      if @charset != $local_charset
         s=s.code_a2b($local_charset,@charset)
@@ -934,6 +949,7 @@ class IRC
 
   #客户端输入并发送.
   def input_start
+    $stty_save = `stty -g`.chomp
     @input=Thread.start{
 			Thread.current[:name]= 'iSend'
          loop do
@@ -1033,7 +1049,7 @@ if not defined? $u
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
   irc.timer_start
 
-   #irc.input_start if $client
+   irc.input_start if $client
 	Thread.current[:name]= 'main'
   loop do
     check_proxy_status

@@ -18,7 +18,7 @@ def log(s=nil)
 	   puts "#{$!.message} #{$@.join("\n")}" 
       return
    end
-	puts s.to_s
+	p s
 	#daily/weekly/monthly.
   logger = Logger.new("./log/log_#{ENV['USER']}.log",shift_age=30,10240000)
   logger.level = Logger::DEBUG
