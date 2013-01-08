@@ -1084,7 +1084,7 @@ def rand_do
 end
 
 def hello_replay(to,sSay)
-	tmp = Time.parse('2013-02-10 00:00:00+08:00')-Time.now
+	tmp = Time.parse('2013-02-10')-Time.now
 	if tmp < 0 or tmp > Oneday*30 #不用显示倒计时
 		return if sSay =~ /\s$/
 		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
