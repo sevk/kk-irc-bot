@@ -951,9 +951,7 @@ end
 def onehour
   3600
 end
-def oneday
-  86400
-end
+Oneday = 86400
 
 #重定义Time.now
 unless defined?Time._now
@@ -1087,7 +1085,7 @@ end
 
 def hello_replay(to,sSay)
 	tmp = Time.parse('2013-02-10 00:00:00+08:00')-Time.now
-	if tmp > 86400*30 or tmp < 0 #不用显示倒计时
+	if tmp < 0 or tmp > Oneday*30 #不用显示倒计时
 		return if sSay =~ /\s$/
 		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
 	end
