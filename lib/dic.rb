@@ -625,7 +625,7 @@ def gettitleA(url,from,proxy=true)
 		end
 		return if $saytitle < 1
 
-    return " 啥标题, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " 啥, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')
@@ -933,6 +933,7 @@ def evaluate(s)
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
 		Timeout.timeout(6){
       return safe_eval(s).icolor(rand(99))
+      #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
 		}

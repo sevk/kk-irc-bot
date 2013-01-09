@@ -58,7 +58,8 @@ class String
 
   #irc color
   def icolor(n)
-    "\x03#{n}#{self}\x03#{n}"
+    "\e[#{31+n%7}m#{self}#$normal"
+    #"\x03#{n}#{self}\x03#{n}"
   end
   def iblue
     "\x033#{self}\x030"
