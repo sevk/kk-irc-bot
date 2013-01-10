@@ -933,6 +933,7 @@ def evaluate(s)
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
 		Timeout.timeout(6){
       return safe_eval(s).icolor(rand(99))
+      #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
 		}
@@ -1084,7 +1085,7 @@ def rand_do
 end
 
 def hello_replay(to,sSay)
-	tmp = Time.parse('2013-02-10 00:00:00+08:00')-Time.now
+	tmp = Time.parse('2013-02-10')-Time.now
 	if tmp < 0 or tmp > Oneday*30 #不用显示倒计时
 		return if sSay =~ /\s$/
 		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
