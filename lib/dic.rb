@@ -224,7 +224,7 @@ def get_Atom_n(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
 end
 
 #取ubuntu.com.cn的 feed.
-def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
+def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   feed = begin
     Timeout.timeout(20) {
       RSS::Parser.parse(url)
@@ -273,7 +273,7 @@ def get_feed(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
     p n
     return 
   end
-  return n.icolor(11)
+  return n.c_rand
 end
 
 class String
@@ -625,7 +625,7 @@ def gettitleA(url,from,proxy=true)
 		end
 		return if $saytitle < 1
 
-    return " 啥标题, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " 啥, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')

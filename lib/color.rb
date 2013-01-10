@@ -42,7 +42,7 @@ class String
   def cyan
     "\e[36m#{self}#$normal"
   end
-	def c_rand(n)
+	def c_rand(n=rand(99))
 		"\e[#{31+n%7}m#{self}#$normal"
 	end
 
