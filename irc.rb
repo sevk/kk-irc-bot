@@ -839,7 +839,6 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    stty_save = `stty -g`.chomp
     system "stty", $stty_save ;
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
@@ -949,7 +948,7 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-    $stty_save = `stty -g`.chomp
+     $stty_save = `stty -g`.chomp rescue nil
     @input=Thread.start{
 			Thread.current[:name]= 'iSend'
          loop do
