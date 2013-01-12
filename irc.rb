@@ -177,6 +177,8 @@ class IRC
      }
      $bot_on = $bot_on1
      $min_next_say = Time.now
+
+     return if win_platform?
      Thread.new do
         Thread.current[:name]= 'connect say'
         sleep 220+rand(400)
