@@ -841,7 +841,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    system "stty", $stty_save ;
+     system "stty", $stty_save rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
