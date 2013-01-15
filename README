@@ -7,9 +7,13 @@ irc-bot , like a human
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/
+rvm 安装好后,
+安装rvm pkg : rvm pkg install zlib readline openssl
+rvm install ruby-1.9.3
+装完ruby后,安装 libxml2库:
+apt-get install libxml2-dev libxslt-dev #bundle 需要这2个库
 
-装完ruby后升级 gem, 命令: gem update --system
-然后安装库, 命令: gem install bundle && bundle
+然后安装gem库, 命令: gem install bundle && bundle
 
 ###运行:
 ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
