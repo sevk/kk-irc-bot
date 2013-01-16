@@ -192,6 +192,7 @@ def safe_eval(str)
     eval(str).to_s[0,76].gsub(/\s+/,' ') rescue $!.message
   }.value # can be retrieved using "value" method
 end
+
 def safe(level)
   result = nil
   Thread.start {
@@ -933,7 +934,7 @@ def evaluate(s)
 		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
 		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
 		Timeout.timeout(6){
-      return safe_eval(s).icolor(rand(99))
+      return safe_eval(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
