@@ -884,27 +884,30 @@ class IRC
   def iSend()
      #$stdout.flush
      sleep 0.1
-     s = Readline.readline('[' + @channel + ']')
+     s = Readline.readline("\r[#@channel]")
      sleep 0.1
      return if not s
      #p s.encoding
 
-     begin
-        if Readline::HISTORY[Readline::HISTORY.length-2] == s
-           Readline::HISTORY.pop
-        end
-     rescue IndexError
-     end
-
-     Readline::HISTORY.push(s)
-     if Readline::HISTORY.size > 200
-        Readline::HISTORY.pop
-     end
+     #begin
+        #if Readline::HISTORY[Readline::HISTORY.length-2] == s
+           #Readline::HISTORY.pop
+        #end
+     #rescue IndexError
+     #end
 
      s.force_encoding($local_charset)
      if @charset != $local_charset
         s=s.code_a2b($local_charset,@charset)
      end
+
+     Readline::HISTORY.push(s)
+     if Readline::HISTORY.size > 20
+        10.times{
+           Readline::HISTORY.shift
+        }
+     end
+
      #lock.synchronize do
      case s
      when /^[:\/]quit\s?(.*)?$/i #:q退出
