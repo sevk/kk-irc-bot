@@ -273,7 +273,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     p n
     return 
   end
-  return n.c_rand
+  return n.i_rand
 end
 
 class String
@@ -618,9 +618,10 @@ def gettitleA(url,from,proxy=true)
 			sleep 12
 			if $u.has_said?(myti)
 				p 'has_said = true'
-				$saytitle -=1 if $saytitle > 0
+				#$saytitle -=1 if $saytitle > 0
 			else
-				$saytitle +=0.4 if $saytitle < 1
+				p 'has_said = false'
+				#$saytitle +=0.4 if $saytitle < 1
 			end
 		end
 		return if $saytitle < 1

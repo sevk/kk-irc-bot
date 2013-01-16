@@ -57,9 +57,9 @@ class String
 	end
 
   #irc color
-  def icolor(n)
-    "\e[#{31+n%7}m#{self}#$normal"
-    #"\x03#{n}#{self}\x03#{n}"
+  def icolor(n=rand(99))
+    #"\e[#{31+n%7}m#{self}#$normal"
+    "\x03#{n%7}#{self}\x03#{n}"
   end
   def iblue
     "\x033#{self}\x030"
