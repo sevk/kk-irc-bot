@@ -465,23 +465,24 @@ def gettitle(url,proxy=true,mechanize=1)
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
-       #p 'start agent.get'
-       page = agent.get(url)
-       p page.class
-       #p 'end agent.get'
-      #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
-      print 'content-type:' , page.header['content-type'] , "\n"
-			return if page.header['content-type'] =~ /application\/zip/i
 
+       #check page Content-Type
+       page = agent.head(url)
+       print 'content-type:' , page.header['content-type'] , "\n"
+			return if page.header['content-type'] =~ /application\/zip/i
          if page.header['content-type']  =~ /image\/./i
             showpic(url)
             return
          end
-         if page.header['content-type']  !~ /text\/html|application\//i
-            return '' 
-         end
 
-      #Content-Type
+         if page.header['content-type']  !~ /text\/html/i
+            return "type: #{page.header['content-type']}"
+         end
+       #p 'start agent.get'
+       page = agent.get(url)
+       p page.class
+       #p 'end agent.get'
+       #
       if page.class != Mechanize::Page
         p 'no page'
         return
@@ -626,7 +627,7 @@ def gettitleA(url,from="_",proxy=true)
 				#$saytitle +=0.4 if $saytitle < 1
 			end
 		end
-		return if $saytitle < 1
+      return if $saytitle < 1 rescue nil
 
     return " 啥, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
