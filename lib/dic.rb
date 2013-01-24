@@ -460,13 +460,15 @@ def gettitle(url,proxy=true,mechanize=1)
       end
     end
     agent.max_history = 0
-    agent.open_timeout = 7
-		agent.read_timeout = 7
+    agent.open_timeout = 6
+		agent.read_timeout = 6
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
-			page = agent.get(url)
-         p page.class
+       #p 'start agent.get'
+       page = agent.get(url)
+       p page.class
+       #p 'end agent.get'
       #p page.header['content-type'].match(/charset=(.+)/) rescue (p $!.message + $@[0])
       print 'content-type:' , page.header['content-type'] , "\n"
 			return if page.header['content-type'] =~ /application\/zip/i
@@ -581,7 +583,7 @@ def gettitle(url,proxy=true,mechanize=1)
     title
 end
 
-def gettitleA(url,from,proxy=true)
+def gettitleA(url,from="_",proxy=true)
   return if from =~ $botlist
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
@@ -600,10 +602,9 @@ def gettitleA(url,from,proxy=true)
   t=Time.now
 
   begin
-    ti = Timeout.timeout(10){gettitle(url,proxy)}
+    ti = Timeout.timeout(9){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
-    sleep 2
     return ['time out . IN gettitle ']
   end
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"

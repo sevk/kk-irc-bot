@@ -901,12 +901,10 @@ class IRC
         s=s.code_a2b($local_charset,@charset)
      end
 
-     Readline::HISTORY.push(s)
      if Readline::HISTORY.size > 20
-        10.times{
-           Readline::HISTORY.shift
-        }
+        Readline::HISTORY.clear
      end
+     Readline::HISTORY.push(s)
 
      #lock.synchronize do
      case s
