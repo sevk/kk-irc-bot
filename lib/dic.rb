@@ -460,24 +460,26 @@ def gettitle(url,proxy=true,mechanize=1)
       end
     end
     agent.max_history = 0
-    agent.open_timeout = 6
-		agent.read_timeout = 6
+    agent.open_timeout = 7
+    agent.read_timeout = 7
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
 
        #check page Content-Type
        page = agent.head(url)
-       print 'content-type:' , page.header['content-type'] , "\n"
-			return if page.header['content-type'] =~ /application\/zip/i
-         if page.header['content-type']  =~ /image\/./i
-            showpic(url)
-            return
-         end
+       print 'content-type:' 
+       type = page.header['content-type']
+       p type
+       if type =~ /image\/./i
+         showpic(url)
+         return
+       end
 
-         if page.header['content-type']  !~ /text\/html/i
-            return "type: #{page.header['content-type']}"
-         end
+       if type and type !~ /^$|text\/html/i
+         return "type: #{type}"
+       end
+
        #p 'start agent.get'
        page = agent.get(url)
        p page.class
@@ -524,7 +526,7 @@ def gettitle(url,proxy=true,mechanize=1)
   #puts URI.split url
   print 'no mechanize , ' , ti , "\n"
   tmp = begin #加入错误处理
-      Timeout.timeout(12) {
+      Timeout.timeout(10) {
         $uri = URI.parse(url)
         $uri.open(
 					'Accept'=>'text/html , application/*',
@@ -560,7 +562,7 @@ def gettitle(url,proxy=true,mechanize=1)
     if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(12){gettitle("http://#{$uri.host}/#{$2}")}
+        return Timeout.timeout(10){gettitle("http://#{$uri.host}/#{$2}")}
       end
     end
 
@@ -618,7 +620,7 @@ def gettitleA(url,from="_",proxy=true)
 		#检测是否有其它取标题机器人
 		Thread.new(ti) do |myti|
 			Thread.current[:name]= 'check say title bot'
-			sleep 12
+			sleep 13
 			if $u.has_said?(myti)
 				p 'has_said = true'
 				#$saytitle -=1 if $saytitle > 0

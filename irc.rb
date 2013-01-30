@@ -93,7 +93,7 @@ class IRC
       $needrestart = true
       $Lping = Time.now
       #p 'ping ing '
-      @irc.send("PING 1 \r\n", 0 ) rescue log
+      @irc.write ("PING 1 \r\n" ) rescue log
       #p 'ping ed '
       sleep 14
       print "-\|/"[rand(4)]
@@ -142,34 +142,44 @@ class IRC
       s << ' …'
     end
 		return if s.bytesize < 2
-    @irc.send("#{s.strip}\r\n",0)
+    @irc.write("#{s.strip}\r\n")
     $Lsay = Time.now
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
-       #s= Iconv.conv("#$local_charset//IGNORE","#{@charset}//IGNORE",s) 
     end
     puts "----> #{s}".pink
   end
 
   #连接irc
   def connect()
-     p 'irc.conn'
-     trap(:INT){myexit 'int'}
-     return if @exit
-     $need_reconn = false
-     @irc.close rescue nil
-     begin
-        Timeout.timeout(6){@irc = TCPSocket.open(@server, @port)}
+    p 'irc.conn'
+    trap(:INT){myexit 'int'}
+    return if @exit
+    $need_reconn = false
+    begin
+      Timeout.timeout(8){
+        tcpsocket = TCPSocket.open(@server, @port)
+        if $use_ssl
+          ssl_context = OpenSSL::SSL::SSLContext.new()
+          ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
+          @@socket = OpenSSL::SSL::SSLSocket.new(tcpsocket, ssl_context)
+          @@socket.sync = true
+          @@socket.connect
+          @irc = @@socket
+        else
+          @irc = tcpsocket
+        end
+      }
+
      rescue TimeoutError
         p $!.message
+        p 'sleep ... retry conn'
+        sleep 30
         retry
-        sleep 50
-        p 'retry conn'
      end
-     sleep 0.5
+
      #send "NICK #{@nick}"
      @send_nick.call
-     sleep 0.5
      send "USER #@str_user"
      Thread.new{
         sleep 20
@@ -665,7 +675,7 @@ class IRC
       end
       return nil
     when /^PING :(.+)$/i  # ping
-      @irc.send "PONG :#{$1}\n", 0
+      @irc.write "PONG :#{$1}\n"
 
     #when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s.+\s:[\001]PING(.+)[\001]$/i #ctcp ping
       #send "NOTICE #{$1} :\001PONG#{$4}\001"
@@ -881,11 +891,8 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   #i Send = Proc.new do |a, *b| b.collect {|i| i*a } end
   #退出软件请输入 :quit
-  def iSend()
+  def iSend(s=nil)
      #$stdout.flush
-     sleep 0.1
-     s = Readline.readline("\r[#@channel]")
-     sleep 0.1
      return if not s
      #p s.encoding
 
@@ -956,7 +963,8 @@ class IRC
 			Thread.current[:name]= 'iSend'
          loop do
             sleep 0.01
-            iSend rescue log("")
+            s = Readline.readline("\r[#@channel]")
+            iSend(s) rescue log("")
          end
     }
   end
@@ -1005,7 +1013,12 @@ class IRC
         next unless ready
         ready[0].each{|s|
           next unless s == @irc
-          x = @irc.recvfrom(1990)[0]
+          if $use_ssl
+            x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
+          else
+            x = @irc.recvfrom(1990)[0]
+          end
+
           if x.empty?
             log ' x.empty, must be lose conn '
             return 
@@ -1036,17 +1049,19 @@ def restart #Hard Reset
 end
 
 if not defined? $u
-  ARGV[0] = 'default.conf' if not ARGV[0]
-	ARGV[0] = '~/.kk-irc-bot.conf' if File.exist? '~/.kk-irc-bot.conf'
-  p 'ARGV[0] :' +  ARGV[0]
-  $argv0 = ARGV[0]
+  p 'ARGV :' ,ARGV
+  ARGV[0] = 'default.conf' if not ARGV[0] || ARGV[0] == $0
+  if __FILE__ == $0
+    $argv0 = ARGV[0]
+  else
+    $argv0 = 'default.conf'
+  end
   load ARGV[0]
   $bot_on1 = $bot_on
   $bot_on = false
   $ignore_nick.gsub!(/\s+/,'!')
   mkdir_p 'irclogs'
 	p $server
-
 
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
   irc.timer_start
@@ -1072,4 +1087,4 @@ if not defined? $u
   end
 end
 
-# vim:set shiftwidth=3 tabstop=3 expandtab textwidth=79:
+# vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
