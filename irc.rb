@@ -544,13 +544,12 @@ class IRC
       case $1
       when /https?/i
         @ti=Thread.new(to,from,url) do |to,from,url|
+          sleep 0.001
           msg(to,from + gettitleA(url,from),0)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
         }
-        #@ti.join(20)
-        #@ti_p.join(20)
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -741,6 +740,9 @@ class IRC
         send 'time'
         sleep 1
         send "JOIN #sevk"
+      when 482
+        #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
+        p " * need operator for #{data} ? "
       end
 
       #自动 whois 返回
@@ -851,7 +853,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-     system "stty", $stty_save rescue nil
+     #system "stty", $stty_save rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
@@ -894,24 +896,13 @@ class IRC
   def iSend(s=nil)
      #$stdout.flush
      return if not s
+     return if s == ""
      #p s.encoding
-
-     #begin
-        #if Readline::HISTORY[Readline::HISTORY.length-2] == s
-           #Readline::HISTORY.pop
-        #end
-     #rescue IndexError
-     #end
 
      s.force_encoding($local_charset)
      if @charset != $local_charset
         s=s.code_a2b($local_charset,@charset)
      end
-
-     if Readline::HISTORY.size > 20
-        Readline::HISTORY.clear
-     end
-     Readline::HISTORY.push(s)
 
      #lock.synchronize do
      case s
@@ -958,14 +949,12 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-     $stty_save = `stty -g`.chomp rescue nil
+     #$stty_save = `stty -g`.chomp rescue nil
     @input=Thread.start{
-			Thread.current[:name]= 'iSend'
-         loop do
-            sleep 0.01
-            s = Readline.readline("\r[#@channel]")
-            iSend(s) rescue log("")
-         end
+      Thread.current[:name]= 'iSend'
+      while s = Readline.readline("[#@channel]",true)
+        iSend s rescue log("")
+      end
     }
   end
 

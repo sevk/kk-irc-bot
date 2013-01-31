@@ -84,10 +84,10 @@ load 'do_as_rb19.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = "请勿Flood，超过5行贴至paste.ubuntu.com ."
+$kick_info = "请勿Flood，超过6行贴至paste.ubuntu.com ."
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.40' unless defined? Ver
+Ver='v0.50' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
@@ -562,7 +562,7 @@ def gettitle(url,proxy=true,mechanize=1)
     if title.bytesize < 1
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(10){gettitle("http://#{$uri.host}/#{$2}")}
+        return Timeout.timeout(9){gettitle("http://#{$uri.host}/#{$2}")}
       end
     end
 
@@ -605,7 +605,7 @@ def gettitleA(url,from="_",proxy=true)
   t=Time.now
 
   begin
-    ti = Timeout.timeout(9){gettitle(url,proxy)}
+    ti = Timeout.timeout(8){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     return ['time out . IN gettitle ']
