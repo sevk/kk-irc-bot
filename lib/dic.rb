@@ -1230,7 +1230,7 @@ def savelog(s)
 end
 
 #记录自己说话的时间
-def isaid(second=150)
+def isaid(second=60)
 	$min_next_say=Time.now + $minsaytime + second
 end
 

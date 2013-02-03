@@ -38,6 +38,7 @@ class IRC
     $otherbot_said = nil
     @Motded = false
     $name_whois = nil
+    $re_chfreeplay ||= "sevk-free"
 
     @server = server
     @port = port
@@ -59,9 +60,10 @@ class IRC
   end
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
-  def autoban(chan,nick,time=55,mode='q')
-    if $lag and $lag > 0.8
-      msg(nick,"#{a1}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
+  def autoban(chan,nick,time=55,mode='q',ch=@channel)
+    p ' in autoban '
+    if $lag and $lag > 1
+      msg(nick,"#{ch}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
       restart if $lag > 6
       return
@@ -354,7 +356,7 @@ class IRC
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
-      nick=from=a1=$1;name=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
+      nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
       return if a1==@nick
 
       #禁掉一段时间
@@ -376,25 +378,27 @@ class IRC
 
       if $u.saidAndCheckFlood(nick,name,ip,sSay)
         $u.floodreset(nick)
-        if $white_list =~ /#{nick}/i or to !~ ChFreePlay
-           return 
+        if $white_list =~ /#{nick}/i or ch =~ /#$re_chfreeplay/
+          p ' white list or freeplay channel '
+          return 
         end
         tmp = Time.now - $u.get_ban_time(nick)
+        print "get ban time: ", tmp, "\n"
         case tmp
         when 0..80
           return
-        when 79..1210 #n分钟之前ban过
+        when 79..910 #之前ban过
           autoban to,nick,400,'q'
           kick to,a1
         else
           $b_tim = 51
-          autoban to,nick,$b_tim
-          msg(to,"#{a1}:. .., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",1)
+          msg(to,"#{nick}:. .., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",0)
+          autoban to,nick,$b_tim rescue log
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
         return
       elsif $u.rep nick
-        msg(to,"#{a1}: .. ..",20)
+        msg(to,"#{nick}: .. ..",20)
       end
 
       #ban ctcp but not /me
@@ -530,12 +534,8 @@ class IRC
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        p tmp
-        p to
-        msg to,"#{from}, #{tmp}", 10 if not tmp.empty?
+        msg to,"#{from}, #{tmp}", 15 if not tmp.empty?
       }
-      p 2
-      p to
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
@@ -743,6 +743,7 @@ class IRC
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         p " * need operator for #{data} ? "
+        say " * 给我帽子吧,多谢. need operator thanks "
       end
 
       #自动 whois 返回
@@ -853,7 +854,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-     #system "stty", $stty_save rescue nil
+    system "stty", $stty_save rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
@@ -949,7 +950,7 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-     #$stty_save = `stty -g`.chomp rescue nil
+    $stty_save = `stty -g`.chomp rescue nil
     @input=Thread.start{
       Thread.current[:name]= 'iSend'
       while s = Readline.readline("[#@channel]",true)
