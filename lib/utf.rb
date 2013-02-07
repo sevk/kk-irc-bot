@@ -66,6 +66,8 @@ class String
       return $ec1.convert self if RUBY_VERSION > '1.9.2'
       Iconv.conv("UTF-8#{Ig}","GB18030#{Ig}",self)
    end
+   alias toutf8 to_utf8
+
    def to_hex(s=' ')
       self.each_byte.map{|b| "%02X" % b}.join(s)
    end

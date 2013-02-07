@@ -63,7 +63,7 @@ class IRC
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
     p ' in autoban '
     if $lag and $lag > 1
-      msg(nick,"#{ch}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
+      msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
       sleep 0.1
       restart if $lag > 6
       return
@@ -193,7 +193,7 @@ class IRC
      return if win_platform?
      Thread.new do
         Thread.current[:name]= 'connect say'
-        sleep 220+rand(400)
+        sleep 400+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
         send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } \x01") if rand(10) < 3
         #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
@@ -351,7 +351,7 @@ class IRC
         return if Time.now < $min_next_say
         $otherbot_said=false
         Thread.new(to,from,sSay){|to,from,sSay|
-           do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$minsaytime*2+13)
+           do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9)
         }
       end
 
@@ -392,7 +392,7 @@ class IRC
           kick to,a1
         else
           $b_tim = 51
-          msg(to,"#{nick}:. .., 有刷屏嫌疑, #$kick_info +q#{$b_tim}s ",0)
+          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",0)
           autoban to,nick,$b_tim rescue log
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
@@ -401,7 +401,7 @@ class IRC
         msg(to,"#{nick}: .. ..",20)
       end
 
-      #ban ctcp but not /me
+      #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
           #log sSay
@@ -534,7 +534,7 @@ class IRC
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        msg to,"#{from}, #{tmp}", 15 if not tmp.empty?
+        msg to,"#{from}, #{tmp}", 16 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -544,7 +544,6 @@ class IRC
       case $1
       when /https?/i
         @ti=Thread.new(to,from,url) do |to,from,url|
-          sleep 0.001
           msg(to,from + gettitleA(url,from),0)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
@@ -594,9 +593,9 @@ class IRC
       $otherbot_said=false
       do_after_sec(to,from + ',  好.. .',10,$msg_delay)
     when /^`?((有人.?.?(吗|不|么|否))|test.{0,2}|测试(下|中)?.{0,2})$/ui #有人吗?
-      #ruby1.9一个汉字是一个: /./  ;而1.8是 3个: /.../
+      #ruby1.9一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       $otherbot_said=false
-      do_after_sec(to,from + ', 点点点.',10,$msg_delay)
+      do_after_sec(to,from + ', 点点点.',10,$msg_delay/2 )
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic
@@ -618,9 +617,9 @@ class IRC
       msg(from,rt,0)
 
     #拼音
-    when /^`(b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(o|ao|e|iu|i|ei|ui|ou|iu|ie|an|en|in|un|ang|eng|ing|ong)/
+    when /^(b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong)/
       return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
-      return nil if s.bytesize < 12
+      return nil if s.bytesize < 14
       sayDic(5,from,to,s)
       return 5
     else
@@ -742,8 +741,8 @@ class IRC
         send "JOIN #sevk"
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
-        p " * need operator for #{data} ? "
-        say " * 给我帽子吧,多谢. need operator thanks "
+        #p " * need operator for #{data} ? "
+        msg data," * 给我帽子吧,多谢. "
       end
 
       #自动 whois 返回
@@ -854,7 +853,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    system "stty", $stty_save rescue nil
+    system "stty #$stty_save" rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil

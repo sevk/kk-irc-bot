@@ -77,6 +77,7 @@ require 'pp'
 require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 require 'mechanize'
+#require 'mathn'
 load 'do_as_rb19.rb'
 #load 'color.rb'
 
@@ -104,22 +105,11 @@ ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
-$botlist_title=/raybot|\^?[Ou]_[ou]/i
+$botlist_title=/alvin_rxg|raybot|\^?[Ou]_[ou]/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
-
-
-#def URLDecode(str)
-  ##str.gsub(/%[a-fA-F0-9]{2}/) { |x| x = x[1..2].hex.chr }
-  #URI.unescape(str)
-#end
-
-#def URLEncode(str)
-  ##str.gsub(/[^\w$&\-+.,\/:;=?@]/) { |x| x = format("%%%x", x.ord) }
-  #URI.escape(str)
-#end
 
 def unescapeHTML(str)
   HTMLEntities.new.decode(str) rescue str
@@ -164,6 +154,7 @@ def reload_all
 	load 'dic.rb'
 	load 'irc_user.rb'
   load 'color.rb'
+	load 'utf.rb'
 	load 'plugin.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
@@ -464,22 +455,25 @@ def gettitle(url,proxy=true,mechanize=1)
     agent.read_timeout = 7
     #agent.cookies
     #agent.auth('^k^', 'password')
-    begin
-
        #check page Content-Type
-       page = agent.head(url)
+    begin
+      page = agent.head(url)
        print 'content-type:' 
        type = page.header['content-type']
-       p type
+       #p page.response rescue log
        if type =~ /image\/./i
          showpic(url)
          return
        end
 
        if type and type !~ /^$|text\/html/i
-         return "type: #{type}"
+         return page.response.select{|x| x=~/conten/ }.to_s rescue "err 1"
        end
+    rescue
+      p [$!.message[0,90] + ' . IN gettitle head']
+    end
 
+    begin
        #p 'start agent.get'
        page = agent.get(url)
        p page.class
@@ -519,7 +513,9 @@ def gettitle(url,proxy=true,mechanize=1)
     rescue Exception
       return if $!.message =~ /connection refused/
       log
-      #p [$!.message[0,60] + ' . IN gettitle']
+      p [$!.message[0,60] + ' . IN gettitle']
+    rescue
+      log
     end
   end
 
@@ -534,9 +530,9 @@ def gettitle(url,proxy=true,mechanize=1)
 					#'Cookie' => cookie,
 					'User-Agent'=> UserAgent
         ){ |f|
+          p f.content_type
           istxthtml= f.content_type =~ /text\/html|application\//i
 					istxthtml = false if f.content_type =~ /application\/octet-stream/i
-          p f.content_type
           charset= f.charset          # "iso-8859-1"
           f.read[0,8800].gsub(/\s+/,' ')
         }
@@ -588,17 +584,16 @@ end
 
 def gettitleA(url,from="_",proxy=true)
   return if from =~ $botlist
+  return if from =~ $botlist_title
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
   #url 带后缀名
-  if url =~ /\.....?$/
-  end
   if url =~ /(\.jpe?g|\.png|\.gif|\.jpeg)$/i
      showpic(url)
      return
   end
-  return if url =~ /bulix\.org|past|imagebin\.org|(\.iso|.bz2|\.jpg|\.png|\.gif)$/i
+  return if url =~ /(past|imagebin\.org)$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
   $last_ti[proxy] = url
@@ -608,6 +603,7 @@ def gettitleA(url,from="_",proxy=true)
     ti = Timeout.timeout(8){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
+    sleep 0.00001
     return ['time out . IN gettitle ']
   end
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
@@ -631,7 +627,7 @@ def gettitleA(url,from="_",proxy=true)
 		end
       return if $saytitle < 1 rescue nil
 
-    return " 啥, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " s, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')
@@ -1109,7 +1105,7 @@ def hello_replay(to,sSay)
 		tmp="#{tmp/60/60/24}天"
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
-	"privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐，春节: #{tmp}\017"
+	"privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
 end
 
 def gettitle_https(url)
@@ -1152,8 +1148,8 @@ def read_proxy_rule
   $proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
 
+#调用 alice 
 def botsay(s)
-  s.gsub!(/Pennsylvania|Bethlehem|Oakland/,' , ')
   s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
 end
 
