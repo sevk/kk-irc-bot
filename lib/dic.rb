@@ -238,6 +238,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       next if ti =~ /Re:/i && not_re
       puts i.updated.content
       $ub = "新 #{ti} #{link} #{des}"
+      #p $ub
       break
     }
   rescue
@@ -265,7 +266,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     p n
     return 
   end
-  return n.i_rand
+  return n.icolor
 end
 
 class String
