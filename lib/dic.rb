@@ -470,6 +470,7 @@ def gettitle(url,proxy=true,mechanize=1)
        if type and type !~ /^$|text\/html/i
         return page.response.select{|x| x=~/^conten/ }.to_s
           .gsub(/content-/i,'')
+          .gsub(/"length"=>"0"/,'')
        end
     rescue
       p [$!.message[0,90] + ' . IN gettitle head']

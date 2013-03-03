@@ -16,10 +16,15 @@ ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
 
 ### 比如加入 xx-cn 频道：
-* cp default.conf xx.conf
+cp default.conf xx.conf
 修改 xx.conf
-* ./irc.rb xx.conf
+./irc.rb xx.conf
 
 ### Core Team Members
  sevk
 
+== LICENSE:
+
+(The MIT License)
+
+* [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
