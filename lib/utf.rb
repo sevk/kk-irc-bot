@@ -18,22 +18,19 @@ else
 end
 
 class String
-   def gbtoX(code)
-      tmp = Encoding::Converter.new("GB18030",code, :universal_newline => true)
-      return tmp.convert self if RUBY_VERSION > '1.9.2'
-      Iconv.conv("#{@charset}#{Ig}","GB18030#{Ig}",self)
-   end
    #s.encode!("gbk")
    def code_a2b(a,b)
-      #print a, ' to ', b , "\n"
-      #p self
-      tmp = Encoding::Converter.new(a,b, :universal_newline => true)
-      if RUBY_VERSION > '1.9.2'
-         return tmp.convert self
+      if RUBY_VERSION > '1.9.2' and defined? Encoding::Converter
+        tmp = Encoding::Converter.new(a,b, :universal_newline => true)
+        tmp.convert self rescue self
       else
-         Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
+        Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
       end
    end
+   def gbtoX(code)
+     code_a2b('GB18030',code)
+   end
+
    def togb2312
       return $ec2.convert self if RUBY_VERSION > '1.9.2'
       Iconv.conv("CP20936#{Ig}","UTF-8#{Ig}",self)

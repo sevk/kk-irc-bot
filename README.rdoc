@@ -6,50 +6,20 @@ irc-bot , like a human
 建议装 ruby 1.9.3
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
-linux下面建议用 rvm 安装ruby : 
-新安装rvm: https://rvm.io/rvm/install/
-或升级rvm: rvm get head
-安装rvm pkg : rvm pkg install zlib readline openssl
-新安装ruby: rvm install ruby-1.9.3
-或升级ruby: rvm upgrade ruby-1.9.3
-装完ruby后,安装 libxml2库:
-apt-get install libxml2-dev libxslt-dev #bundle 需要这2个库
+linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/
 
-然后安装gem库, 命令: gem install bundle && bundle
+装完ruby后升级 gem, 命令: gem update --system
+然后安装库, 命令: gem install bundle && bundle
 
 ###运行:
 ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
 
-### 比如加入 avplayer 频道：
-* cp default.conf av.conf
-修改av.conf
-* ./irc.rb av.conf
+### 比如加入 xx-cn 频道：
+* cp default.conf xx.conf
+修改 xx.conf
+* ./irc.rb xx.conf
 
 ### Core Team Members
  sevk
 
-== LICENSE:
-
-(The MIT License)
-
-Copyright (c) 2009 Andrea Fazzi
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

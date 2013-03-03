@@ -180,11 +180,10 @@ class IRC
         retry
      end
 
-     #send "NICK #{@nick}"
      @send_nick.call
      send "USER #@str_user"
      Thread.new{
-        sleep 20
+        sleep 19
         identify
      }
      $bot_on = $bot_on1
@@ -195,8 +194,10 @@ class IRC
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } \x01") if rand(10) < 3
-        #send("privmsg #{@channel} :\001ACTION #{`uname -rd`} #{`lsb_release -d`} #{`ruby --version`} \x01")
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand(10) > 0
+        sleep rand(20)
+        @nick = $nick[0]
+        @send_nick.call
      end
   end
 
@@ -217,7 +218,7 @@ class IRC
     direction = ''
     tellSender = false
     pub =false #默认公共消息
-    pub =true if dic == 5
+    pub =true if [1,5].include? dic
 
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
       words=$1;direction=$2;b7=$3
@@ -350,9 +351,7 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        Thread.new(to,from,sSay){|to,from,sSay|
-           do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9)
-        }
+        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9)
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -545,16 +544,18 @@ class IRC
       when /https?/i
         @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
+          isaid(11)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
+          isaid(11)
         }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
       return 2
-    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
-      msg to,"#{IpLocationSeeker.new.seek($1)} #{$1}"
+    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i #IP查询
+      msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ",20
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #dict_cn
       sayDic(101,from,to,$1)
     when /^`?deb\s(.*)$/i  #aptitude show
@@ -662,9 +663,8 @@ class IRC
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
       from=$1;name=$2;ip=$3;to=$4;sSay=$5
-      if $ignore_nick =~ Regexp.new(Regexp::escape('^'+from+'$'),Regexp::IGNORECASE)
-        print 'ignore_nick ' , from,"\n" if $debug
-        return 'ignore_nick'
+      if from =~ $re_ignore_nick
+        return '$re_ignore_nick'
       end
       if sSay =~ /[\001]VERSION[\001]/i
         from.delete! ':'
@@ -854,7 +854,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    system "stty #$stty_save" rescue nil
+    #system "stty #$stty_save" rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
@@ -883,7 +883,6 @@ class IRC
       @daily_done =true
       reload_all rescue nil
       @nick = $nick[0]
-      #send "NICK #{@nick}"
       @send_nick.call
       saveu
       send('time')
@@ -950,13 +949,19 @@ class IRC
 
   #客户端输入并发送.
   def input_start
-    $stty_save = `stty -g`.chomp rescue nil
-    @input=Thread.start{
+    #$stty_save = `stty -g`.chomp rescue nil
+    Thread.new do
       Thread.current[:name]= 'iSend'
-      while s = Readline.readline("[#@channel]",true)
-        iSend s rescue log("")
+      loop do
+        begin
+          s = Readline.readline("[#@channel]",true)
+          iSend s
+          sleep 0.01
+        rescue
+          log ''
+        end
       end
-    }
+    end
   end
 
   #timer
@@ -983,7 +988,7 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 60*10 + rand(60*40)
+        sleep 600 + rand(3600)
         timer_daily
         if Time.now.hour.between? 8,22
           say_new($channel) if $need_say_feed > 0
@@ -1049,7 +1054,7 @@ if not defined? $u
   load ARGV[0]
   $bot_on1 = $bot_on
   $bot_on = false
-  $ignore_nick.gsub!(/\s+/,'!')
+  $re_ignore_nick ||= /^$/
   mkdir_p 'irclogs'
 	p $server
 
