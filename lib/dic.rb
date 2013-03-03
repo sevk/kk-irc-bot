@@ -40,7 +40,7 @@ class String
 	alias dir public_methods
 end
 
-require 'ipwry.rb'
+load 'ipwry.rb'
 
 begin
   #apt-get install rubygems
@@ -75,7 +75,7 @@ require 'resolv'
 require 'yaml'
 require 'pp'
 require 'openssl'
-OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+#OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 require 'mechanize'
 #require 'mathn'
 load 'do_as_rb19.rb'
@@ -87,7 +87,7 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
 $kick_info = "请勿Flood，超过6行贴至paste.ubuntu.com ."
 
-Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt google翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
+Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
 Ver='v0.50' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
@@ -310,8 +310,8 @@ end
 
 def getbody(url)
 	agent = Mechanize.new
-  #agent.user_agent_alias = 'Linux Mozilla'
-	agent.user_agent_alias = 'Mac Safari'
+  agent.user_agent_alias = 'Linux Mozilla'
+	#agent.user_agent_alias = 'Mac Safari'
   agent.max_history = 0
   agent.open_timeout = 12
   agent.cookies
@@ -459,7 +459,7 @@ def gettitle(url,proxy=true,mechanize=1)
        #check page Content-Type
     begin
       page = agent.head(url)
-       print 'content-type:' 
+       #print 'content-type:' 
        type = page.header['content-type']
        #p page.response rescue log
        if type =~ /image\/./i
@@ -468,7 +468,9 @@ def gettitle(url,proxy=true,mechanize=1)
        end
 
        if type and type !~ /^$|text\/html/i
-         return page.response.select{|x| x=~/conten/ }.to_s rescue "err 1"
+        return page.response.select{|x| x=~/^conten/ }.to_s
+          .gsub(/content-/i,'')
+          .gsub(/"length"=>"0"/,'')
        end
     rescue
       p [$!.message[0,90] + ' . IN gettitle head']
@@ -477,7 +479,7 @@ def gettitle(url,proxy=true,mechanize=1)
     begin
        #p 'start agent.get'
        page = agent.get(url)
-       p page.class
+       #p page.class
        #p 'end agent.get'
        #
       if page.class != Mechanize::Page
@@ -494,17 +496,16 @@ def gettitle(url,proxy=true,mechanize=1)
          #charset='GB2312' if charset =~ /^IBM855|windows-1252/i
          #title.force_encoding(charset) rescue nil
          t = Time.now.strftime('%M%S')
-			if charset and charset =~ /#$local_charset/i
-				print t + ' proxy : ' ,proxy, ' ', title , "\n"
-			else
+      #if charset and charset =~ /#$local_charset/i
+        #print t + ' proxy : ' ,proxy, ' ', title , "\n"
+      #else
             #print('charset=',charset,' local_charset=', $local_charset,"\n" )
-				s= Iconv.conv("#$local_charset//IGNORE","#{charset}//IGNORE",title) rescue title
-				print t + ' proxy : ' ,proxy, ' ', s, "\n"
-			end
+         s=s.code_a2b(charset,$local_charset) rescue s
+        #print t + ' proxy : ' ,proxy, ' ', s, "\n"
+      #end
 
 			if charset and charset !~ /#@charset/i
-				#p charset
-				title = Iconv.conv("#{@charset}//IGNORE","#{charset}//IGNORE",title) rescue title
+        title = title.code_a2b(charset,@charset) rescue title
 			end
 			title = URI.decode(unescapeHTML(title))
 			title.gsub!(/\s+/,' ')
@@ -576,7 +577,7 @@ def gettitle(url,proxy=true,mechanize=1)
 
     if charset != 'UTF-8'
       #charset='GB18030' if charset =~ /^gb|iso-8859-/i
-      title = Iconv.conv("UTF-8","#{charset}//IGNORE",title) rescue title
+      title = title.code_a2b(charset,'UTF-8') rescue title
     end
     title = unescapeHTML(title) rescue title
     puts title.blue
@@ -660,10 +661,7 @@ def getPY(c)
 end
 
 def encodeurl(url)
-  if url =~ /[\u4E00-\u9FA5]/
-    url = URI.encode(url)
-  end
-  url
+  URI.encode(url)
 end
 
 def google_py(word)
@@ -709,28 +707,36 @@ def geturl(url,type=1)
 end
 
 def getGoogle(word,flg=0)
-	url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
-	s=getbody(url)
-	puts s.size
-  s = s.match(/<div id=resultStats>.+/i)[0]
-  File.open('tmp.html','wb').puts s
+  #url = 'http://www.google.com.hk/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
+  url = 'http://www.google.com/search?q=' + word.strip
+	#s=getbody(url)
+	#puts s.size
+  #File.new('/tmp/a.x','wb').puts s
+  #p s.class
+  #s = s.match(/<div id=resultStats>.+/i)[0]
+  #File.open('tmp.html','wb').puts s
 	#puts s.match(/.+?<div id=foot>/i)[0]
 	#return
-	url = encodeurl(url)
-	url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
+	#url = encodeurl(url)
+	url = URI.encode(url)
+  p url
+	url_mini = encodeurl('http://www.google.com.hk/search?q=' + word.strip)
 
     re=''
     open(url,
-		'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    'Referer'=> url,
-		'Accept-Language'=>'zh-cn',
-		'Accept-Encoding'=>'deflate',
-    'User-Agent'=> UserAgent
+		#'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+    #'Referer'=> url,
+    #'Accept-Language'=>'zh-CN',
+		#'Accept-Encoding'=>'deflate',
+    #'User-Agent'=> UserAgent
     ){ |f|
-      html=f.read.gsub(/\s+/,' ')
-			puts html
+        html=f.read.gsub(/\s+/,' ')
+        html=html.code_a2b(guess_charset(html) ,'utf-8')
+        File.new('/tmp/a.html','wb').puts html.match(/<div id="resultStats">.*/im)[0].gsub(/></,">\n<")
         matched = true
         case html
+        when /<div class=f .*?><h3 class="r"><nobr>.*?<\/nobr>(.*?)<!--n--><!--m-->.*?<li class="g"><div class="vsc" sig="U2O">/
+            re = "#$1 #$2"
         when /相关词句：(.*?)网络上查询(.*?)(https?:\/\/\S+[^\s*])">/i#define
           tmp = $2.to_s + " > " + $3.to_s.gsub(/&amp;.*/i,'')
           tmp += ' ⋙ SEE ALSO ' + $1.to_s if rand(10)>5 and $1.to_s.size > 2
@@ -741,7 +747,7 @@ def getGoogle(word,flg=0)
         else
           matched = false
         end
-        #p;puts html.match(/搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i)[0]
+        #puts html.match(/搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i)[0]
         if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
             tmp =$2.gsub(/<cite>.+<\/cite>/,' ' + url_mini)
@@ -765,11 +771,15 @@ def getGoogle(word,flg=0)
           do1=true
         end
         if do1
-          #puts '+普通搜索+'
-          html.match(/搜索结果(.*?)(https?:\/\/[^\s]*?)">?(.*?)<div class="s">(.*?)<em>(.*?)<br><cite>/i)
-          #~ puts "$1=#{$1}\n$2=#{$2}\n$3=#{$3}\n$4=#{$4}\n$5=#{$5}"
-          #url= $2.to_s
-          re = $4.to_s + $5.to_s #+ $3.to_s.sub(/.*?>/i,'')
+          puts '+普通搜索+'
+          if html.match(/<div class=f .*?><h3 class="r"><nobr>.*?<\/nobr>(.*?)<!--n--><!--m-->.*?<li class="g"><div class="vsc" sig="U2O">/)
+            re = "#$1 #$2"
+          else
+            html.match(/<div id="search"><div id="ires"(.*?)(<a href="\/url\?q=https?:\/\/[^\s]*?)">?(.*?)<span class="st">(.*?)<\/span>/i)
+            #~ puts "$1=#{$1}\n$2=#{$2}\n$3=#{$3}\n$4=#{$4}\n$5=#{$5}"
+            #url= $2.to_s
+            re = $4.to_s + $5.to_s #+ $3.to_s.sub(/.*?>/i,'')
+          end
 
           #if url =~ /https?:\/\/(.*?)(https?:\/\/.+?)/i
             #puts '清理二次http'
@@ -827,7 +837,7 @@ def getBaidu(word)
       re = $4 ; a2=$2[0,120]
       re= re.unescapeHTML.gsub(/<.*?>/i,'')[0,330]
       $re = a2 + ' ' +  re
-      $re = Iconv.conv("UTF-8//IGNORE","gb2312//IGNORE",$re).to_s[0,980]
+      $re = $re.code_a2b('gbk','UTF-8')[0,980]
   }
   $re
 end
@@ -929,12 +939,7 @@ end
 def evaluate(s)
 	begin
 		l=4
-		l=2 if s =~ /^(b|gg|update_rule|`pwd`|`uname -a`|`uptime`)$/
-		l=2 if s =~ /^`(free|lsb_release -a|ifconfig|ls|date|who[a-z]+)`$/
-		l=2 if s =~ /^`(aptitude search|aptitude show) [a-z\-~]+`$/i
-		return '' if s =~ /touch|shadow|kill|:\(\)|reboot|halt/i
-		#return '' if s =~ /kill|mkfs|mkswap|dd|\:\(\)|chmod|chown|fork|gcc|rm|reboot|halt/i
-		Timeout.timeout(6){
+		Timeout.timeout(5){
       return safe_eval(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
@@ -955,7 +960,7 @@ end
 def onehour
   3600
 end
-Oneday = 86400
+Oneday = 86400 unless defined? Oneday
 
 #重定义Time.now
 unless defined?Time._now
@@ -1080,8 +1085,8 @@ def rand_do
 		$my_s
 	when 131..180
 		get_feed
-	when 200..300
-		"...休息一下..."
+	when 200..400
+		"..休息一下.. #$my_s"
 	else
 		""
 	end
@@ -1227,7 +1232,7 @@ def savelog(s)
 end
 
 #记录自己说话的时间
-def isaid(second=60)
+def isaid(second=40)
 	$min_next_say=Time.now + $minsaytime + second
 end
 
