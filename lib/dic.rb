@@ -4,6 +4,7 @@
 
 $: << '.'
 $: << 'lib' | [] # | [] 是去掉重复的
+require 'filesize'
 
 class String
    def uri_decode
@@ -198,32 +199,15 @@ rescue
   log
 end
 
-def get_Atom(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
-  buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
-  document = Document.new(buffer)
-  elements = REXML::XPath.match(document.root, "//atom:entry/atom:title/text()","atom" => "http://www.w3.org/2005/Atom")
-  titles = elements.map {|el| el.value }
-  puts titles.join("\n")
-end
-
-def get_Atom_n(url= 'http://forum.ubuntu.com.cn/feed.php',not_re = true)
-  buffer = open(url, 'UserAgent' => 'Ruby-AtomReader').read
-  #Nokogiri.new()
-  document = Nokogiri::XML(buffer)
-  elements = document.xpath("//atom:entry/atom:title/text()","atom" => "http://www.w3.org/2005/Atom")
-  titles = elements.map {|e| e.to_s}
-  puts titles.join("\n")
-end
-
 #取ubuntu.com.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  feed = begin
-    Timeout.timeout(20) {
+  begin
+   feed = Timeout.timeout(15) {
       RSS::Parser.parse(url)
     }
-  rescue Timeout::Error => e
-    p e.message
-    return
+  rescue Timeout::Error
+    log ''
+    return $!
   end
 
   $ub=nil
@@ -245,7 +229,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 		log
   end
 
-  if $old_feed_date == $date || (!$ub)
+  if $old_feed_date == $date and $ub
     #link = feed.items[0].link.href
     #ti = feed.items[0].title.content
     ##date = feed.items[0].updated.content
@@ -264,7 +248,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   if n.size < 5
     p $ub
     p n
-    return 
+    return
   end
   return n.icolor
 end
@@ -283,9 +267,9 @@ class String
     #)
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
-    agent.max_history = 1
-    agent.open_timeout = 11
-		agent.read_timeout = 11
+    agent.max_history = 0
+    agent.open_timeout = 12
+		agent.read_timeout = 12
     agent.cookies
     page  = agent.get(url)
     #form          = page.form_with(:name => 'f')
@@ -468,9 +452,10 @@ def gettitle(url,proxy=true,mechanize=1)
        end
 
        if type and type !~ /^$|text\/html/i
-        return page.response.select{|x| x=~/^conten/ }.to_s
+        return page.response.select{|x| x=~/^conten/i }.to_s
           .gsub(/content-/i,'')
-          .gsub(/"length"=>"0"/,'')
+          .gsub(/"length"=>"0"/i,'')
+          .gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue
       p [$!.message[0,90] + ' . IN gettitle head']
@@ -590,11 +575,6 @@ def gettitleA(url,from="_",proxy=true)
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
-  #url 带后缀名
-  if url =~ /(\.jpe?g|\.png|\.gif|\.jpeg)$/i
-     showpic(url)
-     return
-  end
   return if url =~ /(past|imagebin\.org)$/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
@@ -720,7 +700,7 @@ def getGoogle(word,flg=0)
 	#url = encodeurl(url)
 	url = URI.encode(url)
   p url
-	url_mini = encodeurl('http://www.google.com.hk/search?q=' + word.strip)
+	url_mini = encodeurl('http://g.cn/search?q=' + word.strip)
 
     re=''
     open(url,
@@ -944,7 +924,7 @@ def evaluate(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
-		}
+		}.inspect
 	rescue Timeout::Error
 		return 'Timeout'
 	rescue Exception
@@ -1173,7 +1153,7 @@ def pr_highlighted(s)
 
   need_savelog = false
   case s
-  when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i
+  when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+?)\s:)?(.+)$/i
     from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
     return if $ignore_action =~ /#{Regexp::escape mt}/i
     case mt

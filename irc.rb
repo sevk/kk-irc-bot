@@ -194,10 +194,10 @@ class IRC
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand(10) > 0
-        sleep rand(20)
         @nick = $nick[0]
         @send_nick.call
+        sleep rand(30)
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.5
      end
   end
 
@@ -566,7 +566,7 @@ class IRC
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
-    when /^`?(什么是)(.+)[\?？]?$/i #什么是
+    when /^`?(什么是|what\sis)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w} |")
@@ -580,23 +580,24 @@ class IRC
       sayDic(21,from,to,$1)
     when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
-    when /^`?g\s(.*?)$/i  # Google
+    when /^`?g\s(.*?)$/  # Google
       sayDic(1,from,to,$1)
-    when /^`?d(ef(ine)?)?\s(.*?)$/i#define:
+    when /^`?d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
-    when /^`b\s(.*?)$/i  # 百度
+    when /^`b\s(.*?)$/  # 百度
       sayDic(2,from,to,$1)
     when /^`address\s(.*?)$/i #查某人ip
       sayDic(22,from,to,$1)
-    when /^`f\s(.*?)$/i #查老乡
+    when /^`f\s(.*?)$/ #查老乡
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好.. .',10,$msg_delay)
-    when /^`?((有人.?.?(吗|不|么|否))|test.{0,2}|测试(下|中)?.{0,2})$/ui #有人吗?
-      #ruby1.9一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
+    when /^((有人.?(吗|不|么|否))|test).?$/i #有人吗?
+      #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
+      #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
-      do_after_sec(to,from + ', 点点点.',10,$msg_delay/2 )
+      do_after_sec(to,from + ', 点点点.',10,$msg_delay/3 )
     when /^`i\s?(.*?)$/i #svn
       msg to,from + ", #$my_s",15
     #when $dic
@@ -682,11 +683,13 @@ class IRC
     #motd ed
     when /^:(.+?)\s(\d+)\s(.+?)\s:(.+)/i#motd , names list
       #:calvino.freenode.net 404 kk #ubuntu-cn :Cannot send to channel
+      #:pratchett.freenode.net 482 kkk #xx :You're not a channel operator
       #:zelazny.freenode.net 353 ikk-bot = #sevk :ikk-bot @Sevkme @[ub]
       # verne.freenode.net 353 ^k^ = #ubuntu-cn :^k^ cocoleo seventh
       # :card.freenode.net 319 ^k^ ^k^ :@#ubuntu-cn @#sevk
       #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
-      pos=$2.to_i;names=$3;data=tmp=$4.to_s
+      #
+      pos=$2.to_i;name,ch=$3.split ;data=tmp=$4.to_s
       if @charset != $local_charset
          puts s.code_a2b( @charset,$local_charset)
       else
@@ -743,7 +746,7 @@ class IRC
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         #p " * need operator for #{data} ? "
-        msg data," * 给我帽子吧,多谢. "
+        msg ch, "#{data} * need Op ,thanks",40
       end
 
       #自动 whois 返回
@@ -863,8 +866,9 @@ class IRC
     @exit = true
   end
 
-  #说新帖
+  #自动说新帖
   def say_new(to)
+    return unless Time.now.hour.between? 8,22
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
@@ -988,11 +992,9 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 600 + rand(3600)
+        sleep 400 + rand(1800)
         timer_daily
-        if Time.now.hour.between? 8,22
-          say_new($channel) if $need_say_feed > 0
-        end
+        say_new($channel) if $need_say_feed > 0
       end
     end
   end
@@ -1003,8 +1005,9 @@ class IRC
       begin
         return if @exit
         #p '$need_reconn' if $need_reconn
-        break if $need_reconn
-        ready = select([@irc], nil, nil, 0.01)
+        return if $need_reconn
+        ready = select([@irc], nil, nil, 5)
+        #ready = select([@irc])
         next unless ready
         ready[0].each{|s|
           next unless s == @irc
@@ -1069,10 +1072,10 @@ if not defined? $u
        exit if @exit
       irc.connect
       irc.main_loop
+      p ' main_loop end'
     rescue
       break if irc.exited?
       log
-      p Time.now
     end
     break if irc.exited?
     #restart rescue log
