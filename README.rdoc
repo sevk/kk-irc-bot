@@ -3,7 +3,7 @@ irc-bot , like a human
 
 ### Installation and usage
 需要安装ruby :
-建议装 ruby 1.9.3
+建议装 ruby 2.0
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/

@@ -14,10 +14,11 @@ def log(s=nil)
 			return
 		end
 	end
-   if s==""
-	   puts "#{$!.message} #{$@.join("\n")}" 
-      return
-   end
+  if s==""
+    puts "#{$!.message} #{$@.join("\n")}" 
+    return
+  end
+
 	p s
 	#daily/weekly/monthly.
   logger = Logger.new("./log/log_#{ENV['USER']}.log",shift_age=30,10240000)

@@ -1,0 +1,4 @@
+
+def showpic(url)
+end
+
