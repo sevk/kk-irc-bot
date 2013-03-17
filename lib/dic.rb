@@ -700,7 +700,8 @@ def getGoogle(word,flg=0)
 	#url = encodeurl(url)
 	url = URI.encode(url)
   p url
-	url_mini = encodeurl('http://g.cn/search?q=' + word.strip)
+	#url_mini = encodeurl('http://g.cn/search?q=' + word.strip)
+	url_mini = 'http://g.cn '
 
     re=''
     open(url,
