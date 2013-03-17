@@ -3,10 +3,16 @@ irc-bot , like a human
 
 ### Installation and usage
 需要安装ruby :
-建议装 ruby 1.9.3
+建议装 ruby 2.0
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
-linux下面建议用 rvm 安装ruby : https://rvm.io/rvm/install/
+linux下面建议用 rvm或rnenv 安装ruby :
+rvm:
+#https://rvm.io/rvm/install/
+rnenv:
+#git clone git://github.com/sstephenson/rbenv.git ~/.rbenv --depth=1
+#echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bash_profile
+#echo 'eval "$(rbenv init -)"' >> ~/.bash_profile
 
 装完ruby后升级 gem, 命令: gem update --system
 然后安装库, 命令: gem install bundle && bundle
