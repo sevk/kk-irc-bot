@@ -533,7 +533,7 @@ class IRC
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        msg to,"#{from}, #{tmp}", 16 if not tmp.empty?
+        msg to,"#{from}, eval return: #{tmp}", 26 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -890,6 +890,7 @@ class IRC
       @send_nick.call
       saveu
       send('time')
+      joinit
       msg(@channel, osod.addTimCh ,30)
     end
   end
@@ -992,7 +993,7 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 400 + rand(1800)
+        sleep 500 + rand(1800)
         timer_daily
         say_new($channel) if $need_say_feed > 0
       end

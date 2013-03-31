@@ -458,7 +458,7 @@ def gettitle(url,proxy=true,mechanize=1)
           .gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue
-      p [$!.message[0,90] + ' . IN gettitle head']
+      p [$!.message[0,200] + ' . IN gettitle head']
     end
 
     begin

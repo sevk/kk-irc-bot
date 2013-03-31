@@ -8,7 +8,7 @@ irc-bot , like a human
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 
 linux下面建议用 rvm或rnenv 安装ruby :
-*rnenv: http://ruby-china.org/wiki/rbenv-guide
+* rbenv: http://ruby-china.org/wiki/rbenv-guide
 rvm: https://rvm.io/rvm/install/
 
 装完ruby后升级 gem, 命令: gem update --system
