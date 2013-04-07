@@ -202,7 +202,7 @@ end
 #取ubuntu.com.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
-   feed = Timeout.timeout(15) {
+   feed = Timeout.timeout(12) {
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
@@ -575,7 +575,7 @@ def gettitleA(url,from="_",proxy=true)
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
-  return if url =~ /(past|imagebin\.org)$/i
+  return if url =~ /(paste|imagebin\.org\/)/i
   $last_ti = {} if $last_ti.class != Hash
   return if $last_ti[proxy] == url
   $last_ti[proxy] = url
@@ -609,7 +609,7 @@ def gettitleA(url,from="_",proxy=true)
 		end
       return if $saytitle < 1 rescue nil
 
-    return " s, ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')
@@ -920,7 +920,8 @@ end
 def evaluate(s)
 	begin
 		l=4
-		Timeout.timeout(5){
+    sleep 60
+		Timeout.timeout(2){
       return safe_eval(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
@@ -1206,8 +1207,8 @@ def savelog(s)
 	#m = Time.now.min
 	#m = "%02d" % (m - (m % 30))
 	fn=Time.now.strftime("%y%m%d.txt")
-	#fn=Time.now.strftime("%y%m%d%H.txt")
-	File.open('irclogs/' + fn,'ab'){|x|
+  #mkdir_p "irclogs/#{@channel[1..-1]}"
+	File.open("irclogs/#{@channel[1..-1]}/" + fn,'ab'){|x|
 		x.puts s
 	}
 end

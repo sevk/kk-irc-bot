@@ -45,6 +45,7 @@ class IRC
     @nick = nick
     @str_user= name
     @channel = channel
+    mkdir_p "irclogs/#{@channel[1..-1]}"
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     @send_nick=Proc.new{
@@ -533,7 +534,7 @@ class IRC
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        msg to,"#{from}, eval return: #{tmp}", 26 if not tmp.empty?
+        msg to,"#{from}, eval return: #{tmp}", 46 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -544,11 +545,13 @@ class IRC
       when /https?/i
         @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
-          isaid(11)
+          sleep $minsaytime
+          isaid(9)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
-          isaid(11)
+          sleep $minsaytime
+          isaid(9)
         }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
@@ -580,7 +583,7 @@ class IRC
       sayDic(21,from,to,$1)
     when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
-    when /^`?g\s(.*?)$/  # Google
+    when /^`g\s(.*?)$/  # Google
       sayDic(1,from,to,$1)
     when /^`?d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
@@ -746,7 +749,7 @@ class IRC
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         #p " * need operator for #{data} ? "
-        msg ch, "#{data} * need Op ,thanks",40
+        msg ch, "#{data} * need Op.",40 if rand < 0.2
       end
 
       #自动 whois 返回
@@ -857,12 +860,11 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    #system "stty #$stty_save" rescue nil
+    log 'my exit '
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
     sleep 0.3
-    log 'my exit '
     @exit = true
   end
 
@@ -872,7 +874,7 @@ class IRC
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,0) if tmp.bytesize > 4
+        msg(to,tmp,180) if tmp.bytesize > 4
      }
   end
 
@@ -1059,7 +1061,6 @@ if not defined? $u
   $bot_on1 = $bot_on
   $bot_on = false
   $re_ignore_nick ||= /^$/
-  mkdir_p 'irclogs'
 	p $server
 
   irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
