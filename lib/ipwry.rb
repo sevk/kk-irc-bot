@@ -23,3 +23,4 @@ class IpLocationSeeker
 end
 
 p IpLocationSeeker.new.seek('8.8.8.8') if __FILE__ == $0
+

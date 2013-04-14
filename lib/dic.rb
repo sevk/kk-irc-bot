@@ -202,7 +202,7 @@ end
 #取ubuntu.com.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
-   feed = Timeout.timeout(12) {
+   feed = Timeout.timeout(11) {
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
@@ -1215,7 +1215,7 @@ end
 
 #记录自己说话的时间
 def isaid(second=40)
-	$min_next_say=Time.now + $minsaytime + second
+	$min_next_say=Time.now + $minsaytime
 end
 
 #记录频道说话的频率

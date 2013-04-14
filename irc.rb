@@ -198,7 +198,7 @@ class IRC
         @nick = $nick[0]
         @send_nick.call
         sleep rand(30)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.5
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.7
      end
   end
 
@@ -558,7 +558,7 @@ class IRC
       end
       return 2
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i #IP查询
-      msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ",20
+      msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ",26
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #dict_cn
       sayDic(101,from,to,$1)
     when /^`?deb\s(.*)$/i  #aptitude show
