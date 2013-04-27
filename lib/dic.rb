@@ -3,7 +3,8 @@
 # Sevkme@gmail.com
 
 $: << '.'
-$: << 'lib' | [] # | [] 是去掉重复的
+$: << 'lib'
+$:.uniq!
 require 'filesize'
 
 class String
@@ -178,11 +179,17 @@ def saveu
 end
 
 def safe_eval(str)
-  Thread.start {
-    Thread.current[:name]= 'safe eval thread'
+  str.force_encoding('utf-8')
+  Thread.new {
     $SAFE=4
-    eval(str).to_s[0,76].gsub(/\s+/,' ') rescue $!.message
-  }.value # can be retrieved using "value" method
+    begin
+      r=eval(str).to_s[0,246].gsub(/\s+/,' ')
+    rescue Exception
+      $!
+    rescue
+      $!
+    end
+  }.value
 end
 
 def safe(level)
@@ -452,10 +459,10 @@ def gettitle(url,proxy=true,mechanize=1)
        end
 
        if type and type !~ /^$|text\/html/i
-        return page.response.select{|x| x=~/^conten/i }.to_s
+        re = page.response.select{|x| x=~/^conten/i }.to_s
           .gsub(/content-/i,'')
-          .gsub(/"length"=>"0"/i,'')
-          .gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
+        return if re =~ /"length"=>"0"/i
+        return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue
       p [$!.message[0,200] + ' . IN gettitle head']
@@ -920,9 +927,8 @@ end
 def evaluate(s)
 	begin
 		l=4
-    sleep 60
-		Timeout.timeout(2){
-      return safe_eval(s)
+		return Timeout.timeout(2){
+      safe_eval(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
@@ -930,7 +936,7 @@ def evaluate(s)
 	rescue Timeout::Error
 		return 'Timeout'
 	rescue Exception
-		return ''#$!.message[0,28] # + $@[1..2].join(' ')
+		return $!.message[0,38] # + $@[1..2].join(' ')
 	rescue
 		return $!.message[0,28]#+ $@[1..2].join(' ')
 	end
@@ -1149,7 +1155,7 @@ def pr_highlighted(s)
     #if $local_charset !~ /UTF-8/i
       #puts s.to_gb.red
     #else
-      #puts s.red 
+      #puts s.red
     #end
   #end
 
@@ -1162,7 +1168,7 @@ def pr_highlighted(s)
     when /privmsg/i
       mt= ''
       if to =~ /#{Regexp::escape @channel}/i
-        to = '' 
+        to = ''
         need_savelog = true
       end
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
@@ -1176,14 +1182,14 @@ def pr_highlighted(s)
     else
       #pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
       re= s.pink
-      mt= ' ' + mt[0,2].blue + ' '
+      mt= ' ' + mt[0,3].blue + ' '
       sy=sy.green
       need_savelog = true
     end
 
     if from.size < 9
       t = Time.now.strftime('%H%M%S')
-      re= "#{t}#{("%13s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
+      re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
     else
       re= "#{sprintf("%17s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
     end

@@ -11,7 +11,7 @@
 #BEGIN {$VERBOSE = true}
 
 $: << 'lib'
-$: << '.' | []
+$: << '.'
 require 'rubygems'
 require 'fileutils'
 include FileUtils
@@ -226,6 +226,8 @@ class IRC
       if b7
         b7 =$u.completename(b7)
         p b7
+      else
+        b7=from
       end
     else
       words=s
@@ -242,7 +244,7 @@ class IRC
       sto='notice' ;to=b7;tellSender=true
     else
       sto='PRIVMSG'
-      to=from if !pub
+      to=from if !pub #小窗
     end
 
     Thread.new(words) do |c|
@@ -252,13 +254,14 @@ class IRC
       when /new/i
         re = get_feed
         c=''
-        b7=from
+      when 0
+        re = c
       when 1 then re = getGoogle(c ,0)
       when 2 then re = getBaidu(c )
       when 3 then re = googleFinance(c )
       when 4 then re = getGoogle_tran(c );c=''
       when 5#拼音
-        re = "#{getPY(c)}";c=''; b7= from
+        re = "#{getPY(c)}";c='';
       when 6 then re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
       when 10 then re = hostA(c)
       when 21 then re = $u.ims(c).to_s
@@ -285,13 +288,13 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
-      b7=from if not b7
+      print 'b7:' , b7 , 10.chr
       if sto =~ /notice/i 
-        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",18)
+        notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",18)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       end
-      msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",14) if tellSender
+      msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay) if tellSender
 
     end #Thread
   end
@@ -335,7 +338,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"..不要玩机器人..谢谢.. .. ",11 if rand(10) > 5
+        msg from,"..不要玩机器人..谢谢.. .. ",0 if rand > 0.5
         return
       end
 
@@ -437,7 +440,7 @@ class IRC
            if $u.saidAndCheckFloodMe(a1,a2,a3)
               #$u.floodmereset(a1)
               $otherbot_said=true
-              msg to ,"#{from}, 不要玩机器人 . ..",0 if rand(10) > 5
+              msg to ,"#{from}, 不要玩机器人 . ..",0 if rand>0.5
               return
            end
         end
@@ -452,12 +455,12 @@ class IRC
       when 1 #非字典消息
       when 2,5 #是title , pinyin
       when String
-        msg to,tmp 
+        msg to,tmp
       else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           $u.floodmereset(a1)
           $otherbot_said=true
-          msg to ,"#{from}, 不要玩机器人",0 if rand(10) > 4
+          msg to ,"#{from}, 不要玩机器人",0 if rand>0.4
           return
         end
       end
@@ -526,7 +529,8 @@ class IRC
   #  String , 发送
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
-    case s.strip.force_encoding('utf-8')
+    s.force_encoding('utf-8').strip!
+    case s
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
         return 'no ad ' if s =~ /出售/ and rand(10)>2
@@ -534,7 +538,7 @@ class IRC
         tmp = evaluate(s.to_s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        msg to,"#{from}, eval return: #{tmp}", 46 if not tmp.empty?
+        msg to,"#{from}, eval return: #{tmp}", $msg_delay*3 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -543,6 +547,7 @@ class IRC
       url = $1+$2
       case $1
       when /https?/i
+        return if s =~ $re_ignore_url
         @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
           sleep $minsaytime
@@ -558,7 +563,7 @@ class IRC
       end
       return 2
     when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i #IP查询
-      msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ",26
+      msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ", $msg_delay * 2
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #dict_cn
       sayDic(101,from,to,$1)
     when /^`?deb\s(.*)$/i  #aptitude show
@@ -602,9 +607,9 @@ class IRC
       $otherbot_said=false
       do_after_sec(to,from + ', 点点点.',10,$msg_delay/3 )
     when /^`i\s?(.*?)$/i #svn
-      msg to,from + ", #$my_s",15
+      sayDic(0,from,to,$my_s )
     #when $dic
-      #msg to,from + ", #$1", 15
+      #msg to,from + ", #$1", $msg_delay * 3
     when /^`rst\s?(\d*)$/i #restart soft
       tmp=$1
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
@@ -749,7 +754,7 @@ class IRC
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         #p " * need operator for #{data} ? "
-        msg ch, "#{data} * need Op.",40 if rand < 0.2
+        msg ch, "#{data} * need Op.",$msg_delay*4 if rand < 0.2
       end
 
       #自动 whois 返回
@@ -947,7 +952,7 @@ class IRC
               p $!.message
            end
         else
-           check_dic(s,@nick,@channel)
+          check_dic(s,@nick,@channel)
         end
      else
         say s
@@ -1025,7 +1030,7 @@ class IRC
             return 
           end
           x.split(/\r?\n/).each{|s|
-            handle_server_input(s)
+            handle_server_input(s) rescue log('')
           }
         }
       rescue Exception
