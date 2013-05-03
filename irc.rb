@@ -122,18 +122,34 @@ class IRC
     do_after_sec(who,sSay,0,delay)
   end
 
+  Max=400
   #发送到频道$channel
+  #$fun 为true时，分行发送
   def say(s,chan=@channel)
-    send "PRIVMSG #{chan} :#{s}"
+    if $fun and s.bytesize > Max
+      s.slice_u!($fun..-1)
+      i=0.2
+      a,b=0,140
+      b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+      while a < s.bytesize
+        send "PRIVMSG #{chan} :#{s[a..b]}"
+        a=b+1
+        b=a+140
+        b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+        sleep i+=0.08
+      end
+    else
+      send "PRIVMSG #{chan} :#{s}"
+    end
     isaid
   end
 
   #发送tcp数据,如果长度大于450 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    if s.bytesize > 400
-      #s.chop!.chop! while s.bytesize > 400
-      s.slice!(-2..-1) while s.bytesize > 400
+    p s.bytesize
+    if s.bytesize > Max + 3
+      s.slice_u!(Max..-1)
       if @charset == 'UTF-8'
         while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
           s.chop!
@@ -156,7 +172,7 @@ class IRC
   #连接irc
   def connect()
     p 'irc.conn'
-    trap(:INT){myexit 'int'}
+    trap(:INT){myexit 'ctrl_c'}
     return if @exit
     $need_reconn = false
     begin
@@ -289,7 +305,7 @@ class IRC
       Thread.exit if re.bytesize < 2
 
       print 'b7:' , b7 , 10.chr
-      if sto =~ /notice/i 
+      if sto =~ /notice/i
         notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       else
         msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
@@ -338,7 +354,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"..不要玩机器人..谢谢.. .. ",0 if rand > 0.5
+        msg from,"..不要玩机器人..谢谢.. .. ",0
         return
       end
 
@@ -524,21 +540,23 @@ class IRC
     print $!.message, $@[0], 10.chr
   end
 
-  #return 1 , 非字典
-  #       2 , http
-  #  String , 发送
+  #return 1 : 非字典
+  #       2,5 : http, pinyin
+  #  String : 发送
   #检测消息是不是敏感或字典消息
   def check_dic(s,from,to)
     s.force_encoding('utf-8').strip!
+    #tr_name = s.match($re_tran_head)[0]
+    s.sub!($re_tran_head,''); from << $& if $&
     case s
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
         return 'no ad ' if s =~ /出售/ and rand(10)>2
         Thread.current[:name]= 'eval > xxx'
-        tmp = evaluate(s.to_s)
+        tmp = evaluate(s)
         #tmp = safe_eval(s.to_s)
         # " end " * 999999 bug
-        msg to,"#{from}, eval return: #{tmp}", $msg_delay*3 if not tmp.empty?
+        msg to,"#{from}:#{tmp}", $msg_delay*4 if not tmp.empty?
       }
       @e.priority = -5
     when /^`host\s(.*?)$/i # host
@@ -551,12 +569,12 @@ class IRC
         @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
           sleep $minsaytime
-          isaid(9)
+          isaid(5)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
           sleep $minsaytime
-          isaid(9)
+          isaid(5)
         }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
@@ -601,7 +619,7 @@ class IRC
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ',  好.. .',10,$msg_delay)
-    when /^((有人.?(吗|不|么|否))|test).?$/i #有人吗?
+    when /^((有人.?(吗|不|么|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
@@ -615,28 +633,33 @@ class IRC
       #return if from !~ /^(ikk-|WiiW|lkk-|Sevk)$/
       tmp = "%03s" % tmp
 
-      $need_Check_code -= 1 if tmp[0].ord == 48
-      $need_Check_code += 1 if tmp[0].ord == 49 and $need_Check_code < 1
-      $need_say_feed -= 1 if tmp[1].ord == 48
-      $need_say_feed += 1 if tmp[1].ord == 49 and $need_say_feed < 1
-      $saytitle -= 1 if tmp[2].ord == 48
-      $saytitle += 1 if tmp[2].ord == 49 and $saytitle < 1
+      $need_Check_code -= 1 if tmp =~ /^0../
+      $need_Check_code += 1 if tmp =~ /^1../ and $need_Check_code < 1
+      $need_say_feed -= 1 if tmp =~ /^.0./
+      $need_say_feed += 1 if tmp =~ /^.1./ and $need_say_feed < 1
+      $saytitle -= 1 if tmp =~ /^..0/
+      $saytitle += 1 if tmp =~ /^..1/ and $saytitle < 1
 
       reload_all rescue log
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
       msg(from,rt,0)
 
     #拼音
-    when /^`(b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong)/
+    when /^(.*?)[\s:,](((b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong){1,2}[\s,.!?]?)+)/
       #!! nick 像拼音也会被匹配?
-      return nil if s =~ /[^,.?\s\w]/ #只能是拼音或标点
-      return nil if s.bytesize < 14
-      sayDic(5,from,to,s)
+      #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
+      s1= $2
+      p s1
+      p $3
+      return nil if s1 =~ /[^\u0000-\u00ff]/ #只能是ASC码
+      return nil if s1.bytesize < 12
+      #sayDic(5,from,to,s1)
+      msg(to, "#{from} 这里有输入法：http://www.inputking.com/ 或安装fcitx: apt-get install fcitx" ,$msg_delay*4)
       return 5
     else
       return 1#not match dic_event
     end
-	rescue 
+	rescue
 		return 1
   end
 
@@ -779,7 +802,6 @@ class IRC
       puts s.yellow
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       log s
-      sleep 2
       return if @exit
       $need_reconn=true
     when /.+?404\s#{@nick}\s#{@channel}\s:Cannot send to channel/
@@ -799,7 +821,7 @@ class IRC
     return if check_code(s) #乱码
     pr_highlighted(s) rescue log #if not $client #简单显示消息
     return if not $bot_on #bot 功能
-    return if check_msg(s).class != Fixnum #1 not matched 字典消息
+    return if check_msg(s).class != Fixnum rescue log('')#1 not matched 字典消息
   end
 
   #加入频道
@@ -827,20 +849,19 @@ class IRC
         return if second == 0 #如果是非BOT功能,直接return,不做rand_do
 				tmp = rand_do
 				return if tmp.tmpty?
-        send("PRIVMSG #{to} :#{tmp}" )
+        say(tmp,to)
         Thread.exit
-      else
-        isaid(second)
       end
 
       case flag
       when 0
-        send "PRIVMSG #{to} :#{sSay}"
+        say(sSay,to)
       when 10
          #打招呼回复, 春节问好
-        send(hello_replay(to,sSay))
+        say(hello_replay(sSay),to)
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
+        isaid
       end
     end #Thread
   end

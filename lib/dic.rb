@@ -7,8 +7,27 @@ $: << 'lib'
 $:.uniq!
 require 'filesize'
 
+class Fixnum
+  def hex
+    self.to_s(16)
+  end
+end
+
 class String
-   def uri_decode
+  def slice_u!(n)
+    self.force_encoding('ascii-8bit')
+    self.slice!(n) #Deletes the specified portion from str
+    self.force_encoding('utf-8')
+  end
+
+  def hex
+    self.each_byte .map{|x| x.ord.to_s(16)} .join(' ')
+  end
+  def to_hex(s=' ')
+    self.each_byte.map{|b| "%02X" % b}.join(s)
+    #self.each_byte.map{|x| x < 16 ? '0' + x.to_s(16) : x.to_s(16) }.join(s)
+  end
+  def uri_decode
       URI.decode self
    end
    def uri_encode
@@ -90,7 +109,7 @@ $_time=0 if not defined?$_time
 $kick_info = "请勿Flood，超过6行贴至paste.ubuntu.com ."
 
 Help = '我是 kk-irc-bot ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick' unless defined? Help
-Ver='v0.50' unless defined? Ver
+Ver='v0.51' unless defined? Ver
 UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
 
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
@@ -181,9 +200,11 @@ end
 def safe_eval(str)
   str.force_encoding('utf-8')
   Thread.new {
-    $SAFE=4
+    if str !~ $eval_black_list
+      $SAFE=4
+    end
     begin
-      r=eval(str).to_s[0,246].gsub(/\s+/,' ')
+      eval(str).to_s.gsub(/\s+/,' ')
     rescue Exception
       $!
     rescue
@@ -433,7 +454,7 @@ def gettitle(url,proxy=true,mechanize=1)
        agent = Mechanize.new
     end
     agent.user_agent_alias = 'Linux Mozilla'
-    #agent.user_agent_alias = 'Windows IE 7'
+    #agent.user_agent_alias = 'Windows IE 10'
     if proxy
 			#print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
       if $proxy_status_ok
@@ -443,8 +464,8 @@ def gettitle(url,proxy=true,mechanize=1)
       end
     end
     agent.max_history = 0
-    agent.open_timeout = 7
-    agent.read_timeout = 7
+    agent.open_timeout = 6
+    agent.read_timeout = 6
     #agent.cookies
     #agent.auth('^k^', 'password')
        #check page Content-Type
@@ -487,7 +508,7 @@ def gettitle(url,proxy=true,mechanize=1)
          charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
          #charset='GB2312' if charset =~ /^IBM855|windows-1252/i
          #title.force_encoding(charset) rescue nil
-         t = Time.now.strftime('%M%S')
+         #t = Time.now.strftime('%M%S')
       #if charset and charset =~ /#$local_charset/i
         #print t + ' proxy : ' ,proxy, ' ', title , "\n"
       #else
@@ -926,13 +947,14 @@ end
 #eval
 def evaluate(s)
 	begin
-		l=4
-		return Timeout.timeout(2){
+		r=Timeout.timeout(2){
       safe_eval(s)
       #return safe_eval(s)
       #return safe(l){eval(s).to_s[0,290]}
       #return safely(s,l)[0,300]
 		}.inspect
+    #p r
+    return r
 	rescue Timeout::Error
 		return 'Timeout'
 	rescue Exception
@@ -965,7 +987,7 @@ end
 
 #返回roll
 def roll
-  "掷出了随机数: #{rand(101)} "
+  "掷出了: #{rand(101)} "
 end
 
 #返回uptime
@@ -1080,12 +1102,12 @@ def rand_do
 	end
 end
 
-def hello_replay(to,sSay)
+def hello_replay(sSay)
 	tmp = Time.parse('2013-02-10')-Time.now
    #不用显示倒计时
 	if tmp < 0 or tmp > Oneday*30 or rand(9) < 2
 		return if sSay =~ /\s$/
-		return "PRIVMSG #{to} :#{sSay} \0039 #{chr_hour} \017"
+		return "#{sSay} \0039 #{chr_hour} \017"
 	end
 
 	case tmp
@@ -1099,7 +1121,7 @@ def hello_replay(to,sSay)
 		tmp="#{tmp/60/60/24}天"
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
-	"privmsg #{to} :#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
+	"#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
 end
 
 def gettitle_https(url)
@@ -1207,6 +1229,7 @@ end
 
 #写入聊天记录
 def savelog(s)
+  return if $not_savelog
   s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
 	#gem install ansi2html
 
@@ -1220,8 +1243,8 @@ def savelog(s)
 end
 
 #记录自己说话的时间
-def isaid(second=40)
-	$min_next_say=Time.now + $minsaytime
+def isaid(second=0)
+	$min_next_say=Time.now + $minsaytime + second
 end
 
 #记录频道说话的频率

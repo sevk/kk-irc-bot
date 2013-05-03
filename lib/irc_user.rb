@@ -3,7 +3,7 @@
 # sevkme@gmail.com
 
 #刷屏检测阀值,可以微调.
-$maxfloodme ||= 77.0 #70
+$maxfloodme ||= 87.0 #70
 $maxflood ||= 33.3  #35.0
 $initFlood = 83.0 #83
 $maxNamed = 200
