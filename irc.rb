@@ -128,7 +128,7 @@ class IRC
   def say(s,chan=@channel)
     if $fun and s.bytesize > Max
       s.slice_u!($fun..-1)
-      i=0.2
+      i=0.15
       a,b=0,140
       b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
       while a < s.bytesize
@@ -147,7 +147,6 @@ class IRC
   #发送tcp数据,如果长度大于450 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    p s.bytesize
     if s.bytesize > Max + 3
       s.slice_u!(Max..-1)
       if @charset == 'UTF-8'
@@ -569,12 +568,12 @@ class IRC
         @ti=Thread.new(to,from,url) do |to,from,url|
           msg(to,from + gettitleA(url,from),0)
           sleep $minsaytime
-          isaid(5)
+          isaid(7)
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
           msg(to,from + gettitleA(url,from,false),0)
           sleep $minsaytime
-          isaid(5)
+          isaid(7)
         }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
@@ -618,12 +617,12 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ',  好.. .',10,$msg_delay)
+      do_after_sec(to,from + ':好.',10,$msg_delay)
     when /^((有人.?(吗|不|么|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
-      do_after_sec(to,from + ', 点点点.',10,$msg_delay/3 )
+      do_after_sec(to,from + ':点点点.',10,$msg_delay/3 )
     when /^`i\s?(.*?)$/i #svn
       sayDic(0,from,to,$my_s )
     #when $dic
@@ -642,7 +641,11 @@ class IRC
 
       reload_all rescue log
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
-      msg(from,rt,0)
+      if to != @nick
+        msg(to,from+rt,0)
+      else
+        msg(from,rt,0)
+      end
 
     #拼音
     when /^(.*?)[\s:,](((b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong){1,2}[\s,.!?]?)+)/
@@ -976,7 +979,7 @@ class IRC
               p $!.message
            end
         else
-          check_dic(s,@nick,@channel)
+          check_dic(s,@nick,@nick)
         end
      else
         say s

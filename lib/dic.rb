@@ -142,7 +142,11 @@ end
 
 if defined?CharGuess
   def guess(s)
-    CharGuess::guess(s)
+    c=CharGuess::guess(s)
+    if c =~ /gbk|gb2312/i
+      return 'GB18030'
+    end
+    c
   end
 else
   #第二种字符集猜测库
@@ -493,8 +497,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			end
 			title = URI.decode(unescapeHTML(title))
 			title.gsub!(/\s+/,' ')
-      puts title
-      return title
+      return title[0,1000]
 
     rescue Exception
       log ''
@@ -856,16 +859,11 @@ end
 #为Time类加入hm方法,返回格式化后的时和分
 class Time
   def hm
-			Time.now.strftime(' %H:%M')
+    Time.now.strftime(' %H:%M')
   end
   #ch,小时字符. '㍘' = 0x3358
   def ch
-      ' ' +
-      if RUBY_VERSION < '1.9'
-        "\xE3\x8D"+ (Time.now.hour + 0x98).chr
-      else
-        (Time.now.hour + 0x3358).chr("UTF-8")
-      end
+    " \xE3\x8D".force_encoding('ascii-8bit') + (Time.now.hour + 0x98).chr
   end
 end
 
@@ -1053,7 +1051,8 @@ def addTimCh
 end
 
 def chr_hour
-	Time.now.ch
+	Time.now.hm
+	#Time.now.ch
 end
 
 #随机事件
