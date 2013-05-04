@@ -122,7 +122,7 @@ class IRC
     do_after_sec(who,sSay,0,delay)
   end
 
-  Max=400
+  Max=430
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
@@ -237,13 +237,12 @@ class IRC
     pub =false #默认公共消息
     pub =true if [1,5].include? dic
 
+    b7=from
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
-      words=$1;direction=$2;b7=$3
-      if b7
-        b7 =$u.completename(b7)
-        p b7
-      else
-        b7=from
+      words=$1;direction=$2
+      tmp=$3
+      unless tmp.empty?
+        b7 =$u.completename(tmp)
       end
     else
       words=s
@@ -272,7 +271,7 @@ class IRC
         c=''
       when 0
         re = c
-      when 1 then re = getGoogle(c ,0)
+      when 1 then re = getGoogle c
       when 2 then re = getBaidu(c )
       when 3 then re = googleFinance(c )
       when 4 then re = getGoogle_tran(c );c=''
@@ -304,6 +303,7 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
+      p b7
       print 'b7:' , b7 , 10.chr
       if sto =~ /notice/i
         notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
@@ -595,12 +595,12 @@ class IRC
     when /^`?(什么是|what\sis)(.+)[\?？]?$/i #什么是
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
-      sayDic(1,from,to,"define:#{w} |")
+      sayDic(1,from,to,"define:#{w}")
     when /^(.*?)?[:,]?(.+)是什么\?.{0,3}$/i #是什么
       w = $1.delete '`'
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
-      sayDic(1,from,to,"define:#{w} |")
+      sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
       sayDic(21,from,to,$1)

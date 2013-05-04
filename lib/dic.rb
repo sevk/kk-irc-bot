@@ -7,6 +7,7 @@ $: << 'lib'
 $:.uniq!
 require 'filesize'
 require 'log.rb'
+load 'utf.rb'
 
 class String
   def slice_u!(n)
@@ -448,8 +449,8 @@ def gettitle(url,proxy=true,mechanize=1)
       agent.set_proxy($proxy_addr,$proxy_port)
     end
     agent.max_history = 1
-    agent.open_timeout = 9
-    agent.read_timeout = 9
+    agent.open_timeout = 8
+    agent.read_timeout = 8
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -472,28 +473,28 @@ def gettitle(url,proxy=true,mechanize=1)
     end
 
     begin
-       p 'start agent.get'
-       page = agent.get(url)
-       p page.class
-       p 'end agent.get'
+      #p 'start agent.get'
+      page = agent.get(url)
+      #p page.class
+      #p 'end agent.get'
       if page.class != Mechanize::Page
-        return 'no page'
+        'no page'
+        return
       end
-      p 'get page ok'
+      #p 'get page ok'
       title = page.title
-      puts title.size
+      #puts title.size
       return unless title
 			charset= guess_charset(title)
-         charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
-         s=s.code_a2b(charset,$local_charset) rescue s
+      charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
 
 			if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
 			end
 			title = URI.decode(unescapeHTML(title))
 			title.gsub!(/\s+/,' ')
-       puts title
-       return title
+      puts title
+      return title
 
     rescue Exception
       log ''
@@ -522,17 +523,17 @@ def gettitle(url,proxy=true,mechanize=1)
         }
       }
     rescue Timeout::Error
-      return 'time out . IN gettitle '
+      #return 'time out . IN gettitle '
+      return
     rescue Exception
       log ''
     rescue
       if $!.message == 'Connection reset by peer' && $proxy_status_ok
-				log $!.message
+				p $!.message
 				p ' need pass wall '
 				return if proxy
-				return gettitle(url,true,true)
       end
-      log ''
+      #log ''
       return $!.message[0,100] + ' . IN gettitle'
     end
 
@@ -545,7 +546,7 @@ def gettitle(url,proxy=true,mechanize=1)
       p tmp
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(9){
+        return Timeout.timeout(7){
           url = $2
           url = "http://#{$uri.host}/#{$2}" if url !~ /^http/i
           gettitle(url)
@@ -553,7 +554,7 @@ def gettitle(url,proxy=true,mechanize=1)
       end
     end
 
-    return if title =~ /index of/i
+    #return if title =~ /index of/i
 
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
@@ -576,11 +577,10 @@ def gettitleA(url,from="_",proxy=true)
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
   return if url =~ /(paste|imagebin\.org\/)/i
-  t=Time.now
 
   ti=nil
   begin
-    ti=Timeout.timeout(8){gettitle(url,proxy)}
+    ti=Timeout.timeout(7){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     sleep 0.01
@@ -591,20 +591,19 @@ def gettitleA(url,from="_",proxy=true)
 
   return unless ti
 	return if ti.empty?
-	return if ti =~ /\.log$/i
 
 		#检测是否有其它取标题机器人
-		Thread.new(ti) do |myti|
-			Thread.current[:name]= 'check say title bot'
-			sleep 13
-			if $u.has_said?(myti)
-				p 'has_said = true'
-				#$saytitle -=1 if $saytitle > 0
-			else
-				p 'has_said = false'
-				#$saytitle +=0.4 if $saytitle < 1
-			end
-		end
+		#Thread.new(ti) do |myti|
+			#Thread.current[:name]= 'check say title bot'
+			#sleep 13
+			#if $u.has_said?(myti)
+				#p 'has_said = true'
+				##$saytitle -=1 if $saytitle > 0
+			#else
+				#p 'has_said = false'
+				##$saytitle +=0.4 if $saytitle < 1
+			#end
+		#end
     return if $saytitle < 1
 
     return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
@@ -687,9 +686,9 @@ end
 def getGoogle(word,flg=0)
   #url = 'http://www.google.com.hk/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
   url = 'http://www.google.com.hk/search?q=' + word.strip
-  s=getbody(url)
-  puts s.size
-  File.new('/tmp/a.x','wb').puts s
+  #s=getbody(url)
+  #puts s.size
+  #File.new('/tmp/a.x','wb').puts s
   #p s.class
   #s = s.match(/<div id=resultStats>.+/i)[0]
   #File.open('tmp.html','wb').puts s
@@ -764,9 +763,9 @@ def getGoogle(word,flg=0)
             #puts '清理二次http'
             #url=$2.to_s
           #end
+          return if re.bytesize < 3
           re = url_mini + ' ' + re
         end
-      return nil if re.bytesize < 3
       re.gsub!(/<.*?>/i,'')
       re.gsub!(/\[\s翻译此页\s\]/,'')
       re= unescapeHTML(re)
@@ -780,12 +779,11 @@ end
 class Dic
 #ed2k
 	def geted2kinfo(url)
+    p url
 		url.match(/^:\/\/\|(.+?)\|(\S+?)\|(.+?)\|.*$/)
 		name=$2.to_s;size=$3.to_f
-      p url
 		return if $1 == 'server'
 		return if not $3
-		#return if url !~ $urlList
 		if url =~ /%..%../ #解析%DA之类的
 			$ti = "#{URLDecode(name)} , #{'%.2f' % (size / 1024**3)} GB"
 		else

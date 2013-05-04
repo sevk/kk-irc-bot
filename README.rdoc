@@ -11,7 +11,7 @@ irc-bot , like a human
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 
-linux下面建议用 rvm或rnenv 安装ruby :
+linux下面建议用 rvm或rbenv 安装ruby :
 rbenv: http://ruby-china.org/wiki/rbenv-guide
 rbenv install 2.1.0-dev
 rvm: https://rvm.io/rvm/install/
