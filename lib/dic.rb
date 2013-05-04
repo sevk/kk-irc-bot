@@ -6,12 +6,7 @@ $: << '.'
 $: << 'lib'
 $:.uniq!
 require 'filesize'
-
-class Fixnum
-  def hex
-    self.to_s(16)
-  end
-end
+require 'log.rb'
 
 class String
   def slice_u!(n)
@@ -20,13 +15,6 @@ class String
     self.force_encoding('utf-8')
   end
 
-  def hex
-    self.each_byte .map{|x| x.ord.to_s(16)} .join(' ')
-  end
-  def to_hex(s=' ')
-    self.each_byte.map{|b| "%02X" % b}.join(s)
-    #self.each_byte.map{|x| x < 16 ? '0' + x.to_s(16) : x.to_s(16) }.join(s)
-  end
   def uri_decode
       URI.decode self
    end
@@ -96,7 +84,7 @@ require 'resolv'
 require 'yaml'
 require 'pp'
 require 'openssl'
-#OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 require 'mechanize'
 #require 'mathn'
 load 'do_as_rb19.rb'
@@ -321,8 +309,9 @@ class String
 end
 
 def getbody(url)
+  p url
 	agent = Mechanize.new
-  agent.user_agent_alias = 'Linux Mozilla'
+  #agent.user_agent_alias = 'Linux Mozilla'
 	#agent.user_agent_alias = 'Mac Safari'
   agent.max_history = 0
   agent.open_timeout = 12
@@ -330,6 +319,7 @@ def getbody(url)
 	page = agent.get(url)
 	#form = page.form_with(:name => 'f')
 	#page = agent.post(url,{"input"=> self } )
+  p ' get body ok '
 	page.body
 end
 #google 全文翻译,参数可以是中文,也可以是英文.
@@ -422,6 +412,7 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
+  p url
   title = ''
   charset = ''
   flag = 0
@@ -429,8 +420,6 @@ def gettitle(url,proxy=true,mechanize=1)
   if url.force_encoding("ASCII-8BIT") =~ CN_re
     url = URI.encode(url)
   end
-	#url.force_encoding('utf-8')
-	#puts 'url: ' + url
 
 	if mechanize == 1
 		mechanize = false if url =~ $urlNoMechanize
@@ -448,96 +437,76 @@ def gettitle(url,proxy=true,mechanize=1)
 			#url = URI.decode(url)
 		#end
     if url =~ /^https/i
-       #agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
-       agent = Mechanize.new
+       agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+       #agent = Mechanize.new
     else
        agent = Mechanize.new
     end
-    agent.user_agent_alias = 'Linux Mozilla'
-    #agent.user_agent_alias = 'Windows IE 10'
-    if proxy
-			#print 'use proxy in gettitle ',$proxy_addr,$proxy_port,10.chr
-      if $proxy_status_ok
-        agent.set_proxy($proxy_addr2,$proxy_port2)
-      else
-        agent.set_proxy($proxy_addr,$proxy_port)
-      end
+    if proxy and $proxy_status_ok
+      agent.set_proxy($proxy_addr2,$proxy_port2)
+    else
+      agent.set_proxy($proxy_addr,$proxy_port)
     end
-    agent.max_history = 0
-    agent.open_timeout = 6
-    agent.read_timeout = 6
+    agent.max_history = 1
+    agent.open_timeout = 9
+    agent.read_timeout = 9
     #agent.cookies
     #agent.auth('^k^', 'password')
-       #check page Content-Type
     begin
       page = agent.head(url)
-       #print 'content-type:' 
        type = page.header['content-type']
-       #p page.response rescue log
        if type =~ /image\/./i
          showpic(url)
          return
        end
-
        if type and type !~ /^$|text\/html/i
         re = page.response.select{|x| x=~/^conten/i }.to_s
           .gsub(/content-/i,'')
         return if re =~ /"length"=>"0"/i
         return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
+    rescue Exception
+      log ''
     rescue
-      p [$!.message[0,200] + ' . IN gettitle head']
+      log ''
     end
 
     begin
-       #p 'start agent.get'
+       p 'start agent.get'
        page = agent.get(url)
-       #p page.class
-       #p 'end agent.get'
-       #
+       p page.class
+       p 'end agent.get'
       if page.class != Mechanize::Page
-        p 'no page'
-        return
+        return 'no page'
       end
-			#p 'get page ok'
+      p 'get page ok'
       title = page.title
+      puts title.size
       return unless title
-         #p title.encoding
 			charset= guess_charset(title)
-         #p charset
          charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
-         #charset='GB2312' if charset =~ /^IBM855|windows-1252/i
-         #title.force_encoding(charset) rescue nil
-         #t = Time.now.strftime('%M%S')
-      #if charset and charset =~ /#$local_charset/i
-        #print t + ' proxy : ' ,proxy, ' ', title , "\n"
-      #else
-            #print('charset=',charset,' local_charset=', $local_charset,"\n" )
          s=s.code_a2b(charset,$local_charset) rescue s
-        #print t + ' proxy : ' ,proxy, ' ', s, "\n"
-      #end
 
 			if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
 			end
 			title = URI.decode(unescapeHTML(title))
 			title.gsub!(/\s+/,' ')
-         #puts title
+       puts title
        return title
 
     rescue Exception
+      log ''
       return if $!.message =~ /connection refused/
-      log
-      p [$!.message[0,60] + ' . IN gettitle']
     rescue
-      log
+      log ''
     end
   end
 
   #puts URI.split url
-  print 'no mechanize , ' , ti , "\n"
+  print 'no mechanize , ' , "\n"
   tmp = begin #加入错误处理
-      Timeout.timeout(10) {
+      Timeout.timeout(12) {
         $uri = URI.parse(url)
         $uri.open(
 					'Accept'=>'text/html , application/*',
@@ -554,6 +523,8 @@ def gettitle(url,proxy=true,mechanize=1)
       }
     rescue Timeout::Error
       return 'time out . IN gettitle '
+    rescue Exception
+      log ''
     rescue
       if $!.message == 'Connection reset by peer' && $proxy_status_ok
 				log $!.message
@@ -561,19 +532,24 @@ def gettitle(url,proxy=true,mechanize=1)
 				return if proxy
 				return gettitle(url,true,true)
       end
-      return $!.message[0,60] + ' . IN gettitle'
+      log ''
+      return $!.message[0,100] + ' . IN gettitle'
     end
 
     return unless istxthtml
-		#p tmp[0,2222]
 
     tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
     title = $1.to_s
 
     if title.bytesize < 1
+      p tmp
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(9){gettitle("http://#{$uri.host}/#{$2}")}
+        return Timeout.timeout(9){
+          url = $2
+          url = "http://#{$uri.host}/#{$2}" if url !~ /^http/i
+          gettitle(url)
+        }
       end
     end
 
@@ -582,11 +558,6 @@ def gettitle(url,proxy=true,mechanize=1)
     if tmp =~ /<meta.*?charset=(.+?)["']/i
       charset=$1 if $1
     end
-
-    #tmp = guess_charset(title * 2).to_s
-    #charset = 'gb18030' if tmp == 'TIS-620'
-    #charset = tmp if tmp != ''
-    #return title.force_encoding(charset)
 
     if charset != 'UTF-8'
       #charset='GB18030' if charset =~ /^gb|iso-8859-/i
@@ -598,22 +569,21 @@ def gettitle(url,proxy=true,mechanize=1)
 end
 
 def gettitleA(url,from="_",proxy=true)
+  return if $saytitle < 1
   return if from =~ $botlist
   return if from =~ $botlist_title
   #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
   return if url =~ /(paste|imagebin\.org\/)/i
-  $last_ti = {} if $last_ti.class != Hash
-  return if $last_ti[proxy] == url
-  $last_ti[proxy] = url
   t=Time.now
 
+  ti=nil
   begin
-    ti = Timeout.timeout(8){gettitle(url,proxy)}
+    ti=Timeout.timeout(8){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
-    sleep 0.00001
+    sleep 0.01
     return ['time out . IN gettitle ']
   end
   #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
@@ -635,7 +605,7 @@ def gettitleA(url,from="_",proxy=true)
 				#$saytitle +=0.4 if $saytitle < 1
 			end
 		end
-      return if $saytitle < 1 rescue nil
+    return if $saytitle < 1
 
     return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
@@ -697,10 +667,10 @@ def youdao_py(words)
 end
 def geturl(url,type=1)
   agent = Mechanize.new
-  agent.user_agent_alias = 'Linux Mozilla'
-  agent.max_history = 0
+  #agent.user_agent_alias = 'Linux Mozilla'
+  agent.max_history = 1
   agent.open_timeout = 12
-  agent.cookies
+  #agent.cookies
   begin
     page = agent.get_file(url)
   rescue Exception => e
@@ -716,10 +686,10 @@ end
 
 def getGoogle(word,flg=0)
   #url = 'http://www.google.com.hk/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
-  url = 'http://www.google.com/search?q=' + word.strip
-	#s=getbody(url)
-	#puts s.size
-  #File.new('/tmp/a.x','wb').puts s
+  url = 'http://www.google.com.hk/search?q=' + word.strip
+  s=getbody(url)
+  puts s.size
+  File.new('/tmp/a.x','wb').puts s
   #p s.class
   #s = s.match(/<div id=resultStats>.+/i)[0]
   #File.open('tmp.html','wb').puts s

@@ -842,7 +842,10 @@ class IRC
           sleep rand(second - $minsaytime) + $minsaytime
         end
       end
-      Thread.exit if $otherbot_said
+      if $otherbot_said
+        say("other bot said",to) if rand < 0.2
+        #Thread.exit
+      end
 
       if Time.now < $min_next_say
         print '还没到下次说话的时间:',sSay,"\n"
