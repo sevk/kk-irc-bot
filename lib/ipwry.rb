@@ -5,7 +5,6 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'qqwry'
-#require 'utf.rb'
 
 class IpLocationSeeker
   def seek(ip) #查询IP
@@ -17,10 +16,10 @@ class IpLocationSeeker
 
     db = QQWry::Database.new('QQWry.Dat')
     r = db.query(ip)
-    #p r
     "#{r.country} #{r.area}"
   end
 end
 
 p IpLocationSeeker.new.seek('8.8.8.8') if __FILE__ == $0
+p IpLocationSeeker.new.seek ARGV[0] if __FILE__ == $0
 

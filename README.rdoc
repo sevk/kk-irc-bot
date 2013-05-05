@@ -7,7 +7,7 @@ irc-bot , like a human
 
 * Installation and usage
 需要安装ruby :
-建议装 ruby 2.0
+建议装 ruby 2.0 或更高
 
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 

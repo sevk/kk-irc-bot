@@ -10,17 +10,14 @@
 =end
 #BEGIN {$VERBOSE = true}
 
-$: << 'lib'
-$: << '.'
 require 'rubygems'
+load 'lib/dic.rb'
 require 'fileutils'
 include FileUtils
 require 'platform.rb'
-load 'dic.rb'
-load 'log.rb'
+require 'openssl'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 load 'plugin.rb'
-load 'irc_user.rb'
-load 'utf.rb'
 include Math
 #require 'timeout'
 require "readline"
@@ -29,7 +26,7 @@ require "ipwry.rb"
 Socket.do_not_reverse_lookup = true
 
 class IRC
-  def initialize(server,port,nick,channel,charset,name="bot kk ver bot :svn Ver bot")
+  def initialize(server,port,nick,channel,charset,name=$name)
     $_hour = $_min = $_sec = 0
     @count=0
     @daily_done =true
@@ -127,7 +124,7 @@ class IRC
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
     if $fun and s.bytesize > Max
-      s.slice_u!($fun..-1)
+      s.slice_u!($fun+10..-1)
       i=0.15
       a,b=0,140
       b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
@@ -321,18 +318,19 @@ class IRC
     #p tmp if $DEBUG
     return if tmp == 'ASCII'
     if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
-       puts tmp
+      puts tmp
       if tmp =~ /^gb./i
          s=s.gbtoX(@charset).strip
       else
          p tmp
          s=s.code_a2b(tmp,@charset).strip rescue s
       end
+      return if $need_Check_code <= 0
       #p s
       #需要提示
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i
         from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;sSay=$5.to_s.untaint
-        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from} say: #{sSay} in #{tmp} ? We use #{@charset} !" if $need_Check_code
+        send "PRIVMSG #{((b4==@nick)? from: to)} :#{from} say: #{sSay} in #{tmp} ? We use #{@charset} !"
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset'
       end
@@ -617,7 +615,7 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ':好.',10,$msg_delay)
+      do_after_sec(to,from + ':点点点.',10,$msg_delay )
     when /^((有人.?(吗|不|么|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
@@ -1093,17 +1091,17 @@ if not defined? $u
   $bot_on1 = $bot_on
   $bot_on = false
   $re_ignore_nick ||= /^$/
-	p $server
+  p $server
 
-  irc = IRC.new($server,$port,$nick[0],$channel,$charset,$name)
+  irc = IRC.new($server,$port,$nick[0],$channel,$charset)
   irc.timer_start
 
-   irc.input_start if $client
-	Thread.current[:name]= 'main'
+  irc.input_start if $client
+  Thread.current[:name]= 'main'
   loop do
     check_proxy_status
     begin
-       exit if @exit
+      exit if @exit
       irc.connect
       irc.main_loop
       p ' main_loop end'
@@ -1119,4 +1117,4 @@ if not defined? $u
   end
 end
 
-# vim:set shiftwidth=2 tabstop=2 expandtab textwidth=79:
+# vim:set shiftwidth=2 tabstop=2 expandtab:

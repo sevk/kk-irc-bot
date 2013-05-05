@@ -6,8 +6,11 @@ $: << '.'
 $: << 'lib'
 $:.uniq!
 require 'filesize'
-require 'log.rb'
+load 'log.rb'
 load 'utf.rb'
+load 'irc_user.rb'
+load 'color.rb'
+load 'plugin.rb' rescue log
 
 class String
   def slice_u!(n)
@@ -84,8 +87,6 @@ require 'base64'
 require 'resolv'
 require 'yaml'
 require 'pp'
-require 'openssl'
-OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 require 'mechanize'
 #require 'mathn'
 load 'do_as_rb19.rb'
@@ -166,10 +167,6 @@ end
 
 def reload_all
 	load 'dic.rb'
-	load 'irc_user.rb'
-  load 'color.rb'
-	load 'utf.rb'
-	load 'plugin.rb' rescue log
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end
@@ -479,6 +476,8 @@ def gettitle(url,proxy=true,mechanize=1)
     begin
       #p 'start agent.get'
       page = agent.get(url)
+      #File.new('/tmp/a.x','wb').puts page.title
+      #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
       #p page.class
       #p 'end agent.get'
       if page.class != Mechanize::Page
@@ -510,11 +509,11 @@ def gettitle(url,proxy=true,mechanize=1)
   #puts URI.split url
   print 'no mechanize , ' , "\n"
   tmp = begin #加入错误处理
-      Timeout.timeout(12) {
+      Timeout.timeout(7) {
         $uri = URI.parse(url)
         $uri.open(
 					'Accept'=>'text/html , application/*',
-					'Range' => 'bytes=0-9999',
+					'Range' => 'bytes=0-8999',
 					#'Cookie' => cookie,
 					'User-Agent'=> UserAgent
         ){ |f|
@@ -576,7 +575,6 @@ def gettitleA(url,from="_",proxy=true)
   return if $saytitle < 1
   return if from =~ $botlist
   return if from =~ $botlist_title
-  #url = "http#{url}"
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
   return if url =~ /(paste|imagebin\.org\/)/i
@@ -589,25 +587,13 @@ def gettitleA(url,from="_",proxy=true)
     sleep 0.01
     return ['time out . IN gettitle ']
   end
-  #print url.blue + ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
-  #print ' pxy: ' + proxy.to_s +  ' time : ' , Time.now - t , "s\n"
 
   return unless ti
 	return if ti.empty?
 
-		#检测是否有其它取标题机器人
-		#Thread.new(ti) do |myti|
-			#Thread.current[:name]= 'check say title bot'
-			#sleep 13
-			#if $u.has_said?(myti)
-				#p 'has_said = true'
-				##$saytitle -=1 if $saytitle > 0
-			#else
-				#p 'has_said = false'
-				##$saytitle +=0.4 if $saytitle < 1
-			#end
-		#end
-    return if $saytitle < 1
+  #检测是否有其它取标题机器人
+  #
+  return if $saytitle < 1
 
     return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
@@ -867,8 +853,12 @@ class Time
   end
 end
 
-
 #取IP地址的具体位置,参数是IP
+class String
+  def getaddr_fromip
+    hostA(self,true)
+  end
+end
 def getaddr_fromip(ip)
   hostA(ip,true)
 end
@@ -886,8 +876,7 @@ end
 
 #取IP或域名的地理位置
 #hostA('www.g.cn',true)
-@ip_seeker = IpLocationSeeker.new
-def hostA(domain,hideip=false)#处理IP 或域名
+def hostA(domain,hideip=true)#处理IP 或域名
   return nil if !domain
   if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
     tmp = $1
@@ -895,7 +884,7 @@ def hostA(domain,hideip=false)#处理IP 或域名
     tmp = host(domain)
   end
   if hideip
-    tmp = @ip_seeker.seek(tmp) rescue tmp
+    tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
   else
     tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
   end
@@ -1030,8 +1019,8 @@ def check_proxy_status
   Thread.new do
     Thread.current[:name]= 'check proxy stat'
     begin
-      Timeout.timeout(10){
-        a=TCPSocket.open($proxy_addr2,$proxy_port2) 
+      Timeout.timeout(8){
+        a=TCPSocket.open($proxy_addr2,$proxy_port2)
         a.send('get',0)
         a.close
       }
@@ -1162,7 +1151,9 @@ def pr_highlighted(s)
       end
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
     when /join|part|quit|nick|notice|kick/i
-      mt= ' ' + mt[0,2].red_on_white + ' '
+      mt = ' ' << mt[0,3].red_on_white << ' '
+      p ip
+      from << ' ' << ip.getaddr_fromip
       to,sy=sy,''
       if to =~ /#{Regexp::escape @channel}/i
         need_savelog = true

@@ -28,7 +28,10 @@ class String
       end
    end
    def gbtoX(code)
+     p 1
      code_a2b('GB18030',code)
+     #code_a2b('CP20936',code)
+     #code_a2b('GB2312',code)
    end
 
    def togb2312

@@ -9,13 +9,13 @@ Dir.mkdir 'log' if not Dir.exist? 'log'
 def log(s=nil)
 	if not s
 		if $!
-			s = "#{$!.message} #{$@.join("\n")}" 
+			s = "#{$!.message} #{$@[-5..-1].join(' ')}"
 		else
 			return
 		end
 	end
   if s==""
-    puts "#{$!.message} #{$@.join("\n")}" 
+    puts "#{$!.message} #{$@[-5..-1].join(' ')}"
     return
   end
 
