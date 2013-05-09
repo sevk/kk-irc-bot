@@ -2,7 +2,7 @@
 
 require 'colored'
 if Gem.win_platform?
-   require 'Win32/Console/ANSI' 
+   #require 'Win32/Console/ANSI' 
 end
 
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 
