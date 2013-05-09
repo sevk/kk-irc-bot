@@ -1,9 +1,6 @@
 #为终端字符串添加颜色
 
 require 'colored'
-if Gem.win_platform?
-   #require 'Win32/Console/ANSI' 
-end
 
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m"; 
 $yellow="\e[33m";
