@@ -5,7 +5,6 @@
 require 'rubygems'
 
 if RUBY_VERSION > '1.9'
-   Ig = ''
    if RUBY_VERSION > '1.9.2'
       $ec1 = Encoding::Converter.new("UTF-16lE", "UTF-8", :universal_newline => true)
       $ec2 = Encoding::Converter.new("UTF-8","GB2312", :universal_newline => true)
@@ -14,7 +13,6 @@ if RUBY_VERSION > '1.9'
    end
 else
    require 'iconv'
-   Ig = '//IGNORE'
 end
 
 class String
@@ -24,7 +22,7 @@ class String
         tmp = Encoding::Converter.new(a,b, :universal_newline => true)
         tmp.convert self rescue self
       else
-        Iconv.conv("#{b}#{Ig}","#{a}#{Ig}",self)
+        Iconv.conv("#{b}//IGNORE","#{a}//IGNORE",self)
       end
    end
    def gbtoX(code)

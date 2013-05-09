@@ -23,10 +23,11 @@ rvm: https://rvm.io/rvm/install/
 ruby irc.rb 或 ./irc.rb 或直接双击 irc.rb
 配置文件是 default.conf
 
-* 比如加入 xx-cn 频道：
+* 指定配置文件运行：  irc.rb xx.conf
 cp default.conf xx.conf
 修改 xx.conf
-./irc.rb xx.conf
+
+命令行执行 ./irc.rb xx.conf
 
 * Core Team Members
  sevk
@@ -36,3 +37,4 @@ cp default.conf xx.conf
 (The MIT License)
 
 * [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
+

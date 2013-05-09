@@ -7,9 +7,12 @@ Dir.mkdir 'log' if not Dir.exist? 'log'
 
 #记录到日志文件，参数是要记录的内容，不给参数则记录当前错误描述，未出错就是空。
 def log(s=nil)
+  if $! and s
+    s << $!.message
+  end
 	if not s
 		if $!
-			s = "#{$!.message} #{$@[-5..-1].join(' ')}"
+			s = "#{$!.message} #{$@.join("\n")}"
 		else
 			return
 		end
@@ -25,5 +28,5 @@ def log(s=nil)
   logger.level = Logger::DEBUG
   logger.debug{s}
 end
-log('start.')
+log('log start.')
 

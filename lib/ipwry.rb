@@ -20,6 +20,11 @@ class IpLocationSeeker
   end
 end
 
-p IpLocationSeeker.new.seek('8.8.8.8') if __FILE__ == $0
-p IpLocationSeeker.new.seek ARGV[0] if __FILE__ == $0
+if __FILE__ == $0
+  if ARGV[0]
+    p IpLocationSeeker.new.seek ARGV[0]
+  else
+    p IpLocationSeeker.new.seek '8.8.8.8'
+  end
+end
 

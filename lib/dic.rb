@@ -11,6 +11,7 @@ load 'utf.rb'
 load 'irc_user.rb'
 load 'color.rb'
 load 'plugin.rb' rescue log
+require 'json'
 
 class String
   def slice_u!(n)
@@ -313,7 +314,7 @@ end
 def getbody(url)
   p url
 	agent = Mechanize.new
-  #agent.user_agent_alias = 'Linux Mozilla'
+  agent.user_agent_alias = 'Linux Mozilla'
 	#agent.user_agent_alias = 'Mac Safari'
   agent.max_history = 0
   agent.open_timeout = 12
@@ -414,7 +415,7 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
-  p url
+  #p url
   title = ''
   charset = ''
   flag = 0
@@ -567,7 +568,7 @@ def gettitle(url,proxy=true,mechanize=1)
       title = title.code_a2b(charset,'UTF-8') rescue title
     end
     title = unescapeHTML(title) rescue title
-    puts title.blue
+    #puts title.blue
     title
 end
 
@@ -655,7 +656,7 @@ def youdao_py(words)
 end
 def geturl(url,type=1)
   agent = Mechanize.new
-  #agent.user_agent_alias = 'Linux Mozilla'
+  agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 1
   agent.open_timeout = 12
   #agent.cookies
@@ -854,11 +855,13 @@ class Time
 end
 
 #取IP地址的具体位置,参数是IP
+#
 class String
   def getaddr_fromip
     hostA(self,true)
   end
 end
+
 def getaddr_fromip(ip)
   hostA(ip,true)
 end
@@ -1129,13 +1132,6 @@ end
 def pr_highlighted(s)
   #s=s.force_encoding("utf-8")
   s=s.gb_to_utf8 if @charset !~ /UTF-8/i #如果频道编码不是utf-8,则转换成utf-8
-  #if s=~ /#{Regexp::escape @nick}/i
-    #if $local_charset !~ /UTF-8/i
-      #puts s.to_gb.red
-    #else
-      #puts s.red
-    #end
-  #end
 
   need_savelog = false
   case s
@@ -1144,21 +1140,19 @@ def pr_highlighted(s)
     return if $ignore_action =~ /#{Regexp::escape mt}/i
     case mt
     when /privmsg/i
-      mt= ''
+      need_savelog = true
+      mt.replace ' '
       if to =~ /#{Regexp::escape @channel}/i
-        to = ''
-        need_savelog = true
+        to.clear
       end
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
     when /join|part|quit|nick|notice|kick/i
       mt = ' ' << mt[0,3].red_on_white << ' '
-      p ip
-      from << ' ' << ip.getaddr_fromip
-      to,sy=sy,''
+      from << ' ' << ip.getaddr_fromip.yellow.underline
       if to =~ /#{Regexp::escape @channel}/i
-        need_savelog = true
+        to.clear
       end
-      to=to.green
+      need_savelog = true
     else
       #pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
       re= s.pink
@@ -1171,7 +1165,9 @@ def pr_highlighted(s)
       t = Time.now.strftime('%H%M%S')
       re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
     else
-      re= "#{sprintf("%17s",from).c_rand(name.sum)}#{mt}#{to} #{sy}"
+      #p sy.encoding,to.encoding, mt.encoding
+      sy.force_encoding('utf-8')
+      re= "#{from.c_rand(name.sum)} #{mt} #{to} #{sy} "
     end
   else
     re= s.red

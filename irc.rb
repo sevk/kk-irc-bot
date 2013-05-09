@@ -11,7 +11,7 @@
 #BEGIN {$VERBOSE = true}
 
 require 'rubygems'
-load 'lib/dic.rb'
+load './lib/dic.rb'
 require 'fileutils'
 include FileUtils
 require 'platform.rb'
@@ -119,20 +119,23 @@ class IRC
     do_after_sec(who,sSay,0,delay)
   end
 
-  Max=430
+  Max=440
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
     if $fun and s.bytesize > Max
-      s.slice_u!($fun+10..-1)
+      if s.bytesize > $fun+10
+        s.slice_u!($fun+10..-1)
+        s << ' …'
+      end
       i=0.15
       a,b=0,140
-      b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+      b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
       while a < s.bytesize
         send "PRIVMSG #{chan} :#{s[a..b]}"
         a=b+1
         b=a+140
-        b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+        b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
         sleep i+=0.08
       end
     else
@@ -605,7 +608,7 @@ class IRC
       sayDic(4,from,to,$1)
     when /^`g\s(.*?)$/  # Google
       sayDic(1,from,to,$1)
-    when /^`?d(ef(ine)?)?\s(.*?)$/#define:
+    when /^`d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
     when /^`b\s(.*?)$/  # 百度
       sayDic(2,from,to,$1)
@@ -1039,7 +1042,7 @@ class IRC
         return if @exit
         #p '$need_reconn' if $need_reconn
         return if $need_reconn
-        ready = select([@irc], nil, nil, 5)
+        ready = select([@irc], nil, nil, 2)
         #ready = select([@irc])
         next unless ready
         ready[0].each{|s|
@@ -1051,8 +1054,8 @@ class IRC
           end
 
           if x.empty?
-            log ' x.empty, must be lose conn '
-            return 
+            log ' x.empty, may be lose conn '
+            return
           end
           x.split(/\r?\n/).each{|s|
             handle_server_input(s) rescue log('')
