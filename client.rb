@@ -1,3 +1,3 @@
 
-require 'irc.rb'
+require './irc.rb'
 

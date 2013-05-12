@@ -1,16 +1,19 @@
 #!/usr/bin/env ruby
-# coding: utf-8
+# -*- coding: utf-8 -*-
 #
-#
+
 require 'rubygems'
 require 'bundler/setup'
 require 'qqwry'
 
+f='QQWry.Dat'
+unless File.exist? f
+  p f + ' not found '
+end
+
 class IpLocationSeeker
   def seek(ip) #查询IP
-    f='QQWry.Dat'
-    unless File.exist? f
-      p f + ' not found '
+    unless File.exist? 'QQWry.Dat'
       return ''
     end
 

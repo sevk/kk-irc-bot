@@ -58,7 +58,7 @@ load 'ipwry.rb'
 
 begin
   #apt-get install rubygems
-	require 'rubygems' #以便引用相关的库
+	require 'rubygems' #  以便引用相关的库, 兼容1.8的写法
   #gem install htmlentities
   require 'htmlentities'
   #gem install mechanize
@@ -67,8 +67,7 @@ begin
    load 'showpic.rb'
 rescue LoadError
   puts $!.message
-  puts $@[0]
-s="载入库错误, 建议运行gem install bundle && bundle , 如果没有openssl: rvm pkg install openssl \n"
+  s="载入库错误, 看 README \n"
   s = s.utf8_to_gb if win_platform?
   puts s
 end
@@ -172,7 +171,6 @@ def reload_all
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 end
 
-#'http://linuxfire.com.cn/~sevk/UBUNTU新手资料.php'
 def loadDic
   $str1 = IO.read('U.txt') rescue ''
   puts 'Dic load [ok]'
@@ -208,7 +206,6 @@ def safe(level)
   result = nil
   Thread.start {
     Thread.current[:name]= 'safe eval thread'
-    #$SAFE = 3
     $SAFE = level
     p $SAFE
     result = yield
