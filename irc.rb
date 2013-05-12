@@ -408,16 +408,18 @@ class IRC
           return
         when 79..910 #之前ban过
           autoban to,nick,400,'q'
+          msg(nick,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",10)
           kick to,a1
         else
           $b_tim = 51
-          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",0)
+          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",1)
+          msg(nick,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",10)
           autoban to,nick,$b_tim rescue log
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
         return
       elsif $u.rep nick
-        msg(to,"#{nick}: .. ..",20)
+        msg(to,"#{nick}: .. .. ..",20)
       end
 
       #check ctcp but not /me
@@ -653,9 +655,9 @@ class IRC
       #!! nick 像拼音也会被匹配?
       #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
       s1= $2
+      return nil if s1 =~ /[^\u0000-\u00ff]/ #只能是ASC码
       p s1
       p $3
-      return nil if s1 =~ /[^\u0000-\u00ff]/ #只能是ASC码
       return nil if s1.bytesize < 12
       #sayDic(5,from,to,s1)
       msg(to, "#{from} 这里有输入法：http://www.inputking.com/ 或安装fcitx: apt-get install fcitx" ,$msg_delay*4)
@@ -907,7 +909,7 @@ class IRC
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,180) if tmp.bytesize > 4
+        msg(to,tmp,150) if tmp.bytesize > 4
      }
   end
 
@@ -1017,7 +1019,6 @@ class IRC
           ping rescue log
         end
         if n % 20 == 0
-          p 'timer minly check proxy'
           check_proxy_status rescue log
         end
       end

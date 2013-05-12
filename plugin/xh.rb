@@ -20,4 +20,5 @@ def joke(n=nil)
   s=s.code_a2b(guess(s) ,'utf-8')
   "id:#{n} #{s.unescapeHTML}"
 end
+alias 给大爷讲个笑话 joke
 

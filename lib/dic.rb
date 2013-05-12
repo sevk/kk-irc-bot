@@ -1147,8 +1147,8 @@ def pr_highlighted(s)
       end
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
     when /join|part|quit|nick|notice|kick/i
-      mt = ' ' << mt[0,3].red_on_white << ' '
-      from << ' ' << ip.getaddr_fromip.yellow.underline
+      mt = ' ' << mt[0,4].red_on_white << ' '
+      from << ' ' << ip.getaddr_fromip.underline
       if to =~ /#{Regexp::escape @channel}/i
         to.clear
       end
@@ -1156,7 +1156,7 @@ def pr_highlighted(s)
     else
       #pp s.match(/^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+)\s:)?(.+)$/i)
       re= s.pink
-      mt= ' ' + mt[0,3].blue + ' '
+      mt= ' ' + mt[0,4].blue + ' '
       sy=sy.green
       need_savelog = true
     end
