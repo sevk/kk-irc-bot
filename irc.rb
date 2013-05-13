@@ -17,7 +17,7 @@ include FileUtils
 require 'platform.rb'
 require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
-I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = nil
+I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = true
 include Math
 #require 'timeout'
 require "readline"
@@ -191,7 +191,7 @@ class IRC
       }
 
      rescue TimeoutError
-        p $!.message
+       log ''
         p 'sleep ... retry conn'
         sleep 30
         retry
@@ -491,7 +491,7 @@ class IRC
       	$u.add(nick,name,ip)
 			when /part|quit|kick/i
 				n=-1
-				$u.del(nick,name,ip)
+				$u.del(nick,ip)
      	  puts "all channel nick count : #@count" if rand(10) > 7
 			end
       $need_Check_code += n if from =~ $botlist_Code
@@ -588,7 +588,7 @@ class IRC
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
-    when /^`?(什么是|what\sis)(.+)[\?？]?$/i #什么是
+    when /^`?(什么是|what\sis)(.+)[^。！.!]$/i #什么是
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w}")
@@ -636,7 +636,7 @@ class IRC
       $saytitle -= 1 if tmp =~ /^..0/
       $saytitle += 1 if tmp =~ /^..1/ and $saytitle < 1
 
-      reload_all rescue log
+      reload_all
       rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
       if to != @nick
         msg(to,from+rt,0)
