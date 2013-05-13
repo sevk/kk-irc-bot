@@ -18,7 +18,6 @@ require 'platform.rb'
 require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = nil
-load 'plugin.rb'
 include Math
 #require 'timeout'
 require "readline"
@@ -98,7 +97,7 @@ class IRC
       @irc.write ("PING 1 \r\n" ) rescue log
       #p 'ping ed '
       sleep 14
-      print "-\|/"[rand(4)]
+      #print "-\|/"[rand(4)]
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -157,7 +156,7 @@ class IRC
         end
       else
         #非utf-8的聊天室就直接截断了
-        s=Iconv.conv("#{@charset}//IGNORE","UTF-8//IGNORE",s)
+        s=s.code_a2b("UTF-8",@charset)
       end
       s << ' …'
     end
@@ -207,7 +206,6 @@ class IRC
      $bot_on = $bot_on1
      $min_next_say = Time.now
 
-     return if win_platform?
      Thread.new do
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
@@ -235,7 +233,7 @@ class IRC
   def sayDic(dic,from,to,s='')
     direction = ''
     tellSender = false
-    pub =false #默认公共消息
+    pub =false
     pub =true if [1,5].include? dic
 
     b7=from
@@ -250,13 +248,11 @@ class IRC
     end
 
     case direction
-    when /\|/#公共
+    when '|'#公共
       sto='PRIVMSG'
     when '>' #小窗
-      #sto='PRIVMSG'
       sto='PRIVMSG' ;to=b7;tellSender=true
-    when /#/ #notic
-      #sto='PRIVMSG'
+    when '#' #notic
       sto='notice' ;to=b7;tellSender=true
     else
       sto='PRIVMSG'
@@ -323,11 +319,10 @@ class IRC
     #p tmp if $DEBUG
     return if tmp == 'ASCII'
     if tmp != @charset && tmp !~ /IBM855|windows-125|ISO-8859/i
-      puts tmp
+      p tmp
       if tmp =~ /^gb./i
          s=s.gbtoX(@charset).strip
       else
-         p tmp
          s=s.code_a2b(tmp,@charset).strip rescue s
       end
       return if $need_Check_code <= 0
@@ -427,7 +422,6 @@ class IRC
       #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          #log sSay
           #$u.said(nick,name,ip,1.25)
         end
         return
@@ -485,34 +479,29 @@ class IRC
         end
       end
 
-    when /^:(.+?)!(.+?)@(.+?)\s(JOIN)\s:(.*)$/i #joins
+    when /^:(.+?)!(.+?)@(.+?)\s(JOIN|part|quit|kick)\s:(.*)$/i #joins
       #@gateway/tor/x-2f4b59a0d5adf051
-      nick=from=$1;name=$2;ip=$3;chan=$5
+      nick=from=$1;name=$2;ip=$3;mt=$4;chan=$5
       return if from =~ /#{Regexp::escape @nick}/i
-      return if chan =~ /#sevk/i
+      return if chan == $channel_o
 
-      $need_Check_code -= 1 if from =~ $botlist_Code
-      $need_say_feed -= 1 if from =~ $botlist_ub_feed
-      $saytitle -= 1 if from =~ $botlist_title
+			case mt
+			when /join/i
+				n=1
+      	$u.add(nick,name,ip)
+			when /part|quit|kick/i
+				n=-1
+				$u.del(nick,name,ip)
+     	  puts "all channel nick count : #@count" if rand(10) > 7
+			end
+      $need_Check_code += n if from =~ $botlist_Code
+      $need_say_feed += n if from =~ $botlist_ub_feed
+      $saytitle += n if from =~ $botlist_title
 
-      @count +=1
-      $u.add(nick,name,ip)
+      @count +=n
       #if $u.chg_ip(nick,ip) ==1
         #$u.add(nick,name,ip)
       #end
-      renew_Readline_complete($u.all_nick)
-    when /^:(.+?)!(.+?)@(.+?)\s(PART|QUIT)\s(.*)?\s?$/i #quit|part
-      #:lihoo1!n=lihoo@125.120.11.127 QUIT :Remote closed the connection
-      from=$1;name=$2;ip=$3;chan=$5.to_s
-      return if chan =~ /#sevk/i
-
-      $need_Check_code += 1 if from =~ $botlist_Code
-      $need_say_feed += 1 if from =~ $botlist_ub_feed
-      $saytitle += 1 if from =~ $botlist_title
-
-      @count -=1 if @count > 0
-      puts "all channel nick count : #@count" if rand(10) > 7
-      $u.del(from,ip)
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
@@ -527,21 +516,11 @@ class IRC
       $need_say_feed -= 1 if new =~ $botlist_ub_feed
       $saytitle -= 1 if new =~ $botlist_title
       renew_Readline_complete($u.all_nick)
-    when /^:(.+?)!(.+?)@(.+?)\sKICK\s(.+?)\s(.+?)\s:(.+?)$/i
-      #:ikk-irssi!n=k@unaffiliated/sevkme KICK #sevk Guest19279 :ikk-irssi\r\n"
-      from=$1;chan=$4;tag=$5;reason=$6
-      return if chan =~ /#sevk/i
-      $need_Check_code += 1 if from =~ $botlist_Code
-      $need_say_feed += 1 if from =~ $botlist_ub_feed
-      $saytitle += 1 if from =~ $botlist_title
-
-      @count -=1 if @count > 0
-      renew_Readline_complete($u.all_nick)
     else
       return 1 # not match
     end
   rescue
-    print $!.message, $@[0], 10.chr
+    log ''
   end
 
   #return 1 : 非字典
@@ -605,7 +584,7 @@ class IRC
       sayDic('deb',from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
-    when /^[`']help$/i #`help
+    when /^`help$/i #`help
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
@@ -635,7 +614,7 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ':点点点.',10,$msg_delay )
+      do_after_sec(to,from + ':点点点.',10,$msg_delay*3 )
     when /^((有人.?(吗|不|么|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
@@ -829,7 +808,7 @@ class IRC
       puts s
       identify
     else
-      return nil #not matched, go on
+      return #not matched, go on
     end #end case
 
     return 'matched'
@@ -897,8 +876,8 @@ class IRC
   end
 
   def mystart
-    $u = YAML.load_file("_#{ARGV[0]}.yaml") rescue (p $!.message)
-    p $u.class
+	  conf = "_#{ARGV[0]}.yaml"
+    $u = YAML.load_file conf if File.exist? conf
     $u = ALL_USER.new if $u.class != ALL_USER
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
@@ -914,7 +893,7 @@ class IRC
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
-    sleep 0.3
+    sleep 0.1
     @exit = true
   end
 
@@ -930,7 +909,6 @@ class IRC
 
   #大约每天一次
   def timer_daily
-    puts Time.now.to_s.blue
     #大约每天6点执行
     if Time.now.hour < 5
        @daily_done = false
@@ -950,10 +928,9 @@ class IRC
   #检测用户输入,实现IRC客户端功能.
   #i Send = Proc.new do |a, *b| b.collect {|i| i*a } end
   #退出软件请输入 :quit
-  def iSend(s=nil)
+  def iSend(s='')
      #$stdout.flush
-     return if not s
-     return if s == ""
+     return if s.empty?
      #p s.encoding
 
      s.force_encoding($local_charset)
@@ -1061,22 +1038,22 @@ class IRC
         ready = select([@irc], nil, nil, 2)
         #ready = select([@irc])
         next unless ready
-        ready[0].each{|s|
+        ready[0].each do |s|
           next unless s == @irc
           if $use_ssl
             x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
           else
-            x = @irc.recvfrom(1990)[0]
+            x = @irc.recvfrom(2222)[0]
           end
 
           if x.empty?
             log ' x.empty, may be lose conn '
             return
           end
-          x.split(/\r?\n/).each{|s|
+          x.split(/\r?\n/).each {|s|
             handle_server_input(s) rescue log('')
           }
-        }
+      	end
       rescue Exception
         log
         sleep 8
