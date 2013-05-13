@@ -17,12 +17,14 @@ include FileUtils
 require 'platform.rb'
 require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = nil
 load 'plugin.rb'
 include Math
 #require 'timeout'
 require "readline"
 require 'yaml'
 require "ipwry.rb"
+require 'thread'
 Socket.do_not_reverse_lookup = true
 
 class IRC
@@ -568,15 +570,28 @@ class IRC
       case $1
       when /https?/i
         return if s =~ $re_ignore_url
+        #qq= Queue.new
         @ti=Thread.new(to,from,url) do |to,from,url|
-          msg(to,from + gettitleA(url,from),0)
-          sleep $minsaytime
-          isaid(7)
+          ti = gettitleA(url,from)
+          if ti
+            @ti_p.kill
+            p ' kill ed 2'
+          #if qq.size ==0
+            #qq << ti
+            msg(to,from + ti ,0)
+          #end
+          end
         end
         @ti_p=Thread.new(to,from,url) { |to,from,url|
-          msg(to,from + gettitleA(url,from,false),0)
-          sleep $minsaytime
-          isaid(7)
+          ti = gettitleA(url,from,false)
+          if ti
+            @ti.kill
+            p ' kill ed 2'
+          #if qq.size ==0
+            #qq << ti
+            msg(to,from + ti ,0)
+          #end
+          end
         }
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)

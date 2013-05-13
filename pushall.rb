@@ -14,4 +14,4 @@ Thread.new{
 Thread.new{
   puts `git push gitcafe`
 }
-sleep 1 while Thread.list.size != 1
+sleep 0.3 while Thread.list.size != 1
