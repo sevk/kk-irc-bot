@@ -13,6 +13,10 @@ load 'color.rb'
 load 'plugin.rb' rescue log
 require 'json'
 
+def nil.empty?
+	true
+end
+
 class String
   def slice_u!(n)
     self.force_encoding('ascii-8bit')
@@ -273,6 +277,7 @@ class String
   def alice_say
     return if self.empty?
     url = 'http://www.pandorabots.com/pandora/talk?botid=f5d922d97e345aa1&skin=custom_input'
+    p 'alice say'
     #$uri = uri=URI.parse(url)
     #$uri.open(
       #'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
@@ -292,8 +297,9 @@ class String
     #form.input = 'how old are you ?'
     #page          = agent.submit(form)
     page = agent.post(url,{"input"=> self } )
-    #p page.body
-    page.body.match(/.+<br>.+:(.+)/m)[1].gsub(/alice/i,' @ ') rescue '休息一下..'
+    #File.new('a.txt','wb').puts page.body
+    page.body.match(/<em>.+:(.+)<input type/m)[1].gsub(/alice/i,' @ ')
+      .gsub!(/<.*?>/i,'') rescue '休息一下..'
   end
 
 	def en2zh
