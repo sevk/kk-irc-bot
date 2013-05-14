@@ -132,8 +132,8 @@ class ALL_USER
   end
 
   def has_said?(s)
-    return if s.size < 3
-    $lastsay.select{|x| break x if x.include? s[1..-2]}
+    return false if s.size < 4
+    true == $lastsay.compact.select{|x| break true if x =~ s[1..-2]}
   end
 
   #rep?

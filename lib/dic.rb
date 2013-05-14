@@ -407,19 +407,6 @@ rescue
   return $!.message
 end
 
-def url_fetch_del(uri_str, limit = 3)
-  # You should choose better exception.
-  raise ArgumentError, 'HTTP redirect too deep' if limit == 0
-
-  response = Net::HTTP.get_response(URI.parse(uri_str))
-  case response
-  when Net::HTTPSuccess     then response
-  when Net::HTTPRedirection then fetch(response['location'], limit - 1)
-  else
-    response.error!
-  end
-end
-
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
   #p url
@@ -427,7 +414,7 @@ def gettitle(url,proxy=true,mechanize=1)
   charset = ''
   flag = 0
   istxthtml = false
-  if url.force_encoding("ASCII-8BIT") =~ CN_re
+  if url.b =~ CN_re
     url = URI.encode(url)
   end
 
@@ -575,7 +562,7 @@ def gettitle(url,proxy=true,mechanize=1)
       title = title.code_a2b(charset,'UTF-8') rescue title
     end
     title = unescapeHTML(title) rescue title
-    #puts title.blue
+    print title,"\n"
     title
 end
 
@@ -589,7 +576,7 @@ def gettitleA(url,from="_",proxy=true)
 
   ti=nil
   begin
-    ti=Timeout.timeout(7){gettitle(url,proxy)}
+    ti=Timeout.timeout(9){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     sleep 0.01
@@ -967,7 +954,7 @@ def osod
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
   agent.open_timeout = 12
-  agent.cookies
+  #agent.cookies
   #url = 'http://ppcbook.hongen.com/eng/daily/sentence/0425sent.htm'
   t=Time.now
   m="%02d" % (t.sec%10+3)

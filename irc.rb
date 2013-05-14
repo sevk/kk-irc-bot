@@ -95,6 +95,8 @@ class IRC
       $Lping = Time.now
       #p 'ping ing '
       @irc.write ("PING 1 \r\n" ) rescue log
+      sleep 1
+      @irc.puts "PING 1" rescue log
       #p 'ping ed '
       sleep 14
       #print "-\|/"[rand(4)]
@@ -120,7 +122,7 @@ class IRC
     do_after_sec(who,sSay,0,delay)
   end
 
-  Max=440
+  Max=430
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
@@ -148,7 +150,7 @@ class IRC
   #发送tcp数据,如果长度大于450 就自动截断.
   def send(s)
     s.gsub!(/\s+/,' ')
-    if s.bytesize > Max + 3
+    if s.bytesize > Max
       s.slice_u!(Max..-1)
       if @charset == 'UTF-8'
         while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
@@ -161,12 +163,13 @@ class IRC
       s << ' …'
     end
 		return if s.bytesize < 2
-    @irc.write("#{s.strip}\r\n")
+    @irc.puts s.strip
     $Lsay = Time.now
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
     end
     puts "----> #{s}".pink
+    savelog s
   end
 
   #连接irc
@@ -438,7 +441,7 @@ class IRC
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
         s=$1.to_s.strip #消息内容
 
-        s = '`' + s if s[0,1] != '`'
+        s.prepend '`' if s[0,1] != '`'
         tmp = check_dic(s,from,to)
         case tmp
         when 1 #非字典消息
@@ -523,6 +526,29 @@ class IRC
     log ''
   end
 
+  def tran_url(from,to,url)
+    #qq= Queue.new
+    $title_need_say=nil
+    @ti=Thread.new(to,from,url) do |to,from,url|
+      ti = gettitleA(url,from)
+      if ti
+        @ti_p.kill
+        p ' kill ed 1'
+        Thread.exit if $u.has_said? ti[1..-2]
+        msg(to,from + ti ,0)
+      end
+    end
+    @ti_p=Thread.new(to,from,url) { |to,from,url|
+      ti = gettitleA(url,from,false)
+      if ti
+        @ti.kill
+        p ' kill ed 2'
+        Thread.exit if $u.has_said? ti[1..-2]
+        msg(to,from + ti ,0)
+      end
+    }
+  end
+
   #return 1 : 非字典
   #       2,5 : http, pinyin
   #  String : 发送
@@ -549,29 +575,7 @@ class IRC
       case $1
       when /https?/i
         return if s =~ $re_ignore_url
-        #qq= Queue.new
-        @ti=Thread.new(to,from,url) do |to,from,url|
-          ti = gettitleA(url,from)
-          if ti
-            @ti_p.kill
-            p ' kill ed 2'
-          #if qq.size ==0
-            #qq << ti
-            msg(to,from + ti ,0)
-          #end
-          end
-        end
-        @ti_p=Thread.new(to,from,url) { |to,from,url|
-          ti = gettitleA(url,from,false)
-          if ti
-            @ti.kill
-            p ' kill ed 2'
-          #if qq.size ==0
-            #qq << ti
-            msg(to,from + ti ,0)
-          #end
-          end
-        }
+        tran_url(from,to,url)
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -649,7 +653,7 @@ class IRC
       #!! nick 像拼音也会被匹配?
       #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
       s1= $2
-      return nil if s1 =~ /[^\u0000-\u00ff]/ #只能是ASC码
+      return nil unless s1.ascii_only?
       p s1
       p $3
       return nil if s1.bytesize < 12
@@ -687,7 +691,7 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      p ' << pong ' if $DEBUG
+      p '<< pong '
       $lag=Time.now - $Lping
       if $lag > 0.8
         puts "LAG = #{$lag} sec" 
@@ -956,7 +960,7 @@ class IRC
         s1=$1
         if s1 =~ /^me/i
            say(s.gsub(/\/me/i,"\001ACTION") + "\001")
-        elsif s1 =~ /^ping/i
+        elsif s1 =~ /^ping$/i
            $Lping = Time.now
            send s1+' 1'
         elsif s1 =~ /^ctcp/i
