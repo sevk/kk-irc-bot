@@ -50,8 +50,9 @@ class String
     self << Time.now.hm.to_s
   end
 
-  #整理html里的 &nbsp; 等转义串，需要安装
+  #整理html里的 &nbsp; 等转义串
   def unescapeHTML
+    #CGI.unescapeHTML(self) rescue self
     HTMLEntities.new.decode(self) rescue self
   end
 
@@ -120,20 +121,16 @@ ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
-$botlist_title=/alvin_rxg|raybot|\^?[Ou]_[ou]/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 
-def unescapeHTML(str)
-  HTMLEntities.new.decode(str) rescue str
-end
-
 #字符串编码集猜测
 def guess_charset(str)
 	#s=str.force_encoding("ASCII-8BIT")
 	#s=str.clone
+  return if str.empty?
    s=str.gsub(/[\x0-\x7f]/,'') rescue str.clone
   return if s.bytesize < 6
   while s.bytesize < 25
@@ -370,7 +367,7 @@ def getGoogle_tran(word)
     return f.read.match(/"trans":"(.*?)","/)[1]
     #re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
     #re.gsub!(/<.*?>/i,'')
-    #return unescapeHTML(re)
+    #return re.unescapeHTML
   }
 
   #Net::HTTP.start('translate.google.com') {|http|
@@ -410,6 +407,7 @@ end
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
   #p url
+  timeout=6
   title = ''
   charset = ''
   flag = 0
@@ -444,9 +442,9 @@ def gettitle(url,proxy=true,mechanize=1)
     else
       agent.set_proxy($proxy_addr,$proxy_port)
     end
-    agent.max_history = 1
-    agent.open_timeout = 8
-    agent.read_timeout = 8
+    agent.max_history = 0
+    agent.open_timeout = timeout
+    agent.read_timeout = timeout
     #agent.cookies
     #agent.auth('^k^', 'password')
     begin
@@ -481,18 +479,17 @@ def gettitle(url,proxy=true,mechanize=1)
       end
       #p 'get page ok'
       title = page.title
-      #puts title.size
-      return unless title
+      return if title.empty?
 			charset= guess_charset(title)
       charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
 
 			if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
 			end
-			title = URI.decode(unescapeHTML(title))
+			title = title.unescapeHTML.uri_decode
 			title.gsub!(/\s+/,' ')
+      #p title
       return title[0,1000]
-
     rescue Exception
       log ''
       return if $!.message =~ /connection refused/
@@ -502,9 +499,9 @@ def gettitle(url,proxy=true,mechanize=1)
   end
 
   #puts URI.split url
-  print 'no mechanize , ' , "\n"
+  #print 'no mechanize , ' , "\n"
   tmp = begin #加入错误处理
-      Timeout.timeout(7) {
+      Timeout.timeout(timeout) {
         $uri = URI.parse(url)
         $uri.open(
 					'Accept'=>'text/html , application/*',
@@ -536,10 +533,10 @@ def gettitle(url,proxy=true,mechanize=1)
 
     return unless istxthtml
 
-    tmp.match(/<title.*?>(.*?)<\/title>/i) rescue nil
-    title = $1.to_s
+    title = tmp.match(/<title.*?>(.*?)<\/title>/i)[1] rescue nil
+    #return if title.empty?
 
-    if title.bytesize < 1
+    if title.empty?
       p tmp
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
@@ -561,29 +558,27 @@ def gettitle(url,proxy=true,mechanize=1)
       #charset='GB18030' if charset =~ /^gb|iso-8859-/i
       title = title.code_a2b(charset,'UTF-8') rescue title
     end
-    title = unescapeHTML(title) rescue title
-    print title,"\n"
+    title = title.unescapeHTML rescue title
+    #p title
     title
 end
 
 def gettitleA(url,from="_",proxy=true)
   return if $saytitle < 1
   return if from =~ $botlist
-  return if from =~ $botlist_title
   url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
 
   return if url =~ /(paste|imagebin\.org\/)/i
 
   ti=nil
   begin
-    ti=Timeout.timeout(9){gettitle(url,proxy)}
+    ti=Timeout.timeout(19){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
-    sleep 0.01
+    p 'get title Time out '
     return ['time out . IN gettitle ']
   end
 
-  return unless ti
 	return if ti.empty?
 
   #检测是否有其它取标题机器人
@@ -639,7 +634,7 @@ def google_py(word)
     ){ |f|
       html=f.read.gsub(/\s+/,' ')
       html.match(/是不是要找.*<em>(.*?)<\/em>/i)
-      return unescapeHTML($1.to_s)
+      return $1.to_s.unescapeHTML
     }
 end
 
@@ -752,7 +747,7 @@ def getGoogle(word,flg=0)
         end
       re.gsub!(/<.*?>/i,'')
       re.gsub!(/\[\s翻译此页\s\]/,'')
-      re= unescapeHTML(re)
+      re= re.unescapeHTML
     }
 
     return unless re
@@ -774,7 +769,7 @@ class Dic
 			$ti = " #{ '%.2f' % (size / 1024**3)} GB"
 		end
 		$ti.gsub!(/.*\]\./,'')
-		"⇪ #{unescapeHTML($ti)}"
+		"⇪ #{$ti.unescapeHTML}"
 	end
 end
 
@@ -825,7 +820,7 @@ def getBaidu_tran(word,en=true)
         re.gsub!(/<script\s?.+?>.+?<\/script>/i,'')
         re = re[0,600]
         re.gsub!(/&nbsp/,' ')
-        re = unescapeHTML(re)
+        re = re.unescapeHTML
         re.gsub!(/<.*?>/,'')
         $re = re.gsub(/>pronu.+?中文翻译/i,' ')
         $re.gsub!(/以下结果由.*?提供词典解释/,' ')

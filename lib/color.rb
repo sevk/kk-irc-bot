@@ -23,7 +23,7 @@ $b_white="\e[47m";
 
 #颜色代码
 a=[1,2,4,7]; b=31..37 ; c = 41..47 ; d=91..96; e=100..106
-Colors=[a,b,c,d,e].map{|x| x.to_a}.flatten
+Colors=[a,b,c,d,e].map{|x| x.to_a}.flatten unless defined? Colors
 class String
   def green
     "\e[32m#{self}#$normal"

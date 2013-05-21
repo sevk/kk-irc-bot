@@ -61,8 +61,8 @@ class IRC
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
     p ' in autoban '
-    if $lag and $lag > 1
-      msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟",0)
+    if $lag and $lag > 1.2
+      msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",5)
       sleep 0.1
       restart if $lag > 6
       return
@@ -127,19 +127,19 @@ class IRC
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
     if $fun and s.bytesize > Max
-      if s.bytesize > $fun+10
-        s.slice_u!($fun+10..-1)
+      if s.bytesize > $fun
+        s.slice_u!($fun..-1)
         s << ' …'
       end
-      i=0.15
+      i=0.1
       a,b=0,140
       b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
       while a < s.bytesize
+        sleep i+=0.08
         send "PRIVMSG #{chan} :#{s[a..b]}"
         a=b+1
         b=a+140
         b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
-        sleep i+=0.08
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -399,7 +399,7 @@ class IRC
         $u.floodreset(nick)
         if $white_list =~ /#{nick}/i or ch =~ /#$re_chfreeplay/
           p ' white list or freeplay channel '
-          return 
+          return
         end
         tmp = Time.now - $u.get_ban_time(nick)
         print "get ban time: ", tmp, "\n"
@@ -413,7 +413,6 @@ class IRC
         else
           $b_tim = 51
           msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",1)
-          msg(nick,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",10)
           autoban to,nick,$b_tim rescue log
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
@@ -499,7 +498,6 @@ class IRC
 			end
       $need_Check_code += n if from =~ $botlist_Code
       $need_say_feed += n if from =~ $botlist_ub_feed
-      $saytitle += n if from =~ $botlist_title
 
       @count +=n
       #if $u.chg_ip(nick,ip) ==1
@@ -517,7 +515,6 @@ class IRC
       end
       $need_Check_code -= 1 if new =~ $botlist_Code
       $need_say_feed -= 1 if new =~ $botlist_ub_feed
-      $saytitle -= 1 if new =~ $botlist_title
       renew_Readline_complete($u.all_nick)
     else
       return 1 # not match
@@ -533,8 +530,9 @@ class IRC
       ti = gettitleA(url,from)
       if ti
         @ti_p.kill
-        p ' kill ed 1'
-        Thread.exit if $u.has_said? ti[1..-2]
+        #p ti
+        #p ' kill ed 1'
+        Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
     end
@@ -542,8 +540,9 @@ class IRC
       ti = gettitleA(url,from,false)
       if ti
         @ti.kill
-        p ' kill ed 2'
-        Thread.exit if $u.has_said? ti[1..-2]
+        #p ti
+        #p ' kill ed 2'
+        Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
     }
@@ -592,11 +591,11 @@ class IRC
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
-    when /^`?(什么是|what\sis)(.+)[^。！.!]$/i #什么是
+    when /^`?(什么是|what\sis)(.+[^。！.!])$/i #什么是
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w}")
-    when /^(.*?)?[:,]?(.+)是什么\?.{0,3}$/i #是什么
+    when /^(.*?)?[:,]?(.+)是(什么|神马).{0,3}$/i #是什么
       w = $1.delete '`'
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
@@ -654,9 +653,9 @@ class IRC
       #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
       s1= $2
       return nil unless s1.ascii_only?
+      return nil if s1.bytesize < 12
       p s1
       p $3
-      return nil if s1.bytesize < 12
       #sayDic(5,from,to,s1)
       msg(to, "#{from} 这里有输入法：http://www.inputking.com/ 或安装fcitx: apt-get install fcitx" ,$msg_delay*4)
       return 5
@@ -691,9 +690,9 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      p '<< pong '
+      #p '<< pong '
       $lag=Time.now - $Lping
-      if $lag > 0.8
+      if $lag > 1.5
         puts "LAG = #{$lag} sec" 
       end
 
