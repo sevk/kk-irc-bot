@@ -523,9 +523,14 @@ class IRC
     log ''
   end
 
-  def tran_url(from,to,url)
-    #qq= Queue.new
-    $title_need_say=nil
+  def tran_url(from,to,url,force=false)
+    url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
+    unless force
+      return if $saytitle < 1
+      return if from =~ $botlist
+      return if url =~ /(paste|imagebin\.org\/)/i
+    end
+
     @ti=Thread.new(to,from,url) do |to,from,url|
       ti = gettitleA(url,from)
       if ti
@@ -587,25 +592,30 @@ class IRC
       sayDic('deb',from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
+    when /^`title(.*?)$/i
+      url=$1 || $last_url
+      tran_url from,to,url,true
     when /^`help$/i #`help
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
     when /^`?(什么是|what\sis)(.+[^。！.!])$/i #什么是
+      #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
       sayDic(1,from,to,"define:#{w}")
-    when /^(.*?)?[:,]?(.+)是(什么|神马).{0,3}$/i #是什么
+    when /^(.*?)?[:,]?(.+)是(什么|啥|神马).{0,3}$/i #是什么
       w = $1.delete '`'
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
+      return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
       sayDic(21,from,to,$1)
     when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
-    when /^`g\s(.*?)$/  # Google
+    when /^`?g\s(.*?)$/  # Google
       sayDic(1,from,to,$1)
     when /^`d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
@@ -618,7 +628,7 @@ class IRC
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ':点点点.',10,$msg_delay*3 )
-    when /^((有人.?(吗|不|么|否))|test|测试).?$/i #有人吗?
+    when /^((有人.?(吗|么|不|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
@@ -652,7 +662,7 @@ class IRC
       #!! nick 像拼音也会被匹配?
       #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
       s1= $2
-      return nil unless s1.ascii_only?
+      return nil unless s.ascii_only?
       return nil if s1.bytesize < 12
       p s1
       p $3
@@ -980,7 +990,7 @@ class IRC
           check_dic(s,@nick,@nick)
         end
      else
-        say s
+        say s.prepend "人机合一说:"
      end
   end
 
@@ -1038,15 +1048,15 @@ class IRC
         return if @exit
         #p '$need_reconn' if $need_reconn
         return if $need_reconn
-        ready = select([@irc], nil, nil, 2)
-        #ready = select([@irc])
+        #ready = select([@irc], nil, nil, 2)
+        ready = select([@irc])
         next unless ready
         ready[0].each do |s|
           next unless s == @irc
           if $use_ssl
             x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
           else
-            x = @irc.recvfrom(2222)[0]
+            x = @irc.recvfrom(1222)[0]
           end
 
           if x.empty?
