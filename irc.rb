@@ -24,6 +24,7 @@ require "readline"
 require 'yaml'
 require "ipwry.rb"
 require 'thread'
+require 'open-uri'
 Socket.do_not_reverse_lookup = true
 
 class IRC

@@ -2,21 +2,14 @@
 # -*- coding: utf-8 -*-
 # Sevkme@gmail.com
 
-Thread.new{
-  puts `git push github`
-}
-Thread.new{
-  puts `git push gitcafe`
-}
-Thread.new{
-  puts `git push gitcd`
-}
+def t s 
+  Thread.new{ system s }
+end
 
-Thread.new{
-  puts `git push gitshell`
-}
+t 'git push github'
+t 'git push gitcafe'
+t 'git push gitcd'
+t 'git push gitshell'
+t 'git push osc'
 
-Thread.new{
-  puts `git push osc`
-}
 sleep 0.3 while Thread.list.size != 1
