@@ -150,6 +150,8 @@ class IRC
 
   #发送tcp数据,如果长度大于450 就自动截断.
   def send(s)
+    #print "s:"
+    #p s
     s.gsub!(/\s+/,' ')
     if s.bytesize > Max
       s.slice_u!(Max..-1)
@@ -530,14 +532,14 @@ class IRC
       return if $saytitle < 1
       return if from =~ $botlist
       return if url =~ /(paste|imagebin\.org\/)/i
+      return if url == $last_url
     end
+    $last_url = url
 
     @ti=Thread.new(to,from,url) do |to,from,url|
       ti = gettitleA(url,from)
       if ti
         @ti_p.kill
-        #p ti
-        #p ' kill ed 1'
         Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
@@ -546,8 +548,6 @@ class IRC
       ti = gettitleA(url,from,false)
       if ti
         @ti.kill
-        #p ti
-        #p ' kill ed 2'
         Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
@@ -917,7 +917,7 @@ class IRC
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,150) if tmp.bytesize > 4
+        msg(to,tmp,60) if tmp.bytesize > 4
      }
   end
 
@@ -1049,8 +1049,8 @@ class IRC
         return if @exit
         #p '$need_reconn' if $need_reconn
         return if $need_reconn
-        #ready = select([@irc], nil, nil, 2)
-        ready = select([@irc])
+        ready = select([@irc], nil, nil, 60)
+        #ready = select([@irc])
         next unless ready
         ready[0].each do |s|
           next unless s == @irc

@@ -664,6 +664,8 @@ def geturl(url,type=1)
 end
 
 def getGoogle(word,flg=0)
+  print "word:"
+  p word
   #url = 'http://www.google.com.hk/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
   url = 'http://www.google.com.hk/search?q=' + word.strip
   #s=getbody(url)
@@ -681,7 +683,7 @@ def getGoogle(word,flg=0)
 	url_mini = 'http://g.cn '
 
     re=''
-    open(url,
+    open(url
 		#'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
     #'Referer'=> url,
     #'Accept-Language'=>'zh-CN',
@@ -690,7 +692,7 @@ def getGoogle(word,flg=0)
     ){ |f|
         html=f.read.gsub(/\s+/,' ')
         html=html.code_a2b(guess_charset(html) ,'utf-8')
-        File.new('/tmp/a.html','wb').puts html.match(/<div id="resultStats">.*/im)[0].gsub(/></,">\n<")
+        #File.new('/tmp/a.html','wb').puts html.match(/<div id="resultStats">.*/im)[0].gsub(/></,">\n<")
         matched = true
         case html
         when /<div class=f .*?><h3 class="r"><nobr>.*?<\/nobr>(.*?)<!--n--><!--m-->.*?<li class="g"><div class="vsc" sig="U2O">/

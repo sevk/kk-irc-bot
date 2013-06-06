@@ -22,8 +22,8 @@ $b_white="\e[47m";
 #windows下面可以安装 msysGit-fullinstall-preview.exe 包含 MINGW32 :)
 
 #颜色代码
-a=[1,2,4,7]; b=31..37 ; c = 41..47 ; d=91..96; e=100..106
-Colors=[a,b,c,d,e].map{|x| x.to_a}.flatten unless defined? Colors
+a=[1,2,4,7]; b=31..37 ; c = [41,42,* 44..46] ; d=[91,92, *94..96] ; e=100..106
+Colors=[a,b,c,d,e].map{|x| x.to_a}.flatten
 class String
   def green
     "\e[32m#{self}#$normal"
@@ -40,12 +40,11 @@ class String
   def cyan
     "\e[36m#{self}#$normal"
   end
-	def c_rand(n=rand(35))
-    #print n%999 , ' '
-    #"\e[#{n%999}m#{self}#$normal"
-    #print Colors[n%35] , ' '
-    "\e[#{Colors[n%35]}m#{self}#$normal"
-	end
+  def c_rand(n=rand(99))
+    #13 黄底
+    #20 黄字
+    "\e[#{Colors[n%Colors.size]}m#{n%Colors.size} #{self}#$normal"
+  end
 
   def blueb
     "\e[44m#{self}#$normal"
