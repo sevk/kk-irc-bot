@@ -116,11 +116,11 @@ class IRC
 
   #发送msg消息,随机 delay 秒数.
   #sSay 不能为空
-  def msg(who,sSay,delay=$msg_delay|| 3)
+  def msg(who,sSay,delay=nil)
     return if sSay.class != String
     return if sSay.empty?
     $otherbot_said=false
-    do_after_sec(who,sSay,0,delay)
+    do_after_sec(who,sSay,0,delay||$msg_delay)
   end
 
   Max=430
@@ -230,7 +230,7 @@ class IRC
         eval line
       end
     }
-    send "PRIVMSG nickserv :id #{$pass}"
+    @irc.puts "PRIVMSG nickserv :id #{$pass}"
 
     $pass = nil
   end
@@ -306,8 +306,8 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
-      p b7
-      print 'b7:' , b7 , 10.chr
+      #p b7
+      #print 'b7:' , b7 , 10.chr
       if sto =~ /notice/i
         notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       else
@@ -527,6 +527,8 @@ class IRC
   end
 
   def tran_url(from,to,url,force=false)
+    url=$last_url if url.empty?
+    return if url.empty?
     url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
     unless force
       return if $saytitle < 1
@@ -534,13 +536,13 @@ class IRC
       return if url =~ /(paste|imagebin\.org\/)/i
       return if url == $last_url
     end
-    $last_url = url
+    $last_url = url.clone
 
     @ti=Thread.new(to,from,url) do |to,from,url|
       ti = gettitleA(url,from)
       if ti
         @ti_p.kill
-        Thread.exit if $u.has_said? ti[7..-1]
+        #Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
     end
@@ -548,7 +550,7 @@ class IRC
       ti = gettitleA(url,from,false)
       if ti
         @ti.kill
-        Thread.exit if $u.has_said? ti[7..-1]
+        #Thread.exit if $u.has_said? ti[7..-1]
         msg(to,from + ti ,0)
       end
     }
@@ -593,7 +595,9 @@ class IRC
       sayDic('deb',from,to,$1)
     when /^`?s\s(.*)$/i  #TXT search
       sayDic(6,from,to,$1)
-    when /^`title(.*?)$/i
+    when /^`title\s?(.*?)$/i
+      p $1
+      p $last_url
       url=$1 || $last_url
       tran_url from,to,url,true
     when /^`help$/i #`help
@@ -607,9 +611,11 @@ class IRC
       sayDic(1,from,to,"define:#{w}")
     when /^(.*?)?[:,]?(.+)是(什么|啥|神马).{0,3}$/i #是什么
       w = $1.delete '`'
+      p w
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
       return if w.empty?
+      p w
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
@@ -917,7 +923,7 @@ class IRC
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,60) if tmp.bytesize > 4
+        msg(to,tmp,60) unless tmp.empty?
      }
   end
 
@@ -1049,7 +1055,7 @@ class IRC
         return if @exit
         #p '$need_reconn' if $need_reconn
         return if $need_reconn
-        ready = select([@irc], nil, nil, 60)
+        ready = select([@irc], nil, nil, 30)
         #ready = select([@irc])
         next unless ready
         ready[0].each do |s|
@@ -1083,7 +1089,7 @@ end
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
-  sleep 90+ rand(300)
+  sleep $msg_delay*6 + rand($msg_delay*20)
   p "exec #{$0} #$argv0"
   sleep 5
   exec "#{$0} #$argv0"
@@ -1123,7 +1129,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep 30 +rand(160)
+    sleep $msg_delay*2 +rand($msg_delay*20)
   end
 end
 

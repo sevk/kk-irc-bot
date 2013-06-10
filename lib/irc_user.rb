@@ -6,7 +6,7 @@
 $maxfloodme ||= 87.0 #70
 $maxflood ||= 33.3  #35.0
 $initFlood = 83.0 #83
-$maxNamed = 200
+$maxNamed = 2*(Time.now.year-2000) + 160
 
 class ALL_USER
 	#attr_accessor

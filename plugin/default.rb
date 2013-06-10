@@ -10,6 +10,10 @@ Thread.new do
     case s= m.to_s
     when /^to_/
       return super
+    when /^gsub|^empty/
+      return super
+    when /笑话/
+      return joke
     end
     print "方法未找到: "
     p m

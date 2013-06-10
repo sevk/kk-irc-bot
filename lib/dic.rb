@@ -49,6 +49,12 @@ class String
   def addTimCh
     self << Time.now.hm.to_s
   end
+  def md5
+    Digest::MD5.digest self
+  end
+  def md5hex
+    Digest::MD5.hexdigest self
+  end
 
   #整理html里的 &nbsp; 等转义串
   def unescapeHTML
@@ -89,6 +95,7 @@ require 'uri'
 require 'net/http'
 require 'rss'
 require 'base64'
+require 'digest'
 require 'resolv'
 require 'yaml'
 require 'pp'
@@ -227,6 +234,7 @@ end
 
 #取ubuntu.com.cn的 feed.
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+  p 'in get_feed'
   begin
    feed = Timeout.timeout(11) {
       RSS::Parser.parse(url)
@@ -237,23 +245,21 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   end
 
   $ub=nil
-  begin
-    feed.items.each { |i|
-      link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-      des = i.content.to_s
-      #date = i.updated.content
-      $date = link
-      ti = i.title.content.to_s
+  p feed if feed.class != RSS::Atom::Feed
+  return if feed.empty?
+  feed.items.each { |i|
+    link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
+    des = i.content.to_s
+    #date = i.updated.content
+    $date = link
+    ti = i.title.content.to_s
 
-      next if ti =~ /Re:/i && not_re
-      puts i.updated.content
-      $ub = "新 #{ti} #{link} #{des}"
-      #p $ub
-      break
-    }
-  rescue
-		log
-  end
+    next if ti =~ /Re:/i && not_re
+    puts i.updated.content
+    $ub = "新 #{ti} #{link} #{des}"
+    #p $ub
+    break
+  }
 
   if $old_feed_date == $date and $ub
     #link = feed.items[0].link.href
@@ -268,6 +274,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     $old_feed_date = $date
   end
 
+  return if $ub.empty?
   $ub.gsub!(/\s+/,' ')
   n = $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ')
     .unescapeHTML
@@ -309,12 +316,14 @@ class String
   end
 
 	def en2zh
-		return self if self.force_encoding("ASCII-8BIT") =~ CN_re #有中文
+		#return self if self.force_encoding("ASCII-8BIT") =~ CN_re #有中文
+		return self unless self.ascii_only?
 		flg = 'auto%7czh-CN'
 		g_tr(self,flg)
 	end
 	def zh2en
-		return self if self.force_encoding("ASCII-8BIT") !~ CN_re #无中文
+		#return self if self.force_encoding("ASCII-8BIT") !~ CN_re #无中文
+		return self if self.ascii_only?
 		flg = 'zh-CN%7cen'
 		g_tr(self,flg)
 	end
@@ -447,6 +456,7 @@ def gettitle(url,proxy=true,mechanize=1)
     else
       agent.set_proxy($proxy_addr,$proxy_port)
     end
+    agent.user_agent_alias = 'Linux Mozilla'
     agent.max_history = 0
     agent.open_timeout = timeout
     agent.read_timeout = timeout
@@ -504,7 +514,7 @@ def gettitle(url,proxy=true,mechanize=1)
   end
 
   #puts URI.split url
-  #print 'no mechanize , ' , "\n"
+  print 'no mechanize , ' , "\n"
   tmp = begin #加入错误处理
       Timeout.timeout(timeout) {
         $uri = URI.parse(url)
@@ -680,15 +690,15 @@ def getGoogle(word,flg=0)
 	url = URI.encode(url)
   p url
 	#url_mini = encodeurl('http://g.cn/search?q=' + word.strip)
-	url_mini = 'http://g.cn '
+	url_mini = 'http g.cn'
 
     re=''
     open(url
-		#'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-    #'Referer'=> url,
-    #'Accept-Language'=>'zh-CN',
-		#'Accept-Encoding'=>'deflate',
-    #'User-Agent'=> UserAgent
+      #'Accept'=>'*/*',
+      #'Referer'=> url,
+      #'Accept-Language'=>'zh-CN',
+      #'Accept-Encoding'=>'deflate',
+      #'User-Agent'=> UserAgent
     ){ |f|
         html=f.read.gsub(/\s+/,' ')
         html=html.code_a2b(guess_charset(html) ,'utf-8')
@@ -1117,6 +1127,7 @@ end
 
 #调用 alice 
 def botsay(s)
+  return if s.empty?
   s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
 end
 
@@ -1153,14 +1164,9 @@ def pr_highlighted(s)
       need_savelog = true
     end
 
-    if from.size < 9
-      t = Time.now.strftime('%H%M%S')
-      re= "#{t}#{("%12s" % ('<'+from+'>')).c_rand(name.sum)}#{mt}#{to} #{sy}"
-    else
-      #p sy.encoding,to.encoding, mt.encoding
-      sy.force_encoding('utf-8')
-      re= "#{from.c_rand(name.sum)} #{mt} #{to} #{sy} "
-    end
+    t = Time.now.strftime('%H%M%S')
+    sy.force_encoding('utf-8')
+    re= "#{t}#{ (('<'+from+'>').rjust(14)).c_rand(name.sum)}#{mt}#{to} #{sy}"
   else
     re= s.red
   end
