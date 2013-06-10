@@ -9,6 +9,7 @@ Thread.new do
     sleep 0.0001
     case s= m.to_s
     when /^to_/
+      p caller[0] if $DEBUG
       return super
     when /^gsub|^empty/
       return super

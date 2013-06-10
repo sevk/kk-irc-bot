@@ -246,7 +246,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 
   $ub=nil
   p feed if feed.class != RSS::Atom::Feed
-  return if feed.empty?
+  #return if feed.empty?
   feed.items.each { |i|
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
     des = i.content.to_s
@@ -464,6 +464,7 @@ def gettitle(url,proxy=true,mechanize=1)
     #agent.auth('^k^', 'password')
     begin
       page = agent.head(url)
+      p 'head ok' if $DEBUG
        type = page.header['content-type']
        if type =~ /image\/./i
          showpic(url)
@@ -482,18 +483,17 @@ def gettitle(url,proxy=true,mechanize=1)
     end
 
     begin
-      #p 'start agent.get'
+      #p 'start agent.get' if $DEBUG
       page = agent.get(url)
       #File.new('/tmp/a.x','wb').puts page.title
       #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
-      #p page.class
-      #p 'end agent.get'
+      p 'end agent.get' if $DEBUG
       if page.class != Mechanize::Page
-        'no page'
+        p 'no page'
         return
       end
-      #p 'get page ok'
       title = page.title
+      puts title if $DEBUG
       return if title.empty?
 			charset= guess_charset(title)
       charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
@@ -503,7 +503,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			end
 			title = title.unescapeHTML.uri_decode
 			title.gsub!(/\s+/,' ')
-      #p title
+      puts title if $DEBUG
       return title[0,1000]
     rescue Exception
       log ''
@@ -590,12 +590,10 @@ def gettitleA(url,from="_",proxy=true)
     return ['time out . IN gettitle ']
   end
 
-	return if ti.empty?
+  return if ti.empty?
 
   #检测是否有其它取标题机器人
   #
-  return if $saytitle < 1
-
     return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti

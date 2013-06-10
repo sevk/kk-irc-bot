@@ -62,7 +62,7 @@ class IRC
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
     p ' in autoban '
-    if $lag and $lag > 1.2
+    if $lag and $lag > 2
       msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",5)
       sleep 0.1
       restart if $lag > 6
@@ -709,7 +709,7 @@ class IRC
       $needrestart = false
       #p '<< pong '
       $lag=Time.now - $Lping
-      if $lag > 1.5
+      if $lag > 2
         puts "LAG = #{$lag} sec" 
       end
 
@@ -871,7 +871,7 @@ class IRC
         print '还没到下次说话的时间:',sSay,"\n"
         return if second == 0 #如果是非BOT功能,直接return,不做rand_do
 				tmp = rand_do
-				return if tmp.tmpty?
+				return if tmp.empty?
         say(tmp,to)
         Thread.exit
       end
