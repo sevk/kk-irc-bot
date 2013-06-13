@@ -3,9 +3,8 @@
 # Sevkme@gmail.com
 
 def t s 
-  Thread.new{ system s }
+  Thread.new { system s }
 end
-
 t 'git push github'
 t 'git push gitcafe'
 t 'git push gitcd'

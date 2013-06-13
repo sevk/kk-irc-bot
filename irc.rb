@@ -379,19 +379,18 @@ class IRC
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
       nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
-      return if a1==@nick
+      return if nick==@nick
 
       #禁掉一段时间
       if $u.isBlocked?(from)
-        return nil
+        return
       end
 
       #bot功能是否打开
-      if not $bot_on
+      unless $bot_on
         $u.add(nick,name,ip)
-        return
+        return 
       end
-      #p 'check flood'
       
       if sSay.bytesize > 320
         p sSay.size
@@ -503,13 +502,10 @@ class IRC
       $need_say_feed += n if from =~ $botlist_ub_feed
 
       @count +=n
-      #if $u.chg_ip(nick,ip) ==1
-        #$u.add(nick,name,ip)
-      #end
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
-
+      puts s
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       nick=$1;name=$2;ip=$3;new=$4
@@ -537,6 +533,7 @@ class IRC
       return if url == $last_url
     end
     $last_url = url.clone
+    p url if $DEBUG
 
     @ti=Thread.new(to,from,url) do |to,from,url|
       ti = gettitleA(url,from)
@@ -840,7 +837,7 @@ class IRC
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue log #if not $client #简单显示消息
-    return if not $bot_on #bot 功能
+    return unless $bot_on #bot 功能
     return if check_msg(s).class != Fixnum rescue log('')#1 not matched 字典消息
   end
 
@@ -961,7 +958,7 @@ class IRC
      #lock.synchronize do
      case s
      when /^[:\/]quit\s?(.*)?$/i #:q退出
-        myexit $2
+        myexit $1
      when /^\/msg\s(.+?)\s(.+)$/i
         who = $1;s=$2
         send "privmsg #{who} :#{s.strip}"
@@ -997,7 +994,8 @@ class IRC
           check_dic(s,@nick,@nick)
         end
      else
-        say s.prepend "人机合一说:"
+        s.prepend "人机合一说:" if $bot_on
+        say s
      end
   end
 

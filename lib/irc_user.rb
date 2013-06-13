@@ -60,7 +60,7 @@ class ALL_USER
 
   #记录nick库
   def add(nick,name,ip)
-    name.gsub!(/[in]=|~/i,'')
+    name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     puts '6 add ' + nick if $debug
     return unless nick
