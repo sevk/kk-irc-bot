@@ -184,8 +184,6 @@ def reload_all
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 rescue Exception
   log
-rescue
-  log
 end
 
 def loadDic
@@ -213,8 +211,6 @@ def safe_eval(str)
       eval(str).to_s.gsub(/\s+/,' ')
     rescue Exception
       $!
-    rescue
-      $!
     end
   }.value
 end
@@ -240,8 +236,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
-    log ''
-    return $!
+    return ' 取新帖 timeout ' + $!.message
   end
 
   $ub=nil
@@ -421,7 +416,7 @@ end
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
   #p url
-  timeout=6
+  timeout=5
   title = ''
   charset = ''
   flag = 0
@@ -477,8 +472,11 @@ def gettitle(url,proxy=true,mechanize=1)
         return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue Exception
-      log ''
-    rescue
+      case $!
+      when Mechanize::ResponseCodeError
+        p ' 111 '
+        return $!.message
+      end
       log ''
     end
 
@@ -506,9 +504,12 @@ def gettitle(url,proxy=true,mechanize=1)
       puts title if $DEBUG
       return title[0,1000]
     rescue Exception
-      log ''
-      return if $!.message =~ /connection refused/
-    rescue
+      case $!
+      when Mechanize::ResponseCodeError
+        return $!.message
+      when /connection refused/
+        return
+      end
       log ''
     end
   end
@@ -532,15 +533,14 @@ def gettitle(url,proxy=true,mechanize=1)
         }
       }
     rescue Timeout::Error
+      log ''
       #return 'time out . IN gettitle '
       return
     rescue Exception
-      log ''
-    rescue
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
 				p $!.message
 				p ' need pass wall '
-				return if proxy
+				return
       end
       #log ''
       return $!.message[0,100] + ' . IN gettitle'
@@ -555,7 +555,7 @@ def gettitle(url,proxy=true,mechanize=1)
       p tmp
       if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
         p 'refresh..'
-        return Timeout.timeout(7){
+        return Timeout.timeout(timeout){
           url = $2
           url = "http://#{$uri.host}/#{$2}" if url !~ /^http/i
           gettitle(url)
@@ -917,8 +917,6 @@ def evaluate(s)
 		return 'Timeout'
 	rescue Exception
 		return $!.message[0,38] # + $@[1..2].join(' ')
-	rescue
-		return $!.message[0,28]#+ $@[1..2].join(' ')
 	end
 end
 

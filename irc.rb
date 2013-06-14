@@ -166,7 +166,7 @@ class IRC
       s << ' …'
     end
 		return if s.bytesize < 2
-    @irc.puts s.strip
+    @irc.puts s.strip if @irc
     $Lsay = Time.now
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
@@ -178,12 +178,13 @@ class IRC
   #连接irc
   def connect()
     p 'irc.conn'
-    trap(:INT){myexit 'ctrl_c'}
+    trap(:INT){myexit 'Ctrl-c'}
     return if @exit
     $need_reconn = false
     begin
       Timeout.timeout(8){
         tcpsocket = TCPSocket.open(@server, @port)
+        @irc = nil
         if $use_ssl
           ssl_context = OpenSSL::SSL::SSLContext.new()
           ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -199,7 +200,7 @@ class IRC
      rescue TimeoutError
        log ''
         p 'sleep ... retry conn'
-        sleep 30
+        sleep 3
         retry
      end
 
@@ -502,6 +503,8 @@ class IRC
       $need_say_feed += n if from =~ $botlist_ub_feed
 
       @count +=n
+      p n
+      p @count
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
@@ -560,7 +563,7 @@ class IRC
   def check_dic(s,from,to)
     s.force_encoding('utf-8').strip!
     #tr_name = s.match($re_tran_head)[0]
-    s.sub!($re_tran_head,''); from << $& if $&
+    s.sub!($re_tran_head,''); from << $1 if $1
     case s
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
@@ -920,7 +923,7 @@ class IRC
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,60) unless tmp.empty?
+        msg(to,tmp,60)
      }
   end
 
@@ -1053,7 +1056,7 @@ class IRC
         return if @exit
         #p '$need_reconn' if $need_reconn
         return if $need_reconn
-        ready = select([@irc], nil, nil, 30)
+        ready = select([@irc], nil, nil, 5)
         #ready = select([@irc])
         next unless ready
         ready[0].each do |s|

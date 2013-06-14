@@ -55,12 +55,12 @@ log_init
 def log(s=nil)
    if not s
       if $!
-         s = "#{$!.message} #{$@[0..4].join("\n")}"
+         s = "#{$!.message} && #{$@.join("\n")}"
       else
          return
       end
    elsif s.empty?
-     puts "#{$!.message} #{$@.join("\n")}"
+     puts "#{$!.message} && #{$@.join("\n")}"
      return
    else
       s = s.to_s
