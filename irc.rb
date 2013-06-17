@@ -200,7 +200,7 @@ class IRC
      rescue TimeoutError
        log ''
         p 'sleep ... retry conn'
-        sleep 3
+        sleep 6
         retry
      end
 
@@ -211,7 +211,6 @@ class IRC
         identify
      }
      $bot_on = $bot_on1
-     $min_next_say = Time.now
 
      Thread.new do
         Thread.current[:name]= 'connect say'
@@ -275,7 +274,7 @@ class IRC
         c=''
       when 0
         re = c
-      when 1 then re = getGoogle c
+      when 1 then re = getgoogleDefine c
       when 2 then re = getBaidu(c )
       when 3 then re = googleFinance(c )
       when 4 then re = getGoogle_tran(c );c=''
@@ -484,7 +483,8 @@ class IRC
         end
       end
 
-    when /^:(.+?)!(.+?)@(.+?)\s(JOIN|part|quit|kick)\s:(.*)$/i #joins
+    when /^:(.+?)!(.+?)@(.+?)\s(JOIN|part|quit|kick)\s[:#](.*)$/i #joins
+      #:Guest87873!~test@121.18.86.94 JOIN #ubuntu-cn
       #@gateway/tor/x-2f4b59a0d5adf051
       nick=from=$1;name=$2;ip=$3;mt=$4;chan=$5
       return if from =~ /#{Regexp::escape @nick}/i
@@ -503,8 +503,8 @@ class IRC
       $need_say_feed += n if from =~ $botlist_ub_feed
 
       @count +=n
-      p n
-      p @count
+      #p n
+      #p @count
       renew_Readline_complete($u.all_nick)
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
@@ -794,6 +794,7 @@ class IRC
         send 'time'
         sleep 1
         send "JOIN #sevk"
+        $min_next_say = Time.now
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         #p " * need operator for #{data} ? "

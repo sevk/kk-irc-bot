@@ -2,7 +2,7 @@
 # coding: utf-8
 
 Thread.new do
-  sleep 3
+  sleep 10
   require 'dic.rb' unless defined? getGoogle
   puts '延时加载某些函数.'
   def method_missing(m, *args, &block)
@@ -21,7 +21,7 @@ Thread.new do
     #p args
     #p block
     p caller
-    getGoogle(s)
+    #getGoogle(s)
   end  
 end
 

@@ -117,17 +117,21 @@ def help
   Help
 end
 
-UserAgent="kk-bot/#{Ver} (X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub) kk-bot/#{Ver}" unless defined? UserAgent
-
-CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 
 $re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http:// https:// ed2k://
 # /....s?:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
 
-$min_next_say = Time.now
-$Lsay=Time.now; $Lping=Time.now
-$last_save = Time.now - 110
-$proxy_status_ok = false if not defined? $proxy_status_ok
+def init_dic
+  a=Time.at 0
+  $Lsay=a
+  $Lping=a
+  $min_next_say = a
+  $last_save=a
+  $proxy_status_ok = false
+  UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)"
+  CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
+end
+init_dic unless $Lsay
 
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
@@ -446,10 +450,14 @@ def gettitle(url,proxy=true,mechanize=1)
     else
        agent = Mechanize.new
     end
-    if proxy and $proxy_status_ok
-      agent.set_proxy($proxy_addr2,$proxy_port2)
-    else
-      agent.set_proxy($proxy_addr,$proxy_port)
+
+    if proxy 
+      if $proxy_status_ok
+        agent.set_proxy($proxy_addr2,$proxy_port2)
+      else
+        p ' set proxy 2 '
+        agent.set_proxy($proxy_addr,$proxy_port)
+      end
     end
     agent.user_agent_alias = 'Linux Mozilla'
     agent.max_history = 0
@@ -472,12 +480,13 @@ def gettitle(url,proxy=true,mechanize=1)
         return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue Exception
+      p $!
       case $!
       when Mechanize::ResponseCodeError
-        p ' 111 '
-        return $!.message
+        p $!
+        return $!.message if $!.message !~ /^403/ and proxy
       end
-      log ''
+      log '' if $DEBUG
     end
 
     begin
@@ -504,39 +513,40 @@ def gettitle(url,proxy=true,mechanize=1)
       puts title if $DEBUG
       return title[0,1000]
     rescue Exception
+      p $!
       case $!
       when Mechanize::ResponseCodeError
-        return $!.message
+        return $!.message if $!.message !~ /^403/
       when /connection refused/
         return
       end
-      log ''
+      log '' if $DEBUG
     end
   end
 
   #puts URI.split url
-  print 'no mechanize , ' , "\n"
+  p 'err in mechanize ' 
   tmp = begin #加入错误处理
       Timeout.timeout(timeout) {
         $uri = URI.parse(url)
         $uri.open(
-					'Accept'=>'text/html , application/*',
-					'Range' => 'bytes=0-8999',
+					#'Accept'=>'text/html , application/*',
+          'Range' => 'bytes=0-8999',
 					#'Cookie' => cookie,
-					'User-Agent'=> UserAgent
         ){ |f|
-          p f.content_type
+          #p f.content_type
           istxthtml= f.content_type =~ /text\/html|application\//i
 					istxthtml = false if f.content_type =~ /application\/octet-stream/i
+          return 'err: ' + f.content_type unless istxthtml
           charset= f.charset          # "iso-8859-1"
           f.read[0,8800].gsub(/\s+/,' ')
         }
       }
     rescue Timeout::Error
       log ''
-      #return 'time out . IN gettitle '
       return
     rescue Exception
+      p $!
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
 				p $!.message
 				p ' need pass wall '
@@ -671,6 +681,14 @@ def geturl(url,type=1)
   s
 end
 
+def getgoogleDefine(word)
+  require 'google-search'
+  s = Google::Search::Web.new do |s|
+    s.query = word
+  end
+  s.find.each{|x| return x.content}
+end
+
 def getGoogle(word,flg=0)
   print "word:"
   p word
@@ -701,6 +719,7 @@ def getGoogle(word,flg=0)
         html=f.read.gsub(/\s+/,' ')
         html=html.code_a2b(guess_charset(html) ,'utf-8')
         #File.new('/tmp/a.html','wb').puts html.match(/<div id="resultStats">.*/im)[0].gsub(/></,">\n<")
+        File.new('/tmp/a.html','wb').puts html.match(/.*?<div id="resultStats">/im)[0].gsub(/></,">\n<")
         matched = true
         case html
         when /<div class=f .*?><h3 class="r"><nobr>.*?<\/nobr>(.*?)<!--n--><!--m-->.*?<li class="g"><div class="vsc" sig="U2O">/
