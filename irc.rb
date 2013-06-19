@@ -212,7 +212,8 @@ class IRC
      }
      $bot_on = $bot_on1
 
-     Thread.new do
+     @cs.kill rescue nil
+     @cs=Thread.new do
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
@@ -604,7 +605,7 @@ class IRC
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
-    when /^`?(什么是|what\sis)(.+[^。！.!])$/i #什么是
+    when /^`?(什么是|what\sis)(.+[^。！.!])(呢)?$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
@@ -781,7 +782,9 @@ class IRC
       #
         @nick = $nick[rand $nick.size]
         Thread.new{
-          sleep 10
+          $sle ||=60
+          $sle += 1
+          sleep $sle
           send "PRIVMSG nickserv :ghost #{@nick}"
           #send "NICK #{@nick}"
           @send_nick.call
@@ -868,7 +871,7 @@ class IRC
         #Thread.exit
       end
 
-      if Time.now < $min_next_say
+      if Time.now < $min_next_say and second != 0
         print '还没到下次说话的时间:',sSay,"\n"
         return if second == 0 #如果是非BOT功能,直接return,不做rand_do
 				tmp = rand_do
@@ -885,7 +888,7 @@ class IRC
         say(hello_replay(sSay),to)
       when 20#notice
         send "NOTICE #{to} :#{sSay}"
-        isaid
+        #isaid
       end
     end #Thread
   end
@@ -920,11 +923,12 @@ class IRC
 
   #自动说新帖
   def say_new(to)
+    return unless $need_say_feed > 0
     return unless Time.now.hour.between? 8,22
      @say_new=Thread.new(to){|to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
-        msg(to,tmp,60)
+        msg(to,tmp,0)
      }
   end
 
@@ -1045,47 +1049,34 @@ class IRC
       loop do
         sleep 500 + rand(1800)
         timer_daily
-        say_new($channel) if $need_say_feed > 0
+        say_new($channel)
       end
     end
   end
 
   #主循环
   def main_loop()
-    loop do
-      begin
-        return if @exit
-        #p '$need_reconn' if $need_reconn
-        return if $need_reconn
-        ready = select([@irc], nil, nil, 5)
-        #ready = select([@irc])
-        next unless ready
-        ready[0].each do |s|
-          next unless s == @irc
-          if $use_ssl
-            x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
-          else
-            x = @irc.recvfrom(1222)[0]
-          end
-
-          if x.empty?
-            log ' x.empty, may be lose conn '
-            return
-          end
-          x.split(/\r?\n/).each {|s|
-            handle_server_input(s) rescue log('')
-          }
-      	end
-      rescue Exception
-        log
-        sleep 8
-        return
-      rescue
-        log
-        sleep 2
-        return
+    loop {
+      return if @exit
+      return if $need_reconn
+      ready = select([@irc], nil, nil, 5)
+      next unless ready
+      ready[0].each do |s|
+        next unless s == @irc
+        if $use_ssl
+          x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
+        else
+          x = @irc.recvfrom(1222)[0]
+        end
+        if x.empty?
+          log ' x.empty, may be lose conn '
+          return
+        end
+        x.split(/\r?\n/).each {|s|
+          handle_server_input(s) rescue log('')
+        }
       end
-    end
+    }
   end
 end
 

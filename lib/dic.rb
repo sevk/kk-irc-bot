@@ -128,11 +128,10 @@ def init_dic
   $min_next_say = a
   $last_save=a
   $proxy_status_ok = false
-  UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)"
-  CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n
 end
 init_dic unless $Lsay
-
+UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)" unless defined? UserAgent
+CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
@@ -236,11 +235,12 @@ end
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   p 'in get_feed'
   begin
-   feed = Timeout.timeout(11) {
+   feed = Timeout.timeout(13) {
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
-    return ' 取新帖 timeout ' + $!.message
+    return if rand < 0.5
+    return ' 取新帖 timeout '
   end
 
   $ub=nil
@@ -282,7 +282,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     p n
     return
   end
-  return n.icolor
+  return n
 end
 
 class String
@@ -441,9 +441,6 @@ def gettitle(url,proxy=true,mechanize=1)
 
   #用代理加快速度
   if mechanize
-		#if url =~ /%[A-F0-9]/
-			#url = URI.decode(url)
-		#end
     if url =~ /^https/i
        agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
        #agent = Mechanize.new
@@ -465,13 +462,15 @@ def gettitle(url,proxy=true,mechanize=1)
     agent.read_timeout = timeout
     #agent.cookies
     #agent.auth('^k^', 'password')
+
     begin
       page = agent.head(url)
-      p 'head ok' if $DEBUG
        type = page.header['content-type']
+       #print 'get head ok: '
        if type =~ /image\/./i
+         p type
          showpic(url)
-         return
+         return ''
        end
        if type and type !~ /^$|text\/html/i
         re = page.response.select{|x| x=~/^conten/i }.to_s
@@ -480,28 +479,28 @@ def gettitle(url,proxy=true,mechanize=1)
         return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
        end
     rescue Exception
+      print 'err in get head '
+      #p $!.class
       p $!
       case $!
       when Mechanize::ResponseCodeError
-        p $!
-        return $!.message if $!.message !~ /^403/ and proxy
+        if $!.message !~ /^403/ and proxy and $proxy_status_ok
+          return $!.message + 'in get head'
+        end
       end
       log '' if $DEBUG
     end
 
     begin
-      #p 'start agent.get' if $DEBUG
       page = agent.get(url)
       #File.new('/tmp/a.x','wb').puts page.title
       #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
-      p 'end agent.get' if $DEBUG
+      #p page
       if page.class != Mechanize::Page
         p 'no page'
         return
       end
       title = page.title
-      puts title if $DEBUG
-      return if title.empty?
 			charset= guess_charset(title)
       charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
 
@@ -513,12 +512,12 @@ def gettitle(url,proxy=true,mechanize=1)
       puts title if $DEBUG
       return title[0,1000]
     rescue Exception
+      print 'err in get body '
+      #p $!.class
       p $!
       case $!
       when Mechanize::ResponseCodeError
-        return $!.message if $!.message !~ /^403/
-      when /connection refused/
-        return
+        return $!.message + 'in get body' if $!.message !~ /^403/
       end
       log '' if $DEBUG
     end
@@ -543,8 +542,8 @@ def gettitle(url,proxy=true,mechanize=1)
         }
       }
     rescue Timeout::Error
-      log ''
-      return
+      sleep timeout
+      return $!.message
     rescue Exception
       p $!
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
@@ -552,14 +551,13 @@ def gettitle(url,proxy=true,mechanize=1)
 				p ' need pass wall '
 				return
       end
-      #log ''
-      return $!.message[0,100] + ' . IN gettitle'
+      sleep timeout
+      return $!.message + ' . IN gettitle'
     end
 
     return unless istxthtml
 
     title = tmp.match(/<title.*?>(.*?)<\/title>/i)[1] rescue nil
-    #return if title.empty?
 
     if title.empty?
       p tmp

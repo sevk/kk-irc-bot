@@ -45,7 +45,7 @@ class String
     #20 黄字
     #103 黄底白字
     c=Colors[n%Colors.size]
-    "\e[#{c}m #{c} #{self}#$normal"
+    "\e[#{c}m #{self}#$normal"
   end
 
   def blueb
