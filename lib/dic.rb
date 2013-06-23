@@ -468,9 +468,13 @@ def gettitle(url,proxy=true,mechanize=1)
        type = page.header['content-type']
        #print 'get head ok: '
        if type =~ /image\/./i
-         p type
          showpic(url)
-         return ''
+         return type
+         #require "image_size"
+         #open(url, "rb") do |fh|
+           #return ImageSize.new(fh.read).get_size.inspect rescue ''
+         #end
+         #return ''
        end
        if type and type !~ /^$|text\/html/i
         re = page.response.select{|x| x=~/^conten/i }.to_s
@@ -485,6 +489,7 @@ def gettitle(url,proxy=true,mechanize=1)
       case $!
       when Mechanize::ResponseCodeError
         if $!.message !~ /^403/ and proxy and $proxy_status_ok
+          sleep timeout
           return $!.message + 'in get head'
         end
       end
@@ -517,6 +522,7 @@ def gettitle(url,proxy=true,mechanize=1)
       p $!
       case $!
       when Mechanize::ResponseCodeError
+        sleep timeout
         return $!.message + 'in get body' if $!.message !~ /^403/
       end
       log '' if $DEBUG
@@ -533,10 +539,18 @@ def gettitle(url,proxy=true,mechanize=1)
           'Range' => 'bytes=0-8999',
 					#'Cookie' => cookie,
         ){ |f|
-          #p f.content_type
-          istxthtml= f.content_type =~ /text\/html|application\//i
-					istxthtml = false if f.content_type =~ /application\/octet-stream/i
-          return 'err: ' + f.content_type unless istxthtml
+          case f.content_type
+          when /application\/octet-stream/i
+            istxthtml = false
+          when /image\/./i
+            showpic(url)
+            istxthtml = false
+          when /text\/html|application\//i
+            p f.content_type
+            istxthtml= true 
+          end
+
+          return f.content_type unless istxthtml
           charset= f.charset          # "iso-8859-1"
           f.read[0,8800].gsub(/\s+/,' ')
         }
@@ -1068,11 +1082,11 @@ def rand_do
 	when 0..130
 		$my_s
 	when 131..180
-		get_feed
+		''
 	when 200..400
 		"..休息一下.. #$my_s"
 	else
-		""
+		''
 	end
 end
 

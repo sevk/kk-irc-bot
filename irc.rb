@@ -526,18 +526,18 @@ class IRC
     log ''
   end
 
-  def tran_url(from,to,url,force=false)
+  def tran_url(url,from,to,force=true)
     url=$last_url if url.empty?
     return if url.empty?
     url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
     unless force
+      return if url == $last_url
+      $last_url = url.clone
       return if $saytitle < 1
       return if from =~ $botlist
       return if url =~ /(paste|imagebin\.org\/)/i
-      return if url == $last_url
     end
     $last_url = url.clone
-    p url if $DEBUG
 
     @ti=Thread.new(to,from,url) do |to,from,url|
       ti = gettitleA(url,from)
@@ -583,7 +583,7 @@ class IRC
       case $1
       when /https?/i
         return if s =~ $re_ignore_url
-        tran_url(from,to,url)
+        tran_url(url,from,to,false)
       when /ed2k/i
         msg(to,Dic.new.geted2kinfo(url),0)
       end
@@ -600,7 +600,7 @@ class IRC
       p $1
       p $last_url
       url=$1 || $last_url
-      tran_url from,to,url,true
+      tran_url url,from,to,true
     when /^`help$/i #`help
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
