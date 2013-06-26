@@ -140,6 +140,7 @@ $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|jav
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
+$my_s= '我的源码: http://git.oschina.net/sevkme/kk-irc-bot'
 
 #字符串编码集猜测
 def guess_charset(str)
@@ -301,9 +302,9 @@ class String
     agent = Mechanize.new
     agent.user_agent_alias = 'Linux Mozilla'
     agent.max_history = 0
-    agent.open_timeout = 12
-		agent.read_timeout = 12
-    agent.cookies
+    agent.open_timeout = 10
+		agent.read_timeout = 10
+    #agent.cookies
     page = agent.get(url)
     #form          = page.form_with(:name => 'f')
     #form.input = 'how old are you ?'
@@ -515,7 +516,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			title = title.unescapeHTML.uri_decode
 			title.gsub!(/\s+/,' ')
       puts title if $DEBUG
-      return title[0,1000]
+      return title[0,300]
     rescue Exception
       print 'err in get body '
       #p $!.class

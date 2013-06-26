@@ -345,6 +345,13 @@ class IRC
     return nil
   end
 
+  #放入线程运行
+  def t(tim=30,&proc)
+    Timeout.timeout(tim){
+      Thread.new{ proc.call }
+    }
+  end
+
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
     if @charset != $local_charset
@@ -375,7 +382,7 @@ class IRC
         #没到下次说话时间，就不处理botsay
         return if Time.now < $min_next_say
         $otherbot_said=false
-        do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9)
+        t{ do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9) }
       end
 
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
@@ -452,7 +459,7 @@ class IRC
            return if Time.now < $min_next_say
            $otherbot_said=false
            #bot say
-           do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay)
+           t {do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay) }
         when String
            msg to,tmp
         else #是字典消息
@@ -564,7 +571,7 @@ class IRC
   def check_dic(s,from,to)
     s.force_encoding('utf-8').strip!
     #tr_name = s.match($re_tran_head)[0]
-    s.sub!($re_tran_head,''); from << $1 if $1
+    s.sub!($re_tran_head,''); from << " " << $1 if $1
     case s
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
@@ -609,14 +616,15 @@ class IRC
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
       return if w =~/这|那|的|哪/
+      return if w.empty?
       sayDic(1,from,to,"define:#{w}")
-    when /^(.*?)?[:,]?(.+)是(什么|啥|神马).{0,3}$/i #是什么
-      w = $1.delete '`'
-      p w
+    when /^`?(.*?)[:,]?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
+      w = $1.strip
+      print " xxx 是什么"
+      p $1,$2
       return if w =~ /^(.+)[:,]/
       return if w =~ /这|那|的|哪/
       return if w.empty?
-      p w
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
       puts 'IMS ' + s
@@ -636,7 +644,7 @@ class IRC
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
       do_after_sec(to,from + ':点点点.',10,$msg_delay*3 )
-    when /^((有人.?(吗|么|不|否))|test|测试).?$/i #有人吗?
+    when /^\s*((有人.?(吗|么|不|否))|test|测试).?$/i #有人吗?
       #ruby1.9 一个汉字是一个: /./  ;而1.8是 3个: coding: utf-8/ascii-8bit -*-
       #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
@@ -699,12 +707,14 @@ class IRC
     when Regexp.new((notices_head + $need_join).force_encoding('ASCII-8BIT'))
       p s.green
       joinit
+      $sle =40
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(This nickname is registered)|(You have 30 seconds to identify)/i
       puts s
       identify
     when /^:NickServ!NickServ@services\.\sNOTICE.+?:(You are already logged in as)|(You are now identified for)/i
       puts s
       joinit
+      $sle =40
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
@@ -857,6 +867,7 @@ class IRC
 
   #延时发送
   def do_after_sec(to,sSay,flag,second=3)
+    print " to: #{to}  say:#{sSay}  flag:#{flag}  second:#{second} \n"
     Thread.new do
       Thread.current[:name]= 'delay say'
       if second !=0
@@ -917,7 +928,7 @@ class IRC
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     send( 'quit ' + exit_msg) rescue nil
-    sleep 0.1
+    sleep 0.3
     @exit = true
   end
 
@@ -1122,7 +1133,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep $msg_delay*2 +rand($msg_delay*20)
+    sleep $msg_delay*2 +rand($msg_delay*10)
   end
 end
 
