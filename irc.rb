@@ -94,13 +94,8 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      #p 'ping ing '
-      @irc.write ("PING 1 \r\n" ) rescue log
-      sleep 1
       @irc.puts "PING 1" rescue log
-      #p 'ping ed '
       sleep 14
-      #print "-\|/"[rand(4)]
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -171,7 +166,7 @@ class IRC
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
     end
-    puts "----> #{s}".pink
+    puts "----> #{s}".c_rand(Time.now.day)
     savelog s
   end
 
@@ -365,7 +360,7 @@ class IRC
 
       if $u.saidAndCheckFloodMe(from,to,a3)
         #$u.floodmereset(a1)
-        msg from,"..不要玩机器人..谢谢.. .. ",0
+        #msg from,"..不要玩机器人..谢谢.. .. ",0
         return
       end
 
@@ -466,7 +461,7 @@ class IRC
            if $u.saidAndCheckFloodMe(a1,a2,a3)
               #$u.floodmereset(a1)
               $otherbot_said=true
-              msg to ,"#{from}, 不要玩机器人 . ..",0 if rand>0.5
+              #msg to ,"#{from}, 不要玩机器人 . ..",0 if rand>0.5
               return
            end
         end
@@ -486,7 +481,7 @@ class IRC
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           $u.floodmereset(a1)
           $otherbot_said=true
-          msg to ,"#{from}, 不要玩机器人",0 if rand>0.4
+          #msg to ,"#{from}, 不要玩机器人",0 if rand>0.4
           return
         end
       end
@@ -615,15 +610,15 @@ class IRC
     when /^`?(什么是|what\sis)(.+[^。！.!])(呢)?$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
-      return if w =~/这|那|的|哪/
+      return if w =~/这|那|的|哪| that/
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
-    when /^`?(.*?)[:,]?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
+    when /^`?(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
       w = $1.strip
       print " xxx 是什么"
-      p $1,$2
-      return if w =~ /^(.+)[:,]/
-      return if w =~ /这|那|的|哪/
+      p $1,$2,$3
+      return if $2
+      return if w =~ /这|那|的|哪| that/
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询

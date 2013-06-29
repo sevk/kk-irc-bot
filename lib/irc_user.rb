@@ -65,8 +65,10 @@ class ALL_USER
     puts '6 add ' + nick if $debug
     return unless nick
     if @index.include?(nick)
-      #puts nick + '已经存在'
-      @addr[nick]= getaddr_fromip(ip)
+      if ip != getip(nick)
+        puts '[I] ' + nick + ' ip change'
+        @addr[nick]= getaddr_fromip(ip)
+      end
       return false
     end
     oldname = @index.key(@pos_write)

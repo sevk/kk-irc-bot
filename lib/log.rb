@@ -4,11 +4,11 @@
 
 require 'logger'
 require 'fileutils'
+include FileUtils
 
-$logDir = File.join(Dir.pwd , 'log') if not defined? $logDir
-if not File.directory? $logDir
-  Dir.mkdir $logDir
-end
+$logDir ||= $log_dir # $logDir如果是nil就赋值一下
+$logDir ||= File.join(Dir.pwd , 'log')
+mkdir_p $logDir
 
 unless defined? Myname
   Myname = File.basename($0, ".rb")
