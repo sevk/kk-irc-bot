@@ -341,7 +341,7 @@ class IRC
   end
 
   #放入线程运行
-  def t(tim=30,&proc)
+  def t(tim=40,&proc)
     Timeout.timeout(tim){
       Thread.new{ proc.call }
     }
@@ -395,9 +395,8 @@ class IRC
         return 
       end
       
-      if sSay.bytesize > 320
-        p sSay.size
-        $u.said(nick,name,ip,1.3)
+      if sSay.bytesize > 300
+        $u.said(nick,name,ip,0.8)
       end
 
       if $u.saidAndCheckFlood(nick,name,ip,sSay)
@@ -408,15 +407,14 @@ class IRC
         end
         tmp = Time.now - $u.get_ban_time(nick)
         print "get ban time: ", tmp, "\n"
+        $b_tim = 51
         case tmp
-        when 0..80
+        when 0..$b_tim
           return
-        when 79..910 #之前ban过
-          autoban to,nick,400,'q'
-          msg(nick,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",10)
+        when $b_tim..910 #之前ban过
+          autoban to,nick,900,'b'
           kick to,a1
         else
-          $b_tim = 51
           msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",1)
           autoban to,nick,$b_tim rescue log
         end
@@ -930,8 +928,8 @@ class IRC
   #自动说新帖
   def say_new(to)
     return unless $need_say_feed > 0
-    return unless Time.now.hour.between? 8,22
-     @say_new=Thread.new(to){|to|
+    return unless Time.now.hour.between? 7,22
+     @say_new=Thread.new(to) { |to|
         Thread.current[:name]= 'say_new'
         tmp = get_feed
         msg(to,tmp,0)
@@ -1053,7 +1051,7 @@ class IRC
     @timer1 = Thread.new do#timer 1 , interval = 2600
       Thread.current[:name]= 'timer 30 min'
       loop do
-        sleep 500 + rand(1800)
+        sleep 400 + rand(600)
         timer_daily
         say_new($channel)
       end

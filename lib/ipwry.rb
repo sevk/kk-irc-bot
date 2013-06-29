@@ -6,18 +6,18 @@ require 'rubygems'
 require 'bundler/setup'
 require 'qqwry'
 
-f='QQWry.Dat'
-unless File.exist? f
-  p f + ' not found '
+$fqqwry='qqwry.dat'
+unless File.exist? $fqqwry
+  p $fqqwry + ' not found '
 end
 
 class IpLocationSeeker
   def seek(ip) #查询IP
-    unless File.exist? 'QQWry.Dat'
+    unless File.exist? $fqqwry
       return ''
     end
 
-    db = QQWry::Database.new('QQWry.Dat')
+    db = QQWry::Database.new $fqqwry
     r = db.query(ip)
     "#{r.country} #{r.area}"
   end

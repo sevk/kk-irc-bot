@@ -12,9 +12,10 @@ load 'irc_user.rb'
 load 'color.rb'
 load 'plugin.rb' rescue log
 require 'json'
+require 'google-search'
 
 def nil.empty?
-	true
+  true
 end
 
 class String
@@ -236,11 +237,11 @@ end
 def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   p 'in get_feed'
   begin
-   feed = Timeout.timeout(13) {
+   feed = Timeout.timeout(14) {
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
-    return if rand < 0.5
+    return if rand < 0.6
     return ' 取新帖 timeout '
   end
 
@@ -269,7 +270,7 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     #des = feed.items[0].content
     #$ub = "新⇨ #{ti} #{link} #{des}"
     $ub = ".. 逛了一下论坛,暂时无新贴.只有Re: ."
-    $ub = '' if rand > 0.1
+    $ub = '' if rand > 0.05
   else
     $old_feed_date = $date
   end
@@ -695,10 +696,10 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
-  require 'google-search'
   s = Google::Search::Web.new do |s|
     s.query = word
   end
+  p s.class
   s.find.each{|x| return x.content}
 end
 
