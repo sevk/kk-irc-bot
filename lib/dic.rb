@@ -250,12 +250,12 @@ def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   #return if feed.empty?
   feed.items.each { |i|
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-    des = i.content.to_s
+    des = i.content[0,$fun||500]
     #date = i.updated.content
     $date = link
     ti = i.title.content.to_s
 
-    next if ti =~ /Re:/i && not_re
+    next if ti =~ /Re:/i and not_re
     puts i.updated.content
     $ub = "新 #{ti} #{link} #{des}"
     #p $ub
@@ -312,7 +312,7 @@ class String
     #page          = agent.submit(form)
     page = agent.post(url,{"input"=> self } )
     #File.new('a.txt','wb').puts page.body
-    page.body.match(/<em>.+:(.+)<input type/m)[1].gsub(/alice/i,' @ ')
+    page.body.match(/<em>.+:(.+)<input type/m)[1].gsub(/alice/i,' kk ')
       .gsub!(/<.*?>/i,'') rescue '休息一下..'
   end
 
@@ -329,6 +329,10 @@ class String
 		g_tr(self,flg)
 	end
 end
+
+$proc_flood = Proc.new{
+  #$u.said(nick,name,ip,0.2)
+}
 
 def getbody(url)
   p url

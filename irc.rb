@@ -50,6 +50,7 @@ class IRC
     @send_nick=Proc.new{
        send "NICK #{@nick}"
     }
+    $channel_lastsay= Time.now
     loadDic
     mystart
   end
@@ -352,41 +353,24 @@ class IRC
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
     end
-
     case s
-    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(#{Regexp::escape @nick})\s:(.+)$/i #PRIVMSG me
-      from=a1=$1;to=a2=$2;ip=a3=$3;to=a4=$4;sSay=a5=$5
+    #channel 消息
+    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i
+      nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
       return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
 
-      if $u.saidAndCheckFloodMe(from,to,a3)
-        #$u.floodmereset(a1)
-        #msg from,"..不要玩机器人..谢谢.. .. ",0
+      #priv msg me
+      if to =~ /#{Regexp::escape @nick}/i
+        tran_msg_me(nick,name,ip,to,sSay)
         return
       end
 
-      if s =~ /help|man|\??\??/i
-        sSay = '`help |'
-      end
-
-      if $u.isBlocked?(from)
-        return
-      end
-
-      tmp = check_dic(a5,a1,a1)
-      if tmp == 1 #not matched check_dic
-        #没到下次说话时间，就不处理botsay
-        return if Time.now < $min_next_say
-        $otherbot_said=false
-        t{ do_after_sec(to,"#{from}, #{botsay(sSay)}",10,$msg_delay*3+9) }
-      end
-
-    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i #PRIVMSG channel
-      nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
-      return if nick==@nick
+      $channel_lastsay=Time.now
 
       #禁掉一段时间
       if $u.isBlocked?(from)
-        return
+        puts " flood? blocked! "
+        #return
       end
 
       #bot功能是否打开
@@ -396,7 +380,7 @@ class IRC
       end
       
       if sSay.bytesize > 300
-        $u.said(nick,name,ip,0.8)
+        $u.said(nick,name,ip,1)
       end
 
       if $u.saidAndCheckFlood(nick,name,ip,sSay)
@@ -407,13 +391,13 @@ class IRC
         end
         tmp = Time.now - $u.get_ban_time(nick)
         print "get ban time: ", tmp, "\n"
-        $b_tim = 51
+        $b_tim = 23
         case tmp
         when 0..$b_tim
           return
-        when $b_tim..910 #之前ban过
-          autoban to,nick,900,'b'
-          kick to,a1
+        when $b_tim..1800#之前ban过
+          autoban to,nick,3600 ,'b'
+          #kick to,a1
         else
           msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",1)
           autoban to,nick,$b_tim rescue log
@@ -427,7 +411,7 @@ class IRC
       #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          #$u.said(nick,name,ip,1.25)
+          $u.said(nick,name,ip,1.9)
         end
         return
       end
@@ -440,7 +424,7 @@ class IRC
       #$u.setip(from,name,ip)
 
       #以我的名字开头
-      if sSay =~ /^#{Regexp::escape @nick}[\s,:`](.*)$/i 
+      if sSay =~ /^#{Regexp::escape @nick}[\s,:`]?(.*)$/i 
         s=$1.to_s.strip #消息内容
 
         s.prepend '`' if s[0,1] != '`'
@@ -484,7 +468,8 @@ class IRC
         end
       end
 
-    when /^:(.+?)!(.+?)@(.+?)\s(JOIN|part|quit|kick)\s[:#](.*)$/i #joins
+    #join|part|quit|kick
+    when /^:(.+?)!(.+?)@(.+?)\s(JOIN|part|quit|kick)\s[:#](.*)$/i
       #:Guest87873!~test@121.18.86.94 JOIN #ubuntu-cn
       #@gateway/tor/x-2f4b59a0d5adf051
       nick=from=$1;name=$2;ip=$3;mt=$4;chan=$5
@@ -507,9 +492,6 @@ class IRC
       #p n
       #p @count
       renew_Readline_complete($u.all_nick)
-    when /^(.+?)Notice(.+)$/i  #Notice
-      #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
-      puts s
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       nick=$1;name=$2;ip=$3;new=$4
@@ -519,11 +501,34 @@ class IRC
       $need_Check_code -= 1 if new =~ $botlist_Code
       $need_say_feed -= 1 if new =~ $botlist_ub_feed
       renew_Readline_complete($u.all_nick)
+
+    when /^(.+?)Notice(.+)$/i  #Notice
+      #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
+      puts s
+
     else
+      puts s
       return 1 # not match
     end
-  rescue
-    log ''
+  end
+
+  #处理私人消息
+  def tran_msg_me(nick,name,ip,to,s)
+    if $u.saidAndCheckFloodMe(nick,to,a3)
+      #$u.floodmereset(a1)
+      #msg from,"..不要玩机器人..谢谢.. .. ",0
+      return
+    end
+    if $u.isBlocked?(nick)
+      return
+    end
+    tmp = check_dic(s,nick,nick)
+    if tmp == 1 #not matched check_dic
+      #没到下次说话时间，就不处理botsay
+      return if Time.now < $min_next_say
+      $otherbot_said=false
+      t{ do_after_sec(nick,"#{nick}, #{botsay(s)}",10,$msg_delay*3+9) }
+    end
   end
 
   def tran_url(url,from,to,force=true)
@@ -644,6 +649,9 @@ class IRC
       do_after_sec(to,from + ':点点点.',10,$msg_delay/3 )
     when /^`i\s?(.*?)$/i #svn
       sayDic(0,from,to,$my_s )
+    when $re_flood
+      $proc_flood.call rescue nil
+      $u.said(nick,name,ip,0.2)
     #when $dic
       #msg to,from + ", #$1", $msg_delay * 3
     when /^`rst\s?(\d*)$/i #restart soft
@@ -848,7 +856,7 @@ class IRC
     return if check_code(s) #乱码
     pr_highlighted(s) rescue log #if not $client #简单显示消息
     return unless $bot_on #bot 功能
-    return if check_msg(s).class != Fixnum rescue log('')#1 not matched 字典消息
+    check_msg s rescue log '' #1 not matched 字典消息
   end
 
   #加入频道
@@ -860,7 +868,7 @@ class IRC
 
   #延时发送
   def do_after_sec(to,sSay,flag,second=3)
-    print " to: #{to}  say:#{sSay}  flag:#{flag}  second:#{second} \n"
+    print " to: #{to}  say:#{sSay[0,400]}  flag:#{flag}  second:#{second} \n"
     Thread.new do
       Thread.current[:name]= 'delay say'
       if second !=0
@@ -1006,7 +1014,7 @@ class IRC
           check_dic(s,@nick,@nick)
         end
      else
-        s.prepend "人机合一说:" if $bot_on
+        s << " `人机合一说" if $bot_on
         say s
      end
   end
@@ -1043,6 +1051,7 @@ class IRC
         if n % 20 == 0
           check_proxy_status rescue log
         end
+
       end
     end
   end
@@ -1053,7 +1062,6 @@ class IRC
       loop do
         sleep 400 + rand(600)
         timer_daily
-        say_new($channel)
       end
     end
   end
@@ -1107,6 +1115,7 @@ if not defined? $u
   p $server
 
   irc = IRC.new($server,$port,$nick[0],$channel,$charset)
+  $irc=irc
   irc.timer_start
 
   irc.input_start if $client
