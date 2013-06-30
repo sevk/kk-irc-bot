@@ -233,59 +233,6 @@ rescue
   log
 end
 
-#取ubuntu.com.cn的 feed.
-def get_feed(url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
-  p 'in get_feed'
-  begin
-   feed = Timeout.timeout(14) {
-      RSS::Parser.parse(url)
-    }
-  rescue Timeout::Error
-    return if rand < 0.6
-    return ' 取新帖 timeout '
-  end
-
-  $ub=nil
-  p feed if feed.class != RSS::Atom::Feed
-  #return if feed.empty?
-  feed.items.each { |i|
-    link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-    des = i.content[0,$fun||500]
-    #date = i.updated.content
-    $date = link
-    ti = i.title.content.to_s
-
-    next if ti =~ /Re:/i and not_re
-    puts i.updated.content
-    $ub = "新 #{ti} #{link} #{des}"
-    #p $ub
-    break
-  }
-
-  if $old_feed_date == $date and $ub
-    #link = feed.items[0].link.href
-    #ti = feed.items[0].title.content
-    ##date = feed.items[0].updated.content
-    #$date = link
-    #des = feed.items[0].content
-    #$ub = "新⇨ #{ti} #{link} #{des}"
-    $ub = ".. 逛了一下论坛,暂时无新贴.只有Re: ."
-    $ub = '' if rand > 0.05
-  else
-    $old_feed_date = $date
-  end
-
-  return if $ub.empty?
-  $ub.gsub!(/\s+/,' ')
-  n = $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ')
-    .unescapeHTML
-  if n.size < 5
-    p $ub
-    p n
-    return
-  end
-  return n
-end
 
 class String
   def alice_say
@@ -518,6 +465,7 @@ def gettitle(url,proxy=true,mechanize=1)
 			if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
 			end
+      return 'err: no title' if title.empty?
 			title = title.unescapeHTML.uri_decode
 			title.gsub!(/\s+/,' ')
       puts title if $DEBUG
@@ -601,8 +549,8 @@ def gettitle(url,proxy=true,mechanize=1)
       #charset='GB18030' if charset =~ /^gb|iso-8859-/i
       title = title.code_a2b(charset,'UTF-8') rescue title
     end
+    return 'err: no title' if title.empty?
     title = title.unescapeHTML rescue title
-    #p title
     title
 end
 

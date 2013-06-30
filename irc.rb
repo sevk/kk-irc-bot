@@ -933,17 +933,6 @@ class IRC
     @exit = true
   end
 
-  #自动说新帖
-  def say_new(to)
-    return unless $need_say_feed > 0
-    return unless Time.now.hour.between? 7,22
-     @say_new=Thread.new(to) { |to|
-        Thread.current[:name]= 'say_new'
-        tmp = get_feed
-        msg(to,tmp,0)
-     }
-  end
-
   #大约每天一次
   def timer_daily
     #大约每天6点执行
