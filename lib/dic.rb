@@ -109,7 +109,7 @@ load 'do_as_rb19.rb'
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
 $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
-$kick_info = "请勿Flood，超过6行请贴至paste.ubuntu.com ."
+$kick_info = "请勿Flood，超过6行 大段文字 请贴至paste.ubuntu.com"
 
 Ver='v0.52' unless defined? Ver
 Help = "我是 kk-irc-bot Ver:#{Ver} ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 `i 机器人源码. 末尾加入|重定向,如 g ubuntu | nick" unless defined? Help
@@ -145,8 +145,6 @@ $my_s= '我的源码: http://git.oschina.net/sevkme/kk-irc-bot'
 
 #字符串编码集猜测
 def guess_charset(str)
-	#s=str.force_encoding("ASCII-8BIT")
-	#s=str.clone
   return if str.empty?
    s=str.gsub(/[\x0-\x7f]/,'') rescue str.clone
   return if s.bytesize < 6
@@ -418,6 +416,7 @@ def gettitle(url,proxy=true,mechanize=1)
 
     begin
       page = agent.head(url)
+      #File.new('/tmp/h.x','wb').puts page.header
        type = page.header['content-type']
        #print 'get head ok: '
        if type =~ /image\/./i
@@ -437,7 +436,6 @@ def gettitle(url,proxy=true,mechanize=1)
        end
     rescue Exception
       print 'err in get head '
-      #p $!.class
       p $!
       case $!
       when Mechanize::ResponseCodeError
@@ -446,33 +444,28 @@ def gettitle(url,proxy=true,mechanize=1)
           return $!.message + 'in get head'
         end
       end
-      log '' if $DEBUG
     end
 
     begin
       page = agent.get(url)
       #File.new('/tmp/a.x','wb').puts page.title
       #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
-      #p page
       if page.class != Mechanize::Page
         p 'no page'
         return
       end
       title = page.title
 			charset= guess_charset(title)
-      charset='GB18030' if charset =~ /^gb|IBM855|windows-1252/i
+      charset='GB18030' if charset =~ /^IBM855|windows-1252/i
 
 			if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
 			end
       return 'err: no title' if title.empty?
-			title = title.unescapeHTML.uri_decode
-			title.gsub!(/\s+/,' ')
-      puts title if $DEBUG
+			title = title.unescapeHTML
       return title[0,300]
     rescue Exception
       print 'err in get body '
-      #p $!.class
       p $!
       case $!
       when Mechanize::ResponseCodeError
@@ -513,9 +506,9 @@ def gettitle(url,proxy=true,mechanize=1)
       sleep timeout
       return $!.message
     rescue Exception
+      p ' err in URI.open '
       p $!
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
-				p $!.message
 				p ' need pass wall '
 				return
       end
@@ -651,8 +644,8 @@ def getgoogleDefine(word)
   s = Google::Search::Web.new do |s|
     s.query = word
   end
-  p s.class
-  s.find.each{|x| return x.content}
+  #p s.class #== Google::Search::Web
+  s.find.each{|x| return x.content.gsub!(/<.*?>/,'|') }
 end
 
 def getGoogle(word,flg=0)
@@ -855,7 +848,7 @@ end
 def host(domain)
   return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
   domain.gsub!(/\/.*/i,'')
-  return domain if not domain.include?('.')
+  return domain unless domain.include?('.')
   return Resolv.getaddress(domain) rescue domain
 end
 def getProvince(domain)#取省
@@ -869,16 +862,17 @@ def hostA(domain,hideip=true)#处理IP 或域名
   if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
     tmp = $1
   else
+    print " ip: ",domain ,10.chr
     tmp = host(domain)
   end
-  if hideip
-    tmp = IpLocationSeeker.new.seek(tmp) rescue tmp
-  else
-    tmp = tmp + '-' + IpLocationSeeker.new.seek(tmp) rescue tmp
-  end
-  tmp.gsub!(/CZ88\.NET/i,'')
-  tmp.gsub!(/IANA/i,'不在宇宙')
-  tmp.gsub(/\s+/,'').to_s + ' '
+  rtn=" "
+  rtn.prepend tmp unless hideip
+  tmp = IpLocationSeeker.new.seek tmp rescue tmp
+  rtn << tmp
+
+  rtn.gsub!(/CZ88\.NET/i,'')
+  rtn.gsub!(/IANA/i,'不在宇宙')
+  rtn.gsub(/\s+/,'').to_s + ' '
 end
 
 alias _print print if not defined?_print
@@ -1007,7 +1001,6 @@ def check_proxy_status
     begin
       Timeout.timeout(8){
         a=TCPSocket.open($proxy_addr2,$proxy_port2)
-        a.send('get',0)
         a.close
       }
     rescue Timeout::Error

@@ -17,8 +17,13 @@ def joke(n=nil)
     return "empty err. try again. " + joke
   end
   s.gsub!(/<.+?>/,' ')
-  s=s.code_a2b(guess(s) ,'utf-8')
-  "id:#{n} #{s.unescapeHTML}"
+  s=s.code_a2b(guess(s) ,'utf-8').unescapeHTML
+  if s.bytesize > $fun
+    sleep 0.1
+    s=joke
+  end
+  sleep 10
+  s
 end
 alias 给大爷讲个笑话 joke
 

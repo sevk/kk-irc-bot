@@ -6,9 +6,9 @@
 $maxfloodme ||= 87.0 #70
 $maxflood ||= 33.3  #35.0
 $initFlood = 83.0 #83
-$maxNamed = 2*(Time.now.year-2000) + 160
+$maxNamed = 3*(Time.now.year-2000) + 150
 
-class ALL_USER
+class All_user
 	#attr_accessor
   def initialize
     @pos_write = 0
@@ -19,7 +19,7 @@ class ALL_USER
     #@count_said=Array.new
     @sex=Array.new
 
-    #[1]=>重复次数,[2]=>玩机器人次数
+    #[1]=>重复次数,[2]=>人品值
     #@RP=Array.new(3,[]) #why wrong , very surprised
 		@RP=Array.new(3) {[]}
     init_pp
@@ -58,16 +58,22 @@ class ALL_USER
     name.scan(/../).map{|x| x.hex}.join('.')
   end
 
+  #get 人品
+  def getrp(nick)
+    index = getindex(nick)
+    return 0 unless index
+    @RP[2][index]=0 if not @RP[2][index]
+    return @RP[2][index]
+  end
+
   #记录nick库
   def add(nick,name,ip)
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
-    puts '6 add ' + nick if $debug
-    return unless nick
-    if @index.include?(nick)
-      if ip != getip(nick)
-        puts '[I] ' + nick + ' ip change'
-        @addr[nick]= getaddr_fromip(ip)
+    index = getindex(nick)
+    if index
+      if ip != @ip[index]
+        chg_ip(nick,ip)
       end
       return false
     end
@@ -77,6 +83,7 @@ class ALL_USER
     @addr.delete(oldname) rescue nil
 
     @addr[nick]= getaddr_fromip(ip)
+
     @index[nick] = @pos_write
     @name[@pos_write]= name
     @ip[@pos_write]= ip
@@ -92,8 +99,9 @@ class ALL_USER
     $lastsay[@pos_write]=nil
     #$ban_time=read_from_db
     $ban_time[@pos_write]=Time.now - 7200
-    $mode[@pos_write]=nil
+    setmode(@pos_write,'')
     @RP[1][@pos_write] = 0
+    setrp(@pos_write,ip)
 
     if @pos_write == $maxNamed
       @pos_write = 0
@@ -113,7 +121,6 @@ class ALL_USER
   end
 
   def sayorder()
-     
   end
 
   def set_ban_time(nick)
@@ -169,6 +176,7 @@ class ALL_USER
     p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood+10
     return $timelast6me[index] < $maxfloodme
   end
+
   def check_flood(nick)
     index = getindex(nick)
     return unless index
@@ -177,11 +185,11 @@ class ALL_USER
     elsif $timelast6say[index] < 0
       $timelast6say[index] = $initFlood 
     end
-    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 10
+    p "~ #{$timelast6say[index]}" if $timelast6say[index] < $maxflood + 6
     return $timelast6say[index] < $maxflood
   end
 
-  def said_me(nick,name,ip,ratio=1.0)
+  def said_me(nick,name,ip,fix=0.0)
     if ! @index
       return add(nick,name,ip)
     end
@@ -194,12 +202,13 @@ class ALL_USER
     $timelastsayme[index] = t if ! $timelastsayme[index]
     $timelast6me[index] = $initFlood if ! $timelast6me[index]
     $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood or $timelast6me[index] < 1
-    $timelast6me[index] = $timelast6me[index] / 5 * 4 + ratio * (t - $timelastsayme[index])
+    $timelast6me[index] = $timelast6me[index] / 5 * 4 + 
+      (t-$timelastsayme[index]) +fix + getrp(nick)/10
     #p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
   end
   
-  def said(nick,name,ip,ratio=1.0)
+  def said(nick,name,ip,fix=0.0)
     if not @index
       puts '#无任何用户'
       return add(nick,name,ip)
@@ -215,7 +224,8 @@ class ALL_USER
     $timelastsay[index] = t if ! $timelastsay[index]
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
     $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood or $timelast6say[index] < 1
-    $timelast6say[index] = $timelast6say[index] / 5 * 4 + ratio * (t - $timelastsay[index])
+    $timelast6say[index] = $timelast6say[index] / 5 * 4 + 
+      (t - $timelastsay[index]) +fix + getrp(nick)/10
     $timelastsay[index] = t
   end
 
@@ -228,6 +238,17 @@ class ALL_USER
     said_me(nick,name,ip)
     return check_flood_me(nick)
   end
+
+  #用于flood检测等功能，可以有 10%的正加成
+  def setrp(index,ip)
+    if ip.match(/\w+\/\w+|unaffiliated/)
+      p 'RP=30'
+      @RP[2][index] = 50
+    else
+      @RP[2][index] = 0
+    end
+  end
+
   def chg_ip(nick,ip)
     index = getindex(nick)
     if index == nil #未记录的用户名
@@ -235,7 +256,9 @@ class ALL_USER
     end
 
     @ip[index]=ip
-    @addr[nick]=getaddr_fromip(ip)
+
+    @addr[nick]= getaddr_fromip(ip)
+    setrp(index,ip)
   end
 
   def chg_nick(old,new)
@@ -280,6 +303,11 @@ class ALL_USER
     @ip[index]=ip
     @addr[nick]=getaddr_fromip(ip)
   end
+
+  def setmode(index,mode='')
+    $mode[index]=mode
+  end
+
   def getip(nick)#记忆的IP
     index = getindex(nick)
     return unless index
@@ -289,18 +317,7 @@ class ALL_USER
     return @addr[nick].to_s
   end
   def ims(nick)
-    index = getindex(nick)
-    return $timelast6say[index]
-  end
-end
-
-class ONE_USER
-  attr :name
-  def initialize name
-    @name = name
-  end
-  def ip
-    $u.getip @name
+    "人品值：#{getrp nick}"
   end
 end
 

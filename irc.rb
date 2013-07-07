@@ -62,9 +62,8 @@ class IRC
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
-    p ' in autoban '
-    if $lag and $lag > 2
-      msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",5)
+    if $lag and $lag > 5
+      msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",0)
       sleep 0.1
       restart if $lag > 6
       return
@@ -95,8 +94,10 @@ class IRC
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
-      @irc.puts "PING 1" rescue log
-      sleep 14
+      @irc.puts "PING #{Time.now.to_i}" rescue log
+      sleep 1
+      @irc.puts "PING #{Time.now.to_i}" rescue log
+      sleep 15
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -119,7 +120,7 @@ class IRC
     do_after_sec(who,sSay,0,delay||$msg_delay)
   end
 
-  Max=430
+  Max=440
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
@@ -128,7 +129,7 @@ class IRC
         s.slice_u!($fun..-1)
         s << ' …'
       end
-      i=0.1
+      i=0.09
       a,b=0,140
       b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
       while a < s.bytesize
@@ -149,7 +150,7 @@ class IRC
     #print "s:"
     #p s
     s.gsub!(/\s+/,' ')
-    if s.bytesize > Max
+    if s.bytesize > Max + 3
       s.slice_u!(Max..-1)
       if @charset == 'UTF-8'
         while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
@@ -282,6 +283,7 @@ class IRC
       when 21 then re = $u.ims(c).to_s
       when 22
         c =$u.completename(c)
+        return if c.match($nick_blacklist)#简单过滤白名单
         ip = $u.getip(c)
         print 'ip=',ip
         if ip =~ /^gateway\/|mibbit\.com/i#自动whois
@@ -292,6 +294,7 @@ class IRC
           send('whois ' + c)
           return
         end
+        sleep 10
         re = "#{$u.getname(c)} #{hostA(ip)}"
       when 23
         re = "#{$u.addrgrep(c)}"
@@ -367,12 +370,6 @@ class IRC
 
       $channel_lastsay=Time.now
 
-      #禁掉一段时间
-      if $u.isBlocked?(from)
-        puts " flood? blocked! "
-        #return
-      end
-
       #bot功能是否打开
       unless $bot_on
         $u.add(nick,name,ip)
@@ -380,7 +377,7 @@ class IRC
       end
       
       if sSay.bytesize > 300
-        $u.said(nick,name,ip,1)
+        $u.said(nick,name,ip,-1)
       end
 
       if $u.saidAndCheckFlood(nick,name,ip,sSay)
@@ -390,7 +387,7 @@ class IRC
           return
         end
         tmp = Time.now - $u.get_ban_time(nick)
-        print "get ban time: ", tmp, "\n"
+        #print "get ban time: ", tmp, "\n"
         $b_tim = 23
         case tmp
         when 0..$b_tim
@@ -399,25 +396,27 @@ class IRC
           autoban to,nick,3600 ,'b'
           #kick to,a1
         else
-          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q#{$b_tim}s ",1)
           autoban to,nick,$b_tim rescue log
+          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q #{$b_tim}s ",0)
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
         return
       elsif $u.rep nick
-        msg(to,"#{nick}: .. .. ..",20)
+        $u.said(nick,name,ip,-1)
+        msg(to,"#{nick}: .. .. ..",40)
       end
 
       #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          $u.said(nick,name,ip,1.9)
+          $u.said(nick,name,ip,0)
         end
         return
       end
 
       #有BOT说话
       if name =~ $botlist || nick =~ $botlist
+        $u.said(nick,name,ip,1)
         $otherbot_said=true
         return
       end
@@ -436,7 +435,7 @@ class IRC
            return if Time.now < $min_next_say
            $otherbot_said=false
            #bot say
-           t {do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay) }
+           t {do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay*3+9) }
         when String
            msg to,tmp
         else #是字典消息
@@ -462,7 +461,7 @@ class IRC
       else #是字典消息
         if $u.saidAndCheckFloodMe(a1,a2,a3)
           $u.floodmereset(a1)
-          $otherbot_said=true
+          #$otherbot_said=true
           #msg to ,"#{from}, 不要玩机器人",0 if rand>0.4
           return
         end
@@ -613,7 +612,8 @@ class IRC
     when /^`?(什么是|what\sis)(.+[^。！.!])(呢)?$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
-      return if w =~/这|那|的|哪| that/
+      return if w =~/这|那|哪| that/
+      w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`?(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
@@ -651,7 +651,7 @@ class IRC
       sayDic(0,from,to,$my_s )
     when $re_flood
       $proc_flood.call rescue nil
-      $u.said(nick,name,ip,0.2)
+      $u.said(from,'','',-1)
     #when $dic
       #msg to,from + ", #$1", $msg_delay * 3
     when /^`rst\s?(\d*)$/i #restart soft
@@ -689,8 +689,6 @@ class IRC
     else
       return 1#not match dic_event
     end
-	rescue
-		return 1
   end
 
   Notices_head = "^:NickServ!\\w+?@\\w+?.+?\sNOTICE.+?"
@@ -868,7 +866,7 @@ class IRC
 
   #延时发送
   def do_after_sec(to,sSay,flag,second=3)
-    print " to: #{to}  say:#{sSay[0,400]}  flag:#{flag}  second:#{second} \n"
+    #print " to: #{to}  say:#{sSay[0,400]}  flag:#{flag}  second:#{second} \n"
     Thread.new do
       Thread.current[:name]= 'delay say'
       if second !=0
@@ -879,7 +877,7 @@ class IRC
         end
       end
       if $otherbot_said
-        say("other bot said",to) if rand < 0.2
+        #say("other bot said",to) if rand < 0.2
         #Thread.exit
       end
 
@@ -908,13 +906,13 @@ class IRC
   #自动补全
   def renew_Readline_complete(w)
     Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
-    Readline.completion_case_fold=true
+    Readline.completion_case_fold=false
   end
 
   def mystart
 	  conf = "_#{ARGV[0]}.yaml"
     $u = YAML.load_file conf if File.exist? conf
-    $u = ALL_USER.new if $u.class != ALL_USER
+    $u = All_user.new if $u.class != All_user
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
   end
@@ -1012,12 +1010,13 @@ class IRC
   def input_start
     #$stty_save = `stty -g`.chomp rescue nil
     Thread.new do
+      Thread.current.priority = -1
       Thread.current[:name]= 'iSend'
       loop do
         begin
           s = Readline.readline("[#@channel]",true)
           iSend s
-          sleep 0.01
+          sleep 0.2
         rescue
           log ''
         end
@@ -1070,7 +1069,7 @@ class IRC
           x = @irc.recvfrom(1222)[0]
         end
         if x.empty?
-          log ' x.empty, may be lose conn '
+          #log ' x.empty, may be lose conn '
           return
         end
         x.split(/\r?\n/).each {|s|
@@ -1083,9 +1082,8 @@ end
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
-  sleep $msg_delay*6 + rand($msg_delay*20)
+  sleep $msg_delay + rand($msg_delay*10)
   p "exec #{$0} #$argv0"
-  sleep 5
   exec "#{$0} #$argv0"
 end
 
@@ -1124,7 +1122,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep $msg_delay*2 +rand($msg_delay*10)
+    sleep $msg_delay +rand($msg_delay*2)
   end
 end
 
