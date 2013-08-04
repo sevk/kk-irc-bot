@@ -125,21 +125,24 @@ class IRC
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
-    if $fun and s.bytesize > Max
+    s.gsub!(/\s+/,' ').strip!
+    if $fun and s.bytesize > Max - "PRIVMSG #{chan} :".size
       if s.bytesize > $fun
         s.slice_u!($fun..-1)
         s << ' …'
       end
       i=0.09
       a,b=0,140
-      b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+      b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
       send "PRIVMSG #{chan} :#{s[a..b]}"
-      while a < s.size
+      a=b+1
+      while a <= s.size
         sleep i+=0.08
+        send "PRIVMSG #{chan} :> #{s[a..b]}"
         a=b+1
         b=a+140
-        b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
-        send "PRIVMSG #{chan} :∷ #{s[a..b]}"
+        p " a,b: #{a} ,#{b} "
+        b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -911,9 +914,11 @@ class IRC
   end
 
   def mystart
+    $data = JSON.parse open("_#{ARGV[0]}.dat").read rescue nil
+    $data ||= Hash.new
 	  conf = "_#{ARGV[0]}.yaml"
-    $u = YAML.load_file conf if File.exist? conf
-    $u = All_user.new if $u.class != All_user
+    $u = YAML.load_file conf rescue nil
+    $u ||= All_user.new
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
   end
@@ -924,10 +929,9 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    log 'my exit '
+    send( 'quit ' + exit_msg) rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
-    send( 'quit ' + exit_msg) rescue nil
     sleep 0.3
     @exit = true
   end
@@ -1060,14 +1064,14 @@ class IRC
     loop {
       return if @exit
       return if $need_reconn
-      ready = select([@irc], nil, nil, 5)
+      ready = select([@irc], nil, nil, 3)
       next unless ready
       ready[0].each do |s|
         next unless s == @irc
         if $use_ssl
           x = @irc.readpartial(OpenSSL::Buffering::BLOCK_SIZE)
         else
-          x = @irc.recvfrom(1222)[0]
+          x = @irc.recvfrom(1522)[0]
         end
         if x.empty?
           #log ' x.empty, may be lose conn '

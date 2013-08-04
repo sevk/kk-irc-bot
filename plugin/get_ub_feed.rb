@@ -33,7 +33,8 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   return if $ub.empty?
 
   $no_new_feed ||=0
-  if $old_feed_link == @rsslink and $ub
+  $data ||= Hash.new
+  if $data['old_feed_link'] == @rsslink and $ub
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
@@ -44,7 +45,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     return
   else
     $no_new_feed=0
-    $old_feed_link = @rsslink
+    $data['old_feed_link'] = @rsslink
   end
 
   $ub.gsub!(/\s+/,' ')

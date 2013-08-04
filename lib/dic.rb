@@ -198,9 +198,10 @@ end
 def saveu
   return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
-  File.open("_#{ARGV[0]}.yaml","w") do |o|
-    YAML.dump($u, o)
-  end
+  a=File.open("_#{ARGV[0]}.yaml","w")
+  a.write YAML.dump $u
+  a=File.open("_#{ARGV[0]}.dat", 'w')
+  a.write $data.to_json
   puts ' save u ok'.red
 end
 
