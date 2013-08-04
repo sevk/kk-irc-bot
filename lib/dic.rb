@@ -504,7 +504,7 @@ def gettitle(url,proxy=true,mechanize=1)
       }
     rescue Timeout::Error
       sleep timeout
-      return $!.message
+      return "取标题 #{$!.message}"
     rescue Exception
       p ' err in URI.open '
       p $!
@@ -513,7 +513,7 @@ def gettitle(url,proxy=true,mechanize=1)
 				return
       end
       sleep timeout
-      return $!.message + ' . IN gettitle'
+      return "取标题 #{$!.message}"
     end
 
     return unless istxthtml
@@ -556,7 +556,7 @@ def gettitleA(url,from="_",proxy=true)
   rescue Timeout::Error
     Thread.pass
     p 'get title Time out '
-    return ['time out . IN gettitle ']
+    return
   end
 
   return if ti.empty?
@@ -823,6 +823,9 @@ end
 
 #为Time类加入hm方法,返回格式化后的时和分
 class Time
+  def self.hms
+    Time.now.strftime('%H%M%S')
+  end
   def hm
     Time.now.strftime(' %H:%M')
   end

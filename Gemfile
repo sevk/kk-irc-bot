@@ -1,6 +1,10 @@
 #source "http://rubygems.org"
 source "http://ruby.taobao.org"
-require './lib/platform.rb'
+
+$: << '.'
+$: << 'lib'
+require 'platform.rb'
+
 gem "colored"
 gem "mechanize"
 gem "htmlentities"

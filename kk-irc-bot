@@ -1,13 +1,11 @@
 #!/bin/bash -e
 
-echo run kk-irc-bot in screen and proxy.py
+echo run kk-irc-bot and proxy in screen
 
 #git clone --depth 1 git://github.com/phus/goagent.git
 sudo -ukk -i bash -c "cd /home/kk/dev/goagent/local ; screen -d -m ./proxy.py "
 #sudo -ukk -i bash -c "cd /home/kk/dev/sevkfg/goagent/local ; screen -d -m ./proxy.py "
 sudo -ukk -i bash -c "cd /home/kk/dev/kk-irc-bot ; screen -d -m ./irc.rb ub.conf & "
-sudo -ukk -i bash -c "cd /home/kk/dev/kk-irc-bot;screen -d -m ./irc.rb avplayer.conf &"
-#gem install bundler ;
-#bundle install ;
+#sudo -ukk -i bash -c "cd /home/kk/dev/kk-irc-bot;screen -d -m ./irc.rb avplayer.conf &"
 
 

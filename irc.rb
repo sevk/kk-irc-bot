@@ -10,13 +10,15 @@
 =end
 #BEGIN {$VERBOSE = true}
 
+require 'socket'
+Socket.do_not_reverse_lookup = true
 require 'rubygems'
 load './lib/dic.rb'
 require 'fileutils'
 include FileUtils
 require 'platform.rb'
 require 'openssl'
-OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE #unsafe
 I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = true
 include Math
 #require 'timeout'
@@ -25,7 +27,6 @@ require 'yaml'
 require "ipwry.rb"
 require 'thread'
 require 'open-uri'
-Socket.do_not_reverse_lookup = true
 
 class IRC
   def initialize(server,port,nick,channel,charset,name=$name)
@@ -131,13 +132,14 @@ class IRC
       end
       i=0.09
       a,b=0,140
-      b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
-      while a < s.bytesize
+      b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+      send "PRIVMSG #{chan} :#{s[a..b]}"
+      while a < s.size
         sleep i+=0.08
-        send "PRIVMSG #{chan} :#{s[a..b]}"
         a=b+1
         b=a+140
-        b+=1 while b<s.bytesize and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - rand(10) -5
+        b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size - 10
+        send "PRIVMSG #{chan} :∷ #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -168,7 +170,7 @@ class IRC
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
     end
-    puts "----> #{s}".c_rand(Time.now.day)
+    puts "#{Time.hms} ----> #{s}" .c_rand(Time.now.day)
     savelog s
   end
 
@@ -217,7 +219,7 @@ class IRC
         @nick = $nick[0]
         @send_nick.call
         sleep rand(30)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.7
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.4
      end
   end
 
@@ -513,8 +515,8 @@ class IRC
 
   #处理私人消息
   def tran_msg_me(nick,name,ip,to,s)
-    if $u.saidAndCheckFloodMe(nick,to,a3)
-      #$u.floodmereset(a1)
+    if $u.saidAndCheckFloodMe(nick,to,ip)
+      #$u.floodmereset(nick)
       #msg from,"..不要玩机器人..谢谢.. .. ",0
       return
     end
@@ -526,7 +528,7 @@ class IRC
       #没到下次说话时间，就不处理botsay
       return if Time.now < $min_next_say
       $otherbot_said=false
-      t{ do_after_sec(nick,"#{nick}, #{botsay(s)}",10,$msg_delay*3+9) }
+      t{ do_after_sec(nick,"#{nick}, #{botsay(s)}",10,$msg_delay*3+29) }
     end
   end
 
@@ -592,7 +594,7 @@ class IRC
         msg(to,Dic.new.geted2kinfo(url),0)
       end
       return 2
-    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i #IP查询
+    when /^`?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i #IP查询
       msg to,"#{from}, #{$1} #{IpLocationSeeker.new.seek($1)} ", $msg_delay * 2
     when /^`tr?\s(.+?)\s?(\d?)\|?$/i  #dict_cn
       sayDic(101,from,to,$1)
@@ -613,7 +615,7 @@ class IRC
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
       return if w =~/这|那|哪| that/
-      w.gsub!(/.*?的/,'')
+      #w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`?(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
@@ -675,7 +677,7 @@ class IRC
       end
 
     #拼音
-    when /^(.*?)[\s:,](((b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong){1,2}[\s,.!?]?)+)/
+    when /^(.*?)[\s:,](((b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s|y|w)(a|o|e|i|u|v|ai|ei|ui|ao|ou|iu|ie|ve|er|an|en|in|un|vn|ang|eng|ing|ong){1,1}[\s,.!?]?)+)/
       #!! nick 像拼音也会被匹配?
       #s.gsub!(/[\u4e00-\u9fa5]/ ,' ')
       s1= $2
@@ -684,7 +686,7 @@ class IRC
       p s1
       p $3
       #sayDic(5,from,to,s1)
-      msg(to, "#{from} 这里有输入法：http://www.inputking.com/ 或安装fcitx: apt-get install fcitx" ,$msg_delay*4)
+      #msg(to, "#{from} 这里有输入法：http://www.inputking.com/ 或安装fcitx: apt-get install fcitx" ,$msg_delay*4)
       return 5
     else
       return 1#not match dic_event
@@ -859,9 +861,8 @@ class IRC
 
   #加入频道
   def joinit
-    sleep 0.5
-    send "JOIN #{@channel}" if @channel != '#sevk'
     Thread.new {sleep 40; get_baned.each{|x| sleep 10 ;send x} }
+    send "JOIN #{@channel}"
   end
 
   #延时发送
@@ -1122,7 +1123,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep $msg_delay +rand($msg_delay*2)
+    sleep 10 + rand($msg_delay*3)
   end
 end
 

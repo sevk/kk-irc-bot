@@ -18,7 +18,7 @@ Thread.new do
     end
     print "方法未找到: "
     p m
-    #p args
+    p args
     #p block
     p caller
     #getGoogle(s)

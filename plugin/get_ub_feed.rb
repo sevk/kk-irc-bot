@@ -21,7 +21,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     ti = i.title.content.to_s
     next if ti =~ /Re:/i and not_re
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-    des = i.content.to_s[0,$fun||500]
+    des = i.content.to_s[0,10+$fun||500]
     #date = i.updated.content
     @rsslink = link
     #p ti
@@ -41,7 +41,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       $no_new_feed=0
       return "暂时无新帖 讲个笑话吧 #{joke}"
     end
-    return if rand > 0.08
+    return
   else
     $no_new_feed=0
     $old_feed_link = @rsslink
@@ -73,7 +73,7 @@ $get_ub_feed=Thread.new do
   loop {
     sleep 59
     force = nil
-    force = true if Time.now - $last_say_new > 900 and rand>0.6
+    force = true if Time.now - $last_say_new > 500
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''
