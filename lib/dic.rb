@@ -13,6 +13,7 @@ load 'color.rb'
 load 'plugin.rb' rescue log
 require 'json'
 require 'google-search'
+require 'rufus/eval' if not defined? Rufus
 
 def nil.empty?
   true
@@ -190,7 +191,7 @@ rescue Exception
 end
 
 def loadDic
-  $str1 = IO.read('U.txt') rescue ''
+  $str1 = open('U.txt').read rescue ''
   puts 'Dic load [ok]'
 end
 
@@ -199,24 +200,14 @@ def saveu
   return if Time.now - $last_save < 120 rescue nil
   $last_save = Time.now
   a=File.open("_#{ARGV[0]}.yaml","w")
-  a.write YAML.dump $u
+  a.write $u.to_yaml
   a=File.open("_#{ARGV[0]}.dat", 'w')
   a.write $data.to_json
   puts ' save u ok'.red
 end
 
 def safe_eval(str)
-  str.force_encoding('utf-8')
-  Thread.new {
-    if str !~ $eval_black_list
-      $SAFE=4
-    end
-    begin
-      eval(str).to_s.gsub(/\s+/,' ')
-    rescue Exception
-      $!
-    end
-  }.value
+  return Rufus.eval_safely str,4
 end
 
 def safe(level)
@@ -888,18 +879,13 @@ end
 #eval
 def evaluate(s)
 	begin
-		r=Timeout.timeout(2){
+		return Timeout.timeout(2){
       safe_eval(s)
-      #return safe_eval(s)
-      #return safe(l){eval(s).to_s[0,290]}
-      #return safely(s,l)[0,300]
 		}.inspect
-    #p r
-    return r
 	rescue Timeout::Error
 		return 'Timeout'
-	rescue Exception
-		return $!.message[0,38] # + $@[1..2].join(' ')
+  rescue Exception
+    return $!.message[0,88]# + $@.join(' ')
 	end
 end
 
@@ -925,8 +911,8 @@ unless defined?Time._now
 end
 
 #返回roll
-def roll
-  "掷出了: #{rand(101)} "
+def roll n=100
+  "掷出了: #{rand(n.to_i + 1) } "
 end
 
 #返回uptime

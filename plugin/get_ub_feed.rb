@@ -21,7 +21,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     ti = i.title.content.to_s
     next if ti =~ /Re:/i and not_re
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-    des = i.content.to_s[0,10+$fun||500]
+    des = i.content.to_s[0,2*$fun||500]
     #date = i.updated.content
     @rsslink = link
     #p ti

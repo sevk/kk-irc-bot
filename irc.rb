@@ -125,7 +125,8 @@ class IRC
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
-    s.gsub!(/\s+/,' ').strip!
+    s.gsub!(/\s+/,' ')
+    s.strip!
     if $fun and s.bytesize > Max - "PRIVMSG #{chan} :".size
       if s.bytesize > $fun
         s.slice_u!($fun..-1)
@@ -135,14 +136,12 @@ class IRC
       a,b=0,140
       b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
       send "PRIVMSG #{chan} :#{s[a..b]}"
-      a=b+1
-      while a <= s.size
+      while b < s.size
         sleep i+=0.08
-        send "PRIVMSG #{chan} :> #{s[a..b]}"
         a=b+1
         b=a+140
-        p " a,b: #{a} ,#{b} "
         b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
+        send "PRIVMSG #{chan} :> #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -365,7 +364,7 @@ class IRC
     #channel 消息
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i
       nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
-      return if from =~ /freenode-connect|#{Regexp::escape @nick}/i
+      return if from =~ /^freenode-connect|#{Regexp::escape @nick}$/i
 
       #priv msg me
       if to =~ /#{Regexp::escape @nick}/i
@@ -414,7 +413,7 @@ class IRC
       #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          $u.said(nick,name,ip,0)
+          #$u.said(nick,name,ip,0)
         end
         return
       end
@@ -577,11 +576,8 @@ class IRC
     case s
     when /^`?>\s(.+)$/i
       @e=Thread.new($1){|s|
-        return 'no ad ' if s =~ /出售/ and rand(10)>2
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s)
-        #tmp = safe_eval(s.to_s)
-        # " end " * 999999 bug
         msg to,"#{from}:#{tmp}", $msg_delay*4 if not tmp.empty?
       }
       @e.priority = -5
@@ -929,11 +925,11 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
+    @exit = true
     send( 'quit ' + exit_msg) rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
     sleep 0.3
-    @exit = true
   end
 
   #大约每天一次
@@ -985,9 +981,9 @@ class IRC
         s1=$1
         if s1 =~ /^me/i
            say(s.gsub(/\/me/i,"\001ACTION") + "\001")
-        elsif s1 =~ /^ping$/i
+        elsif s1 =~ /^ping/i
            $Lping = Time.now
-           send s1+' 1'
+           send s1
         elsif s1 =~ /^ctcp/i
            say(s1.gsub(/^ctcp/i,"\001") + "\001")
         else
@@ -1127,7 +1123,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep 10 + rand($msg_delay*3)
+    sleep 60 + rand($msg_delay*3)
   end
 end
 
