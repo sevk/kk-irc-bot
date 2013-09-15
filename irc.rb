@@ -141,7 +141,7 @@ class IRC
         a=b+1
         b=a+140
         b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
-        send "PRIVMSG #{chan} :> #{s[a..b]}"
+        send "PRIVMSG #{chan} :>> #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -315,7 +315,7 @@ class IRC
       if sto =~ /notice/i
         notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay*2)
       end
       msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay) if tellSender
 
@@ -578,6 +578,7 @@ class IRC
       @e=Thread.new($1){|s|
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s)
+        #tmp = tmp.inspect if tmp.class != String
         msg to,"#{from}:#{tmp}", $msg_delay*4 if not tmp.empty?
       }
       @e.priority = -5
@@ -613,7 +614,7 @@ class IRC
     when /^`?(什么是|what\sis)(.+[^。！.!])(呢)?$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
-      return if w =~/这|那|哪| that/
+      return if w =~/这|那|哪| that /
       #w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
@@ -792,9 +793,7 @@ class IRC
       #
         @nick = $nick[rand $nick.size]
         Thread.new{
-          $sle ||=60
-          $sle += 1
-          sleep $sle
+          sleep 30
           send "PRIVMSG nickserv :ghost #{@nick}"
           #send "NICK #{@nick}"
           @send_nick.call

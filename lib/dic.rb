@@ -155,33 +155,6 @@ def guess_charset(str)
   return guess(s) rescue nil
 end
 
-#sudo gem install charguess
-#require "charguess"
-
-if defined?CharGuess
-  def guess(s)
-    c=CharGuess::guess(s)
-    if c =~ /gbk|gb2312/i
-      return 'GB18030'
-    end
-    c
-  end
-else
-  #第二种字符集猜测库
-  begin
-		require 'rchardet' if RUBY_VERSION < '1.9'
-		require 'rchardet19' if RUBY_VERSION > '1.9'
-  rescue LoadError
-    s="载入库错误,命令:\napt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n\n"
-    s = s.utf8_to_gb if win_platform?
-    puts s
-    puts $!.message + $@[0]
-  end
-  def guess(s)
-		CharDet.detect(s)['encoding'].upcase
-  end
-end
-
 def reload_all
 	load 'dic.rb'
 	loadDic
@@ -207,7 +180,11 @@ def saveu
 end
 
 def safe_eval(str)
-  return Rufus.eval_safely str,4
+  if str =~ $eval_black_list
+    return eval str
+  else
+    return Rufus.eval_safely str,4
+  end
 end
 
 def safe(level)
@@ -215,12 +192,13 @@ def safe(level)
   Thread.start {
     Thread.current[:name]= 'safe eval thread'
     $SAFE = level
-    p $SAFE
-    result = yield
+    begin
+      result = yield
+    rescue Exception
+      result = $!
+    end
   }.join
   return result
-rescue
-  log
 end
 
 
@@ -636,8 +614,11 @@ def getgoogleDefine(word)
   s = Google::Search::Web.new do |s|
     s.query = word
   end
-  #p s.class #== Google::Search::Web
-  s.find.each{|x| return x.content.gsub!(/<.*?>/,'|') }
+  #s.find.each{|x| return x.content.gsub!(/<.*?>/,'|') }
+  return s.find.each{|x| break x.content }.gsub(/<.*?>/,'|')
+    .unescapeHTML
+rescue
+  return ' not defined.'
 end
 
 def getGoogle(word,flg=0)
@@ -879,9 +860,9 @@ end
 #eval
 def evaluate(s)
 	begin
-		return Timeout.timeout(2){
-      safe_eval(s)
-		}.inspect
+		return Timeout.timeout(4){
+      safe_eval(s).inspect
+		}
 	rescue Timeout::Error
 		return 'Timeout'
   rescue Exception
@@ -1047,35 +1028,6 @@ def hello_replay(sSay)
 	end
 	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
 	"#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
-end
-
-def gettitle_https(url)
-	require 'net/http'
-	require 'net/https'
-
-	url = URI.parse(url)
-
-	http = Net::HTTP.new(url.host, url.port)
-	http.use_ssl = true if url.scheme == 'https'
-
-	request = Net::HTTP::Get.new(url.path)
-	s= http.request(request)
-	#puts s.head[0,9999]
-	pp s.body
-	#puts s.body[0,9999]
-end
-
-def gettitle_proxy(url)
-#Net::HTTP 的类方法 Net::HTTP.Proxy通常会生成一个新的类，该类通过代理进行连接操作。由于该类继承了Net::HTTP，所以可以像使用Net::HTTP那样来操作它。
-
-	require 'net/http'
-	Net::HTTP.version_1_2   # 设定对象的运作方式
-#Net::HTTP::Proxy($proxy_addr, $proxy_port).start( 'some.www.server' ) {|http|
-		## always connect to your.proxy.addr:8080
-				#:
-#}
-#若Net::HTTP.Proxy的第一参数为nil的话，它就会返回Net::HTTP本身。所以即使没有代理，上面的代码也可应对自如。
-
 end
 
 def update_proxy_rule

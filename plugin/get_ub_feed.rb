@@ -38,7 +38,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 30
+    if $no_new_feed > 40
       $no_new_feed=0
       return "暂时无新帖 讲个笑话吧 #{joke}"
     end
@@ -56,10 +56,10 @@ end
 $last_say_new ||= Time.at 0
 #自动说新帖
 def say_new to
-  return if Time.now - $last_say_new < 120
+  return if Time.now - $last_say_new < 90
   $last_say_new=Time.now
   return unless $need_say_feed > 0
-  return unless Time.now.hour.between? 7,22
+  return unless Time.now.hour.between? 8,22
    @say_new=Thread.new(to) { |to|
       Thread.current[:name]= 'say_new'
       tmp = get_feed
@@ -74,7 +74,7 @@ $get_ub_feed=Thread.new do
   loop {
     sleep 59
     force = nil
-    force = true if Time.now - $last_say_new > 500
+    force = true if Time.now - $last_say_new > 350
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''

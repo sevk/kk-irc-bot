@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 # 取笑话
 
+$: << '..'
+$: << '../lib/'
+$:.uniq!
 require 'mechanize'
 require 'htmlentities'
 require 'utf.rb'
@@ -18,12 +21,17 @@ def joke(n=nil)
   end
   s.gsub!(/<.+?>/,' ')
   s=s.code_a2b(guess(s) ,'utf-8').unescapeHTML
+  $fun ||= 800
   if s.bytesize > $fun
     sleep 0.1
     s=joke
   end
-  sleep 10
+  s.gsub!(/\s+|\t/,' ')
   s
 end
 alias 给大爷讲个笑话 joke
+
+if __FILE__ == $0
+  puts joke
+end
 

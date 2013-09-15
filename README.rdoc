@@ -26,6 +26,7 @@ p ruby-dej    - Header files for compiling extension modules for Ruby (default v
 
 * 开始运行:
 命令行cd到程序目录执行： ruby irc.rb 或 ./irc.rb 
+
 直接双击 irc.rb 也行，但出错后，cmd窗口会消失，看不到出错信息。
 
 配置文件是 default.conf

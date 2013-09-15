@@ -71,6 +71,20 @@ class String
    end
 end
 
+begin
+  require 'rchardet' if RUBY_VERSION < '1.9'
+  require 'rchardet19' if RUBY_VERSION > '1.9'
+rescue LoadError
+  s="载入库错误,命令:
+  apt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n"
+  s = s.utf8_to_gb if win_platform?
+  puts s
+  puts $!.message + $@[0]
+end
+def guess(s)
+  CharDet.detect(s)['encoding'].upcase
+end
+
 if $0 == __FILE__
    puts '中文'.togbk
 end
