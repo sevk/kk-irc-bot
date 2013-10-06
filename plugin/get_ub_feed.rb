@@ -4,11 +4,11 @@
 #取ubuntu.com.cn的 feed.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
-   feed = Timeout.timeout(30) {
+   feed = Timeout.timeout(25) {
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
-    return if rand < 0.7
+    return if rand < 0.6
     p ' get feed timeout '
     return ' 取新帖 timeout '
   end
@@ -29,7 +29,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     $ub = "新 #{ti} #{link} #{des}"
     break
   }
-  p ' all re ,no new' if $ub.empty?
+  #p ' all re ,no new' if $ub.empty?
   return if $ub.empty?
 
   $no_new_feed ||=0
@@ -74,7 +74,7 @@ $get_ub_feed=Thread.new do
   loop {
     sleep 59
     force = nil
-    force = true if Time.now - $last_say_new > 350
+    force = true if Time.now - $last_say_new > 310
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''

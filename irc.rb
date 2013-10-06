@@ -141,7 +141,7 @@ class IRC
         a=b+1
         b=a+140
         b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
-        send "PRIVMSG #{chan} :>> #{s[a..b]}"
+        send "PRIVMSG #{chan} :─> #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -208,12 +208,12 @@ class IRC
      @send_nick.call
      send "USER #@str_user"
      Thread.new{
-        sleep 19
+        sleep 15
         identify
      }
      $bot_on = $bot_on1
 
-     @cs.kill rescue nil
+     @cs.kill if @cs
      @cs=Thread.new do
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
@@ -397,8 +397,8 @@ class IRC
         when 0..$b_tim
           return
         when $b_tim..1800#之前ban过
+          kick to,a1
           autoban to,nick,3600 ,'b'
-          #kick to,a1
         else
           autoban to,nick,$b_tim rescue log
           msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q #{$b_tim}s ",0)
@@ -618,11 +618,12 @@ class IRC
       #w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
-    when /^`?(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
-      w = $1.strip
-      print " xxx 是什么"
+    when /^(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
+      p $1.class
       p $1,$2,$3
-      return if $2
+      w = $3.strip
+      p ' xxx 是啥 '
+      return if $1
       return if w =~ /这|那|的|哪| that/
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
@@ -793,7 +794,10 @@ class IRC
       #
         @nick = $nick[rand $nick.size]
         Thread.new{
-          sleep 30
+          sleep 16
+          p $nick
+          send "PRIVMSG nickserv :ghost #{$nick[0]}"
+          sleep 1
           send "PRIVMSG nickserv :ghost #{@nick}"
           #send "NICK #{@nick}"
           @send_nick.call
@@ -833,6 +837,7 @@ class IRC
       #:ChanServ!ChanServ@services. MODE #sevk +o ikk-bot
 
       puts s.yellow
+      log s
     when /^ERROR\s:(.*?):\s(.*?)$/i # Closeing
       log s
       return if @exit

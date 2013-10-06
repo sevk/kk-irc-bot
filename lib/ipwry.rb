@@ -2,13 +2,17 @@
 # -*- coding: utf-8 -*-
 #
 
-#require 'rubygems'
+require 'rubygems'
 #require 'bundler/setup'
 require 'qqwry'
 
 $fqqwry='qqwry.dat'
 unless File.exist? $fqqwry
-  p $fqqwry + ' not found '
+  d = File.dirname __FILE__
+  $fqqwry = File.join d, $fqqwry
+  unless File.exist? $fqqwry
+    p $fqqwry + ' not found '
+  end
 end
 
 class IpLocationSeeker
