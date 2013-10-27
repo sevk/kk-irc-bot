@@ -63,7 +63,7 @@ class IRC
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
-    if $lag and $lag > 5
+    if $lag and $lag > 4
       msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",0)
       sleep 0.1
       restart if $lag > 6
@@ -92,6 +92,7 @@ class IRC
 
   def ping
     Thread.new do
+      puts " thread for ping start "
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
@@ -430,7 +431,7 @@ class IRC
       if sSay =~ /^#{Regexp::escape @nick}[\s,:`]?(.*)$/i 
         s=$1.to_s.strip #消息内容
 
-        s.prepend '`' if s[0,1] != '`'
+        s.prepend '`' if s !~ /^`/
         tmp = check_dic(s,from,to)
         case tmp
         when 1 #非字典消息
@@ -943,14 +944,14 @@ class IRC
        @daily_done = false
     else
       return if @daily_done
-      @daily_done =true
+      @daily_done = true
       reload_all rescue nil
-      @nick = $nick[0]
-      @send_nick.call
+      send "NICK " + $nick[0]
       saveu
-      send('time')
+      send 'time'
       joinit
-      msg(@channel, osod.addTimCh ,30)
+      #msg(@channel, osod.addTimCh ,30)
+      msg(@channel, "我不是机器人".addTimCh ,300)
     end
   end
 
@@ -1039,7 +1040,7 @@ class IRC
         n+=1
         n=0 if n > 9000
         if n % 4 == 0
-          ping rescue log
+          ping
         end
         if n % 20 == 0
           check_proxy_status rescue log
