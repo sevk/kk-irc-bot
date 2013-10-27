@@ -27,6 +27,22 @@ class IpLocationSeeker
   end
 end
 
+class String
+  @@last_area ||={}
+  def area
+    if @@last_area.size > Time.now.year
+      @@last_area.clear
+    end
+    if @@last_area.has_key? self
+      return @@last_area[self]
+    else
+      @@last_area[self]= IpLocationSeeker.new.seek self
+    end
+    return @@last_area[self]
+  end
+end
+
+
 if __FILE__ == $0
   if ARGV[0]
     p IpLocationSeeker.new.seek ARGV[0]
