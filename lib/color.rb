@@ -4,6 +4,7 @@
 #为终端字符串添加颜色
 
 require 'colored'
+require 'ansi/code'
 
 $black="\e[30m"; $red="\e[31m"; $green="\e[32m";
 $yellow="\e[33m";
@@ -25,6 +26,9 @@ $b_white="\e[47m";
 a=[1,2,4,7]; b=31..37 ; c = [41,42,* 44..46] ; d=[91,92, *94..96] ; e=[100,102,*104..106]
 Colors=[a,b,c,d,e].map{|x| x.to_a}.flatten
 class String
+  def clear_color
+    ANSI.uncolor self
+  end
   def green
     "\e[32m#{self}#$normal"
   end

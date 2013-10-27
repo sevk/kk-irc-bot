@@ -70,11 +70,8 @@ end
 load 'ipwry.rb'
 
 begin
-  #apt-get install rubygems
 	require 'rubygems' #  以便引用相关的库, 兼容1.8的写法
-  #gem install htmlentities
   require 'htmlentities'
-  #gem install mechanize
   require 'mechanize'
    load 'color.rb'
    load 'showpic.rb'
@@ -101,10 +98,8 @@ require 'digest'
 require 'resolv'
 require 'yaml'
 require 'pp'
-require 'mechanize'
 #require 'mathn'
 load 'do_as_rb19.rb'
-#load 'color.rb'
 
 #todo http://www.sharej.com/ 下载查询
 #todo http://netkiller.hikz.com/book/linux/ linux资料查询
@@ -1086,7 +1081,6 @@ def pr_highlighted(s)
   else
     re= s.red
   end
-  re = "\r" << re
   if $local_charset !~ /UTF-8/i
      puts re.code_a2b('utf-8',$local_charset)
   else
@@ -1098,15 +1092,10 @@ end
 #写入聊天记录
 def savelog(s)
   return if $not_savelog
-  s.gsub!(/\e\[\d\d?m/i,'') #去掉ANSI颜色代码
-	#gem install ansi2html
 
-	#m = Time.now.min
-	#m = "%02d" % (m - (m % 30))
-	fn=Time.now.strftime("%y%m%d.txt")
-  #mkdir_p "irclogs/#{@channel[1..-1]}"
-	File.open("irclogs/#{@channel[1..-1]}/" + fn,'ab'){|x|
-		x.puts s
+	fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
+	File.open( fn,'ab'){ |x|
+		x.puts s.clear_color
 	}
 end
 
