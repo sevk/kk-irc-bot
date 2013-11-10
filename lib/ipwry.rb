@@ -30,15 +30,11 @@ end
 class String
   @@last_area ||={}
   def area
-    if @@last_area.size > Time.now.year
-      @@last_area.clear
-    end
-    if @@last_area.has_key? self
-      return @@last_area[self]
-    else
+    @@last_area.clear if @@last_area.size > Time.now.year
+    unless @@last_area.has_key? self
       @@last_area[self]= IpLocationSeeker.new.seek self
     end
-    return @@last_area[self]
+    @@last_area[self]
   end
 end
 

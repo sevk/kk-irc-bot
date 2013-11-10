@@ -92,7 +92,7 @@ class IRC
 
   def ping
     Thread.new do
-      puts " thread for ping start "
+      #puts " thread for ping start "
       Thread.current[:name]= ' ping '
       $needrestart = true
       $Lping = Time.now
