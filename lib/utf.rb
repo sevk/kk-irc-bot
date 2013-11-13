@@ -26,7 +26,6 @@ class String
       end
    end
    def gbtoX(code)
-     p 1
      code_a2b('GB18030',code)
      #code_a2b('CP20936',code)
      #code_a2b('GB2312',code)
@@ -88,4 +87,3 @@ end
 if $0 == __FILE__
    puts '中文'.togbk
 end
-
