@@ -243,7 +243,7 @@ class IRC
     direction = ''
     tellSender = false
     pub =false
-    pub =true if [1,5].include? dic
+    pub =true if ['g',5].include? dic
 
     b7=from
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
@@ -256,15 +256,15 @@ class IRC
       words=s
     end
 
+    sto='PRIVMSG'
     case direction
     when '|'#公共
-      sto='PRIVMSG'
+      #sto='PRIVMSG'
     when '>' #小窗
-      sto='PRIVMSG' ;to=b7;tellSender=true
+      to=b7;tellSender=true
     when '#' #notic
       sto='notice' ;to=b7;tellSender=true
     else
-      sto='PRIVMSG'
       to=from if !pub #小窗
     end
 
@@ -277,13 +277,16 @@ class IRC
         c=''
       when 0
         re = c
-      when 1 then re = getgoogleDefine c
-      when 2 then re = getBaidu(c )
-      when 3 then re = googleFinance(c )
+      when 1,'g'
+        re = 'http://www.google.com/#q=' + c.strip
+        re << getgoogleDefine(c)
+      when 2 then re = getBaidu c
+      when 3 then re = googleFinance c
       when 4 then re = getGoogle_tran(c );c=''
       when 5#拼音
         re = "#{getPY(c)}";c='';
-      when 6 then re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
+      when 6,'s' 
+        re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
       when 10 then re = hostA(c)
       when 21 then re = $u.ims(c).to_s
       when 22
@@ -311,12 +314,10 @@ class IRC
       end
       Thread.exit if re.bytesize < 2
 
-      #p b7
-      #print 'b7:' , b7 , 10.chr
       if sto =~ /notice/i
         notice(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       else
-        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay*2)
+        msg(to, "#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay)
       end
       msg(from,"#{b7}:\0039 #{c}\017\0037 #{re}",$msg_delay) if tellSender
 
@@ -363,7 +364,7 @@ class IRC
     end
     case s
     #channel 消息
-    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.+)$/i
+    when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s?:(.+)$/i
       nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
       return if from =~ /^freenode-connect|#{Regexp::escape @nick}$/i
 
@@ -381,6 +382,7 @@ class IRC
         return 
       end
       
+      #大段
       if sSay.bytesize > 300
         $u.said(nick,name,ip,-1)
       end
@@ -402,7 +404,7 @@ class IRC
           autoban to,nick,3600 ,'b'
         else
           autoban to,nick,$b_tim rescue log
-          msg(to,"#{nick}:. .., 别刷屏, #$kick_info +q #{$b_tim}s ",0)
+          msg(to,"#{nick}:. .., #$kick_info +q #{$b_tim}s ",0)
         end
         notice(nick,"#{a1}: . .. #$kick_info",18)
         return
@@ -601,8 +603,6 @@ class IRC
       sayDic(101,from,to,$1)
     when /^`?deb\s(.*)$/i  #aptitude show
       sayDic('deb',from,to,$1)
-    when /^`?s\s(.*)$/i  #TXT search
-      sayDic(6,from,to,$1)
     when /^`title\s?(.*?)$/i
       p $1
       p $last_url
@@ -633,8 +633,8 @@ class IRC
       sayDic(21,from,to,$1)
     when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
-    when /^`?g\s(.*?)$/  # Google
-      sayDic(1,from,to,$1)
+    when /^`?(g|s)\s(.*)$/i #Google | TXT search
+      sayDic($1,from,to,$2)
     when /^`d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
     when /^`b\s(.*?)$/  # 百度
@@ -651,8 +651,6 @@ class IRC
       #ruby2.0 终于完美了,安逸了.
       $otherbot_said=false
       do_after_sec(to,from + ':点点点.',10,$msg_delay/3 )
-    when /^`i\s?(.*?)$/i #svn
-      sayDic(0,from,to,$my_s )
     when $re_flood
       $proc_flood.call rescue nil
       $u.said(from,'','',-1)
@@ -951,7 +949,7 @@ class IRC
       send 'time'
       joinit
       #msg(@channel, osod.addTimCh ,30)
-      msg(@channel, "我不是机器人".addTimCh ,300)
+      #msg(@channel, "我不是机器人".addTimCh ,300)
     end
   end
 
@@ -1065,7 +1063,7 @@ class IRC
     loop {
       return if @exit
       return if $need_reconn
-      ready = select([@irc], nil, nil, 3)
+      ready = select([@irc], nil, nil, 0.1)
       next unless ready
       ready[0].each do |s|
         next unless s == @irc
