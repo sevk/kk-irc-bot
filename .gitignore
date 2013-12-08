@@ -16,4 +16,5 @@ doc/*
 *tmp*
 tags
 *.txt
+log/*
 
