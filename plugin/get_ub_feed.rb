@@ -8,7 +8,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       RSS::Parser.parse(url)
     }
   rescue Timeout::Error
-    return if rand < 0.6
+    return if rand < 0.5
     p ' get feed timeout '
     return ' 取新帖 timeout '
   end
@@ -23,7 +23,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
     des = i.content.to_s[0,2*$fun||500]
     #date = i.updated.content
-    @rsslink = link
+    @rsslink = ti
     #p ti
     #puts 'feed updated: ' + i.updated.content
     $ub = "新 #{ti} #{link} #{des}"
@@ -74,7 +74,7 @@ $get_ub_feed=Thread.new do
   loop {
     sleep 59
     force = nil
-    force = true if Time.now - $last_say_new > 310
+    force = true if Time.now - $last_say_new > 270
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''
