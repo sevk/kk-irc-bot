@@ -808,7 +808,7 @@ class IRC
          #send time , send join #sevk
         send 'time'
         sleep 1
-        send "JOIN #sevk"
+        send "JOIN #$channel_o"
         $min_next_say = Time.now
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
