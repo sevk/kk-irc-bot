@@ -1,24 +1,20 @@
-#!/usr/bin/env ruby -w
+#!/usr/bin/env ruby
 # -*- coding: UTF-8 -*-
 #
 # ruby utf8 gb2312 gbk gb18030 转换库
 require 'rubygems'
 
-if RUBY_VERSION > '1.9'
-   if RUBY_VERSION > '1.9.2'
-      $ec1 = Encoding::Converter.new("UTF-16lE", "UTF-8", :universal_newline => true)
-      $ec2 = Encoding::Converter.new("UTF-8","GB2312", :universal_newline => true)
-   else
-      require 'iconv'
-   end
+if defined? Encoding::Converter
+  $ec1 = Encoding::Converter.new("GBK", "UTF-8", :universal_newline => true)
+  $ec2 = Encoding::Converter.new("UTF-8","GB2312", :universal_newline => true)
+  $ec3 = Encoding::Converter.new("UTF-16lE", "UTF-8", :universal_newline => true)
 else
-   require 'iconv'
+  require 'iconv'
 end
 
 class String
-   #s.encode!("gbk")
    def code_a2b(a,b)
-      if RUBY_VERSION > '1.9.2' and defined? Encoding::Converter
+      if RUBY_VERSION > '1.9' and defined? Encoding::Converter
         tmp = Encoding::Converter.new(a,b, :universal_newline => true)
         tmp.convert self rescue self
       else
@@ -71,11 +67,9 @@ class String
 end
 
 begin
-  require 'rchardet' if RUBY_VERSION < '1.9'
-  require 'rchardet19' if RUBY_VERSION > '1.9'
+  require 'rchardet19'
 rescue LoadError
-  s="载入库错误,命令:
-  apt-get install rubygems; #安装ruby库管理器 \ngem install rchardet; #安装字符猜测库\n否则字符编码检测功能可能失效. \n"
+  s="载入库错误,命令: 请看README"
   s = s.utf8_to_gb if win_platform?
   puts s
   puts $!.message + $@[0]
