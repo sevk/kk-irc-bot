@@ -22,7 +22,7 @@ rbenv install 2.1.0-dev
 装完ruby后升级 gem, 
 *先把gem 服务器改成淘宝的 http://ruby.taobao.org/
 *然后命令: gem update --system
-*然后安装库, cd 到bot 目录 : gem install bundle && bundle
+*然后安装库, cd 到bot 目录 : gem install bundler && bundle
 
 * 开始运行:
 命令行cd到程序目录执行： ruby irc.rb 或 ./irc.rb 
