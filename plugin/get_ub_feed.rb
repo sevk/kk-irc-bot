@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 # -*- coding: utf-8 -*-
 
+require 'timeout'
+require 'rss'
 #取ubuntu.com.cn的 feed.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
@@ -22,10 +24,9 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     next if ti =~ /Re:/i and not_re
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
     des = i.content.to_s[0,2*$fun||500]
-    #date = i.updated.content
-    @rsslink = ti
+    date = i.updated.content
+    @last = date
     #p ti
-    #puts 'feed updated: ' + i.updated.content
     $ub = "新 #{ti} #{link} #{des}"
     break
   }
@@ -34,18 +35,18 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
 
   $no_new_feed ||=0
   $data ||= Hash.new
-  if $data['old_feed_link'] == @rsslink and $ub
+  if $data['old_feed_link'] >= @last and $ub
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 40
+    if $no_new_feed > 30
       $no_new_feed=0
       return "暂时无新帖 讲个笑话吧 #{joke}"
     end
     return
   else
     $no_new_feed=0
-    $data['old_feed_link'] = @rsslink
+    $data['old_feed_link'] = @last
   end
 
   $ub.gsub!(/\s+/,' ')
@@ -72,9 +73,9 @@ $get_ub_feed=Thread.new do
   n=220
   sleep n
   loop {
-    sleep 59
+    sleep 60
     force = nil
-    force = true if Time.now - $last_say_new > 270
+    force = true if Time.now - $last_say_new > 280
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''
