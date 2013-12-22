@@ -11,15 +11,12 @@ require 'utf.rb'
 def joke(n=nil)
   n ||= rand(17786)
   url="http://xiaohua.zol.com.cn/detail1/#{n}.html"
+  puts url
   a=Mechanize.new
-  s = a.get_file url
-  begin
-    s=s.match(/<div class="lC">(.*?)<div class="lastVote">/im)[1]
-  rescue
-    log ''
-    return "empty err. try again. " + joke
-  end
-  s.gsub!(/<.+?>/,' ')
+  s = a.get url
+  ti = s.at('.article-title').text
+  text = s.at('.article-text').text
+  s= "#{ti} : #{text} "
   s=s.code_a2b(guess(s) ,'utf-8').unescapeHTML
   $fun ||= 800
   if s.bytesize > $fun
