@@ -4,7 +4,7 @@
 
 $: << '.'
 $: << 'lib'
-$:.uniq!
+$LOAD_PATH.uniq!
 require 'filesize'
 load 'log.rb'
 load 'utf.rb'
@@ -92,7 +92,6 @@ require 'timeout'
 require 'open-uri'
 require 'uri'
 require 'net/http'
-require 'rss'
 require 'base64'
 require 'digest'
 require 'resolv'
@@ -130,6 +129,7 @@ init_dic unless $Lsay
 UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)" unless defined? UserAgent
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
+$botlist_title = /alvin_rxg/
 $botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
 $botlist_Code=/badgirl|\^?[Ou]_[ou]/i
 $botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
@@ -359,7 +359,6 @@ def gettitle(url,proxy=true,mechanize=1)
   if not proxy and url =~ /^http:\/\/(detail\.tmall|item\.taobao)\.com\/item\.htm/i
     return gettaobao url 
   end
-
   timeout=5
   title = ''
   charset = ''
@@ -411,11 +410,6 @@ def gettitle(url,proxy=true,mechanize=1)
       if type =~ /image\/./i
         showpic(url)
         return type
-        #require "image_size"
-        #open(url, "rb") do |fh|
-        #return ImageSize.new(fh.read).get_size.inspect rescue ''
-        #end
-        #return ''
       end
       if type and type !~ /^$|text\/html/i
         re = page.response.select{|x| x=~/^conten/i }.to_s
@@ -452,6 +446,14 @@ def gettitle(url,proxy=true,mechanize=1)
       end
       return 'err: no title' if title.empty?
       title = title.unescapeHTML
+      auth = page.at('.postauthor').children.children.text rescue nil
+      if auth
+        title << " zz:#{auth} "
+      end
+      jg = page.at(".priceLarge") . text rescue nil
+      if jg
+        title << " 价格:#{jg[0,11]} "
+      end
       return title[0,300]
     rescue Exception
       print 'err in get body '
@@ -1024,9 +1026,9 @@ def rand_do
 end
 
 def hello_replay(sSay)
-	tmp = Time.parse('2013-02-10')-Time.now
+	tmp = Time.parse('2014-01-31')-Time.now #春节
    #不用显示倒计时
-	if tmp < 0 or tmp > Oneday*30 or rand(9) < 2
+	if tmp < 0 or tmp > Oneday*45 or rand(9) < 2
 		return if sSay =~ /\s$/
 		return "#{sSay} \0039 #{chr_hour} \017"
 	end
@@ -1041,7 +1043,7 @@ def hello_replay(sSay)
 	else
 		tmp="#{tmp/60/60/24}天"
 	end
-	tmp.sub!(/([\.?\d]+)/){ "%.2f" % $1}
+	tmp.sub!(/([\.?\d]+)/){ "%.3f" % $1}
 	"#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
 end
 
@@ -1070,18 +1072,18 @@ def pr_highlighted(s)
   need_savelog = false
   case s
   when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+?)\s:)?(.+)$/i
-    from=$1;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+    from=$1.strip;name=$2;ip=$3;mt=$4;to=$6;sy=$7
     return if $ignore_action =~ /#{Regexp::escape mt}/i
     case mt
     when /privmsg/i
       need_savelog = true
-      mt.replace ' '
+      mt.clear
       if to =~ /#{Regexp::escape @channel}/i
         to.clear
       end
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
     when /join|part|quit|nick|notice|kick/i
-      mt = ' ' << mt[0,4].red_on_white << ' '
+      mt = ' ' << mt[0,4].blue_on_white << ' '
       from << ' ' << ip.getaddr_fromip.underline
       if to =~ /#{Regexp::escape @channel}/i
         to.clear
@@ -1097,7 +1099,7 @@ def pr_highlighted(s)
 
     t = Time.now.strftime('%H%M%S')
     sy.force_encoding('utf-8')
-    re= "#{t}#{ (('<'+from+'>').rjust(14)).c_rand(name.sum)}#{mt}#{to} #{sy}"
+    re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)}#{mt}#{to}#{sy}"
   else
     re= s.red
   end
