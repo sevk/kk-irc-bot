@@ -14,6 +14,7 @@ end
 
 class String
    def code_a2b(a,b)
+     return self if a =~ /#{b}/i
       if RUBY_VERSION > '1.9' and defined? Encoding::Converter
         tmp = Encoding::Converter.new(a,b, :universal_newline => true)
         tmp.convert self rescue self

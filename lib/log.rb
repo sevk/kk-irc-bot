@@ -53,6 +53,7 @@ end
 log_init
 
 def log(s=nil)
+  s=s.inspect if s.class != String
    if not s
       if $!
          s = "#{$!.message} && #{$@.join("\n")}"
@@ -60,14 +61,10 @@ def log(s=nil)
          return
       end
    elsif s.empty?
-     puts "#{$!.message} && #{$@.join("\n")}"
+     if $!
+       puts "#{$!.message} \n#{$@.select{|x| x !~/\/lib\/ruby\//i }.join("\n")}"
+     end
      return
-   else
-      s = s.to_s
-      #s << " #{caller[0]} " if $DEBUG
-   end
-   if s.bytesize < 600
-      p s
    end
 
    if $!

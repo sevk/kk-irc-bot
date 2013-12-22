@@ -9,7 +9,8 @@ $initFlood = 83.0 #83
 $maxNamed = 3*(Time.now.year-2000) + 150
 
 class All_user
-	#attr_accessor
+  attr_accessor :RP, :addr
+
   def initialize
     @pos_write = 0
     @index=Hash.new # name => pos
@@ -21,7 +22,6 @@ class All_user
 
     #[1]=>重复次数,[2]=>人品值
     #@RP=Array.new(3,[]) #why wrong , very surprised
-		@RP=Array.new(3) {[]}
     init_pp
     puts 'users class start' if $debug
   end
@@ -37,8 +37,6 @@ class All_user
     $tWarned=Array.new
     $lastsay=Array.new
   end
-
-  attr_accessor :addr
 
   def havenick?(nick)
     @index.include?(nick)
