@@ -151,7 +151,7 @@ def guess_charset(str)
 end
 
 def reload_all
-	load 'dic.rb'
+  load 'dic.rb' rescue log('')
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 rescue Exception
@@ -333,9 +333,33 @@ rescue
   return $!.message
 end
 
+def gettaobao url
+  doc = Nokogiri::HTML(open(url)) 
+  doc.encoding = 'utf-8'
+  begin
+    title = doc.css('.tb-detail-hd').first.text.strip
+  rescue NoMethodError
+    return 'good_not_exists'
+  end
+
+  case url
+  when /taobao/i
+    price = doc.css('em.tb-rmb-num').first.text
+  when /tmall/i
+    price = doc.css('.J_originalPrice').first.text.strip
+  else
+    return "not taobao url "
+  end
+
+  "#{title } 价格:#{price} 元"
+end
+
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
-  #p url
+  if not proxy and url =~ /^http:\/\/(detail\.tmall|item\.taobao)\.com\/item\.htm/i
+    return gettaobao url 
+  end
+
   timeout=5
   title = ''
   charset = ''
@@ -345,23 +369,23 @@ def gettitle(url,proxy=true,mechanize=1)
     url = URI.encode(url)
   end
 
-	if mechanize == 1
-		mechanize = false if url =~ $urlNoMechanize
-	else
-		mechanize = true
-	end
-	mechanize = true if url =~ /www\.google\.com/i
+  if mechanize == 1
+    mechanize = false if url =~ $urlNoMechanize
+  else
+    mechanize = true
+  end
+  mechanize = true if url =~ /www\.google\.com/i
   mechanize = true if url =~ $urlProxy
-	mechanize = true if proxy
+  mechanize = true if proxy
   print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
 
   #用代理加快速度
   if mechanize
     if url =~ /^https/i
-       agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
-       #agent = Mechanize.new
+      agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+      #agent = Mechanize.new
     else
-       agent = Mechanize.new
+      agent = Mechanize.new
     end
 
     if proxy 
@@ -382,23 +406,23 @@ def gettitle(url,proxy=true,mechanize=1)
     begin
       page = agent.head(url)
       #File.new('/tmp/h.x','wb').puts page.header
-       type = page.header['content-type']
-       #print 'get head ok: '
-       if type =~ /image\/./i
-         showpic(url)
-         return type
-         #require "image_size"
-         #open(url, "rb") do |fh|
-           #return ImageSize.new(fh.read).get_size.inspect rescue ''
-         #end
-         #return ''
-       end
-       if type and type !~ /^$|text\/html/i
+      type = page.header['content-type']
+      #print 'get head ok: '
+      if type =~ /image\/./i
+        showpic(url)
+        return type
+        #require "image_size"
+        #open(url, "rb") do |fh|
+        #return ImageSize.new(fh.read).get_size.inspect rescue ''
+        #end
+        #return ''
+      end
+      if type and type !~ /^$|text\/html/i
         re = page.response.select{|x| x=~/^conten/i }.to_s
-          .gsub(/content-/i,'')
+        .gsub(/content-/i,'')
         return if re =~ /"length"=>"0"/i
         return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
-       end
+      end
     rescue Exception
       print 'err in get head '
       p $!
@@ -420,14 +444,14 @@ def gettitle(url,proxy=true,mechanize=1)
         return
       end
       title = page.title
-			charset= guess_charset(title)
+      charset= guess_charset(title)
       charset='GB18030' if charset =~ /^IBM855|windows-1252/i
 
-			if charset and charset !~ /#@charset/i
+      if charset and charset !~ /#@charset/i
         title = title.code_a2b(charset,@charset) rescue title
-			end
+      end
       return 'err: no title' if title.empty?
-			title = title.unescapeHTML
+      title = title.unescapeHTML
       return title[0,300]
     rescue Exception
       print 'err in get body '
@@ -952,13 +976,9 @@ alias get_deb_info ge
 def gg
   t=Time.now
 #http://logs.ubuntu-eu.org/free/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
-#https://groups.google.com/group/ircubuntu-cn/topics
-"频道 #ubuntu-cn当前log地址是 :
-http://irclogs.ubuntu.com/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html
-有需要请浏览 
-. #{t.strftime('%H:%M:%S')} "
+" 当前log地址是 : http://irclogs.ubuntu.com/#{t.strftime('%Y/%m/%d')}/%23ubuntu-cn.html 有需要请浏览 #{t.strftime('%H:%M:%S')} "
 end
-#alias say_公告 say_gg
+alias 公告 gg
 
 #简单检测代理是否可用
 def check_proxy_status

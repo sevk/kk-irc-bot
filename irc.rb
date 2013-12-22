@@ -122,7 +122,7 @@ class IRC
     do_after_sec(who,sSay,0,delay||$msg_delay)
   end
 
-  Max=440
+  Max=426
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
@@ -142,7 +142,7 @@ class IRC
         a=b+1
         b=a+140
         b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
-        send "PRIVMSG #{chan} :─> #{s[a..b]}"
+        send "PRIVMSG #{chan} : ─>  #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -158,7 +158,7 @@ class IRC
     if s.bytesize > Max + 3
       s.slice_u!(Max..-1)
       if @charset == 'UTF-8'
-        while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 #ruby1.9 可以不使用这个判断了.
+        while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 # > ruby1.9 可以不使用这个判断了.
           s.chop!
         end
       else
@@ -169,6 +169,7 @@ class IRC
     end
 		return if s.bytesize < 2
     @irc.puts s.strip if @irc
+    p s.bytesize
     $Lsay = Time.now
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
@@ -184,7 +185,7 @@ class IRC
     return if @exit
     $need_reconn = false
     begin
-      Timeout.timeout(8){
+      Timeout.timeout(7){
         tcpsocket = TCPSocket.open(@server, @port)
         @irc = nil
         if $use_ssl
@@ -243,7 +244,7 @@ class IRC
     direction = ''
     tellSender = false
     pub =false
-    pub =true if ['g',5].include? dic
+    pub =true if [1,'g',5].include? dic
 
     b7=from
     if s=~/(.*?)\s?([#|>])\s?(.*?)$/i #消息重定向
@@ -278,7 +279,7 @@ class IRC
       when 0
         re = c
       when 1,'g'
-        re = 'http://www.google.com/#q=' + c.strip
+        re = "http://lmgtfy.com/?q=#{c.strip} "
         re << getgoogleDefine(c)
       when 2 then re = getBaidu c
       when 3 then re = googleFinance c
@@ -351,10 +352,12 @@ class IRC
   end
 
   #放入线程运行
+  def go (tim=50)
+      Thread.new{ yield }
+  end
   def t(tim=40,&proc)
     Timeout.timeout(tim){
-      Thread.new{ proc.call }
-    }
+      Thread.new{ proc.call }}
   end
 
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
@@ -442,7 +445,9 @@ class IRC
            return if Time.now < $min_next_say
            $otherbot_said=false
            #bot say
-           t {do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay*3+9) }
+           t {
+             do_after_sec(to,"#{from}, #{botsay(s[1..-1])}",10,$msg_delay*3+9) 
+           }
         when String
            msg to,tmp
         else #是字典消息
@@ -484,15 +489,17 @@ class IRC
 
 			case mt
 			when /join/i
-				n=1
+				n=-1
       	$u.add(nick,name,ip)
 			when /part|quit|kick/i
-				n=-1
+				n=1
 				$u.del(nick,ip)
      	  puts "all channel nick count : #@count" if rand(10) > 7
 			end
       $need_Check_code += n if from =~ $botlist_Code
       $need_say_feed += n if from =~ $botlist_ub_feed
+      $saytitle +=n if from =~ $botlist_title
+      print " need say title: #$saytitle "
 
       @count +=n
       #p n
@@ -546,7 +553,7 @@ class IRC
       $last_url = url.clone
       return if $saytitle < 1
       return if from =~ $botlist
-      return if url =~ /(paste|imagebin\.org\/)/i
+      return if url =~ /(\.inputking\.|paste|imagebin\.org\/)/i
     end
     $last_url = url.clone
 
@@ -554,7 +561,10 @@ class IRC
       ti = gettitleA(url,from)
       if ti
         @ti_p.kill
-        #Thread.exit if $u.has_said? ti[7..-1]
+        #if $u.has_said? ti[8,6]
+          #$saytitle -=0.2 
+          #ti << " 检测到有其他取标题机器人 "
+        #end
         msg(to,from + ti ,0)
       end
     end
@@ -562,7 +572,10 @@ class IRC
       ti = gettitleA(url,from,false)
       if ti
         @ti.kill
-        #Thread.exit if $u.has_said? ti[7..-1]
+        #if $u.has_said? ti[8,6]
+          #$saytitle -=0.2 
+          #ti << " 检测到有其他取标题机器人 "
+        #end
         msg(to,from + ti ,0)
       end
     }
@@ -612,20 +625,20 @@ class IRC
       sayDic(99,from,to,$2)
     when /^`?(new)$/i
       sayDic('new',from,to,$1)
-    when /^`?(什么是|what\sis)(.+[^。！.!])(呢)?$/i #什么是
+    when /^`?(什么是|what\sis)(.+[^。！.!])(呢|呀|啊)?$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
       return if w =~/这|那|哪| that /
       #w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
-    when /^(.*?)([:, ])?(.+?)是(什么|啥|神马).{0,3}$/i #是什么
+    when /^(.*[:, §])?(.+?)是(什么|啥|神马).{0,3}(呀|啊)?[\?？]$/i
       p $1.class
-      p $1,$2,$3
-      w = $3.strip
+      p $1,$2
+      w = $2.strip
       p ' xxx 是啥 '
       return if $1
-      return if w =~ /这|那|的|哪| that/
+      return if w =~ /知道|这|那|的|哪| that/
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
@@ -669,7 +682,7 @@ class IRC
       $saytitle += 1 if tmp =~ /^..1/ and $saytitle < 1
 
       reload_all
-      rt = " ✔ restarted, check_charset=#$need_Check_code, get_ub_feed=#$need_say_feed, get_title=#{$saytitle}"
+      rt = " ✔ 重新加载配置, 检测编码:#$need_Check_code, 取新帖:#$need_say_feed, 取标题:#{$saytitle}"
       if to != @nick
         msg(to,from+rt,0)
       else
