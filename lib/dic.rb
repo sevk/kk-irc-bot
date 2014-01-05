@@ -11,7 +11,6 @@ load 'utf.rb'
 load 'irc_user.rb'
 load 'color.rb'
 load 'plugin.rb' rescue log
-require 'json'
 require 'google-search'
 require 'rufus/eval' if not defined? Rufus
 
@@ -106,7 +105,7 @@ $old_feed_date = nil unless defined?$old_feed_date
 $_time=0 if not defined?$_time
 $kick_info = "别刷屏，超过6行 大段文字 请贴至paste.ubuntu.com"
 
-Ver='v0.52' unless defined? Ver
+Ver='v0.53' unless defined? Ver
 Help = "我是 kk-irc-bot Ver:#{Ver} ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 . 末尾加入|重定向,如 g ubuntu | nick" unless defined? Help
 
 def help
@@ -169,8 +168,8 @@ def saveu
   $last_save = Time.now
   a=File.open("_#{ARGV[0]}.yaml","w")
   a.write $u.to_yaml
-  a=File.open("_#{ARGV[0]}.dat", 'w')
-  a.write $data.to_json
+  a=File.open("_#{ARGV[0]}.data", 'w')
+  a.write $data.to_yaml
   puts ' save u ok'.red
 end
 
@@ -412,10 +411,13 @@ def gettitle(url,proxy=true,mechanize=1)
         return type
       end
       if type and type !~ /^$|text\/html/i
-        re = page.response.select{|x| x=~/^conten/i }.to_s
-        .gsub(/content-/i,'')
-        return if re =~ /"length"=>"0"/i
-        return re.gsub(/("length"=>")(\d+)"/i){ "长度=>"+Filesize.from($2+'b').pretty }
+        re = page.response.select{|x| x=~/^conten/i }
+          .map{|x,y| "#{x}=#{y}" }.join(" ; ")
+          .gsub(/content-/i,'')
+
+        p re
+        return if re =~ /length=\d\D/i
+        return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
       end
     rescue Exception
       print 'err in get head '
@@ -554,7 +556,7 @@ def gettitleA(url,from="_",proxy=true)
 
   #检测是否有其它取标题机器人
   #
-    return " ... ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+    return "#{from}: ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
     #登录 • Ubuntu中文论坛
     if ti
       ti.gsub!(/登录 •/, '水区水贴? ')
@@ -881,11 +883,11 @@ end
 #eval
 def evaluate(s)
 	begin
-		return Timeout.timeout(4){
-      safe_eval(s).inspect
+		return Timeout.timeout(9){
+      safe_eval(s)
 		}
 	rescue Timeout::Error
-		return 'Timeout'
+		return ' Timeout, 超时。。'
   rescue Exception
     return $!.message[0,88]# + $@.join(' ')
 	end
@@ -1028,8 +1030,8 @@ end
 def hello_replay(sSay)
 	tmp = Time.parse('2014-01-31')-Time.now #春节
    #不用显示倒计时
-	if tmp < 0 or tmp > Oneday*45 or rand(9) < 2
-		return if sSay =~ /\s$/
+	if tmp < 0 or tmp > Oneday*39 or rand(9) < 2
+		return sSay if sSay =~ /\s$/
 		return "#{sSay} \0039 #{chr_hour} \017"
 	end
 
@@ -1078,9 +1080,7 @@ def pr_highlighted(s)
     when /privmsg/i
       need_savelog = true
       mt.clear
-      if to =~ /#{Regexp::escape @channel}/i
-        to.clear
-      end
+      to.clear if to == @channel
       sy= sy.yellow if to =~ /#{Regexp::escape @nick}/i
     when /join|part|quit|nick|notice|kick/i
       mt = ' ' << mt[0,4].blue_on_white << ' '
