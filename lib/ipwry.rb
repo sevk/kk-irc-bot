@@ -29,8 +29,9 @@ end
 
 class String
   @@last_area ||={}
+  @@last_area_size ||= Time.now.year/2
   def area
-    @@last_area.clear if @@last_area.size > Time.now.year
+    @@last_area.clear if @@last_area.size > @@last_area_size
     unless @@last_area.has_key? self
       @@last_area[self]= IpLocationSeeker.new.seek self
     end
