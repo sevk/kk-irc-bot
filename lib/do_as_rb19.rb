@@ -4,6 +4,10 @@
 if RUBY_VERSION < '1.9'
   #为字符串类添加force_encoding和ord方法
   class String
+    def prepend s
+      self.replace s+self
+    end
+
     def force_encoding(s)
       self
     end
