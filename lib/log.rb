@@ -52,8 +52,10 @@ def log_init
 end
 log_init
 
+# log => 写入 $!.message
+# log "aa" => 写入 "aa" 到log文件
+# log '' => 不写入log文件
 def log(s=nil)
-  s=s.inspect if s.class != String
    if not s
       if $!
          s = "#{$!.message} && #{$@.join("\n")}"
@@ -62,16 +64,19 @@ def log(s=nil)
       end
    elsif s.empty?
      if $!
-       puts "#{$!.message} \n#{$@.select{|x| x !~/\/lib\/ruby\//i }.join("\n")}"
+       p $!.message
+       puts "#{$@.select{|x| x !~/\/lib\/ruby\//i }.join("\n")}"
      end
      return
+   else
+     s=s.inspect if s.class != String
    end
 
    if $!
+     p $!.message
       f= Myname + '-err.log'
       p f
       f = Logger::LogDevice.new(File.join($logDir,f))
-      p f
       le = Logger.new(f ,shift_age=30,shift_size = 1200000)
       le.datetime_format = "%m-%d %H:%M:%S"
       le.debug s

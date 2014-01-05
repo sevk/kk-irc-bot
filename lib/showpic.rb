@@ -7,6 +7,7 @@ def sh30
 end
 
 def showpic(url)
-  #sh30 "feh #{url}"
+  return if not ENV.has_key? 'DISPLAY'
+  sh30 "feh #{url}"
 end
 

@@ -223,7 +223,7 @@ class All_user
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
     $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood or $timelast6say[index] < 1
     $timelast6say[index] = $timelast6say[index] / 5 * 4 + 
-      (t - $timelastsay[index]) +fix + getrp(nick)/10
+      (t - $timelastsay[index]) + fix + getrp(nick)/10
     $timelastsay[index] = t
   end
 

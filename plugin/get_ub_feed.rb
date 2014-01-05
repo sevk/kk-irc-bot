@@ -3,6 +3,7 @@
 
 require 'timeout'
 require 'rss'
+require 'time'
 #取ubuntu.com.cn的 feed.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   begin
@@ -11,7 +12,6 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     }
   rescue Timeout::Error
     return if rand < 0.5
-    p ' get feed timeout '
     return ' 取新帖 timeout '
   end
   #p 'feed geted'
@@ -21,56 +21,66 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   #p feed.items.size
   feed.items.each { |i|
     ti = i.title.content.to_s
+    #p ti
     next if ti =~ /Re:/i and not_re
+    p ti
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
-    des = i.content.to_s[0,2*$fun||500]
+    des = i.content.to_s[0, 2*($fun||500)]
     date = i.updated.content
     @last = date
-    #p ti
+    #p date
     $ub = "新 #{ti} #{link} #{des}"
     break
   }
-  #p ' all re ,no new' if $ub.empty?
+  p ' all re ,no new' if $ub.empty?
   return if $ub.empty?
 
   $no_new_feed ||=0
   $data ||= Hash.new
-  if $data['old_feed_link'] >= @last and $ub
+  $data['old_feed'] ||= Time.now - 800
+
+  #从json转回来，竟然变成了String
+  if $data['old_feed'].class == String
+    $data['old_feed'] = Time.parse $data['old_feed']
+  end
+  #p $data['old_feed']
+  if $data['old_feed'] >= @last and $ub
     $ub = " 逛了一下论坛,暂时无新贴."
-    #p ' is old feed'
+    p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 30
+    if $no_new_feed > 31
       $no_new_feed=0
-      return "暂时无新帖 讲个笑话吧 #{joke}"
+      return "暂无新帖 讲个笑话吧: #{joke}"
     end
     return
   else
     $no_new_feed=0
-    $data['old_feed_link'] = @last
+    $data['old_feed'] = @last
   end
 
   $ub.gsub!(/\s+/,' ')
   n = $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ')
     .unescapeHTML
+  #puts n
+  n
 end
 
 $last_say_new ||= Time.at 0
 #自动说新帖
 def say_new to
-  return if Time.now - $last_say_new < 90
+  return if Time.now - $last_say_new < 59
   $last_say_new=Time.now
   return unless $need_say_feed > 0
   return unless Time.now.hour.between? 8,22
    @say_new=Thread.new(to) { |to|
       Thread.current[:name]= 'say_new'
-      tmp = get_feed
-      $irc.msg(to,tmp,0)
+      $irc.msg(to, get_feed ,0)
    }
 end
 
 $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
-  n=220
+  n=80
   sleep n
   loop {
     sleep 60
@@ -82,5 +92,5 @@ $get_ub_feed=Thread.new do
     end
   }
 end
-$get_ub_feed.priority = -2
+$get_ub_feed.priority = -3
 

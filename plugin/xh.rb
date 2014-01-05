@@ -9,7 +9,7 @@ require 'mechanize'
 require 'htmlentities'
 require 'utf.rb'
 def joke(n=nil)
-  n ||= rand(17786)
+  n ||= rand(39986)
   url="http://xiaohua.zol.com.cn/detail1/#{n}.html"
   puts url
   a=Mechanize.new
@@ -21,7 +21,7 @@ def joke(n=nil)
     log ''
     return joke
   end
-  s= "#{ti} : #{text} "
+  s= " #{ti} : #{text}"
   s=s.code_a2b(guess(s) ,'utf-8').unescapeHTML
   s.force_encoding 'utf-8'
 
@@ -32,12 +32,14 @@ def joke(n=nil)
     s.gsub!(x,y)
   }
 
+  puts s
   $fun ||= 800
   if s.bytesize > $fun
-    sleep 0.1
+    sleep 0.05
     s=joke
   end
-  s
+  s.prepend 'xiaohua.zol.com.cn ' if rand < 0.1
+  "笑话标题:#{s}"
 end
 alias 给大爷讲个笑话 joke
 
