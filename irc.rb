@@ -28,6 +28,15 @@ require "ipwry.rb"
 require 'thread'
 require 'open-uri'
 
+#放入线程运行
+def go (tim=50)
+  Thread.new{ yield }
+end
+def t(tim=40,&proc)
+  Timeout.timeout(tim){
+    Thread.new{ proc.call }}
+end
+
 class IRC
   def initialize(server,port,nick,channel,charset,name=$name)
     $_hour = $_min = $_sec = 0
@@ -92,14 +101,13 @@ class IRC
 
   def ping
     Thread.new do
-      #puts " thread for ping start "
+      puts " thread for ping start "
+      Thread.exit if Time.now - $Lping < 30
       Thread.current[:name]= ' ping '
-      $needrestart = true
       $Lping = Time.now
+      $needrestart = true
       @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 1
-      @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 15
+      sleep 12
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -122,27 +130,28 @@ class IRC
     do_after_sec(who,sSay,0,delay||$msg_delay)
   end
 
-  Max=426
+  Max=400
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
     s.gsub!(/\s+/,' ')
     s.strip!
-    if $fun and s.bytesize > Max - "PRIVMSG #{chan} :".size
+    size = Max - "PRIVMSG #{chan} :".bytesize
+    if $fun and s.bytesize > size
       if s.bytesize > $fun
         s.slice_u!($fun..-1)
         s << ' …'
       end
       i=0.09
       a,b=0,140
-      b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
+      b+=1 while b<s.size and s[a..b].bytesize < size
       send "PRIVMSG #{chan} :#{s[a..b]}"
       while b < s.size
         sleep i+=0.08
         a=b+1
         b=a+140
-        b+=1 while b<s.size and s[a..b].bytesize < Max - "PRIVMSG #{chan} :".size
-        send "PRIVMSG #{chan} : ─>  #{s[a..b]}"
+        b+=1 while b<s.size and s[a..b].bytesize < size
+        send "PRIVMSG #{chan} : ─> #{s[a..b]}"
       end
     else
       send "PRIVMSG #{chan} :#{s}"
@@ -154,9 +163,10 @@ class IRC
   def send(s)
     #print "s:"
     #p s
+    p s.bytesize
     s.gsub!(/\s+/,' ')
-    if s.bytesize > Max + 3
-      s.slice_u!(Max..-1)
+    if s.bytesize > Max + 13
+      s.slice_u!(size..-1)
       if @charset == 'UTF-8'
         while not s[-3].between?("\xe0","\xef") and s[-1].ord > 127 # > ruby1.9 可以不使用这个判断了.
           s.chop!
@@ -187,7 +197,6 @@ class IRC
     begin
       Timeout.timeout(7){
         tcpsocket = TCPSocket.open(@server, @port)
-        @irc = nil
         if $use_ssl
           ssl_context = OpenSSL::SSL::SSLContext.new()
           ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -209,7 +218,7 @@ class IRC
 
      @send_nick.call
      send "USER #@str_user"
-     Thread.new{
+     go {
         sleep 15
         identify
      }
@@ -279,7 +288,7 @@ class IRC
       when 0
         re = c
       when 1,'g'
-        re = "http://lmgtfy.com/?q=#{c.strip} "
+        re = "http://lmgtfy.com/ " #?q=#{c.strip} "
         re << getgoogleDefine(c)
       when 2 then re = getBaidu c
       when 3 then re = googleFinance c
@@ -351,15 +360,6 @@ class IRC
     return nil
   end
 
-  #放入线程运行
-  def go (tim=50)
-      Thread.new{ yield }
-  end
-  def t(tim=40,&proc)
-    Timeout.timeout(tim){
-      Thread.new{ proc.call }}
-  end
-
   #处理频道消息,私人消息,JOINS QUITS PARTS KICK NICK NOTICE
   def check_msg(s)
     if @charset != $local_charset
@@ -387,7 +387,7 @@ class IRC
       
       #大段
       if sSay.bytesize > 300
-        $u.said(nick,name,ip,-1)
+        $u.said(nick,name,ip,0)
       end
 
       if $u.saidAndCheckFlood(nick,name,ip,sSay)
@@ -419,7 +419,7 @@ class IRC
       #check ctcp but not /me
       if sSay[0].ord == 1 then
         if sSay[1,6] != /ACTION/i
-          #$u.said(nick,name,ip,0)
+          $u.said(nick,name,ip,0)
         end
         return
       end
@@ -499,7 +499,7 @@ class IRC
       $need_Check_code += n if from =~ $botlist_Code
       $need_say_feed += n if from =~ $botlist_ub_feed
       $saytitle +=n if from =~ $botlist_title
-      print " need say title: #$saytitle "
+      #print " need say title: #$saytitle "
 
       @count +=n
       #p n
@@ -565,7 +565,7 @@ class IRC
           #$saytitle -=0.2 
           #ti << " 检测到有其他取标题机器人 "
         #end
-        msg(to,from + ti ,0)
+        msg(to, ti ,0)
       end
     end
     @ti_p=Thread.new(to,from,url) { |to,from,url|
@@ -576,7 +576,7 @@ class IRC
           #$saytitle -=0.2 
           #ti << " 检测到有其他取标题机器人 "
         #end
-        msg(to,from + ti ,0)
+        msg(to, ti ,0)
       end
     }
   end
@@ -746,7 +746,7 @@ class IRC
       if sSay =~ /[\001]VERSION[\001]/i
         from.delete! ':'
         print from, ' get VERSION', "\n"
-        send "NOTICE #{from} :\001VERSION kk-Ruby-irc #{Ver} birthday=2008.7.20\001"
+        send "NOTICE #{from} :\001VERSION kk-Ruby-irc birthday=2008.7.20 #{Ver}\001"
         return 'match version'
       end
       return nil
@@ -926,8 +926,8 @@ class IRC
   end
 
   def mystart
-    $data = JSON.parse open("_#{ARGV[0]}.dat").read rescue nil
-    $data ||= Hash.new
+    $data = YAML.load_file "_#{ARGV[0]}.data" rescue Hash.new
+    p $data
 	  conf = "_#{ARGV[0]}.yaml"
     $u = YAML.load_file conf rescue nil
     $u ||= All_user.new
@@ -1047,11 +1047,12 @@ class IRC
       Thread.current[:name]= 'timer min'
       n = 0
       loop do
-        sleep 55+rand(10)
+        sleep 51
         n+=1
         n=0 if n > 9000
-        if n % 4 == 0
+        if n % 3 == 0
           ping
+          sleep 20
         end
         if n % 20 == 0
           check_proxy_status rescue log
@@ -1089,7 +1090,7 @@ class IRC
           #log ' x.empty, may be lose conn '
           return
         end
-        x.split(/\r?\n/).each {|s|
+        x.each_line {|s|
           handle_server_input(s) rescue log('')
         }
       end
