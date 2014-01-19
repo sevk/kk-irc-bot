@@ -21,7 +21,14 @@ def joke(n=nil)
     log ''
     return joke
   end
-  s= " #{ti} : #{text}"
+  if text.gsub(/\s+/,'').empty?
+    text = s.image_with(:src => /xiaohua\./).src
+    text.prepend "竟然是图片"
+    #sleep 0.1
+    #p text
+    #return joke
+  end
+  s= " 笑话标题:#{ti} :#{text}"
   s=s.code_a2b(guess(s) ,'utf-8').unescapeHTML
   s.force_encoding 'utf-8'
 
@@ -38,8 +45,8 @@ def joke(n=nil)
     sleep 0.05
     s=joke
   end
-  s.prepend 'xiaohua.zol.com.cn ' if rand < 0.1
-  "笑话标题:#{s}"
+  s.prepend url if rand < 0.2
+  s
 end
 alias 给大爷讲个笑话 joke
 

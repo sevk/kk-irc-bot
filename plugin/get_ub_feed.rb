@@ -23,7 +23,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     ti = i.title.content.to_s
     #p ti
     next if ti =~ /Re:/i and not_re
-    p ti
+    #p ti
     link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
     des = i.content.to_s[0, 2*($fun||500)]
     date = i.updated.content
@@ -48,7 +48,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
     $ub = " 逛了一下论坛,暂时无新贴."
     p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 31
+    if $no_new_feed > 53
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
