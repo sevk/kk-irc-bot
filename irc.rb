@@ -102,7 +102,7 @@ class IRC
   def ping
     Thread.new do
       puts " thread for ping start "
-      Thread.exit if Time.now - $Lping < 30
+      Thread.current.exit if Time.now - $Lping < 30
       Thread.current[:name]= ' ping '
       $Lping = Time.now
       $needrestart = true
@@ -130,7 +130,7 @@ class IRC
     do_after_sec(who,sSay,0,delay||$msg_delay)
   end
 
-  Max=400
+  Max=399
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
@@ -163,7 +163,7 @@ class IRC
   def send(s)
     #print "s:"
     #p s
-    p s.bytesize
+    #p s.bytesize
     s.gsub!(/\s+/,' ')
     if s.bytesize > Max + 13
       s.slice_u!(size..-1)
@@ -179,7 +179,7 @@ class IRC
     end
 		return if s.bytesize < 2
     @irc.puts s.strip if @irc
-    p s.bytesize
+    #p s.bytesize
     $Lsay = Time.now
     if @charset != $local_charset
        s=s.code_a2b(@charset,$local_charset)
@@ -287,15 +287,16 @@ class IRC
         c=''
       when 0
         re = c
-      when 1,'g'
+      when 1,/g/i
         re = "http://lmgtfy.com/ " #?q=#{c.strip} "
         re << getgoogleDefine(c)
+        sleep rand $msg_delay
       when 2 then re = getBaidu c
       when 3 then re = googleFinance c
       when 4 then re = getGoogle_tran(c );c=''
       when 5#拼音
         re = "#{getPY(c)}";c='';
-      when 6,'s' 
+      when 6,'s'
         re= $str1.match(/(\n.*?)#{Regexp::escape c}(.*\n?)/i)[0]
       when 10 then re = hostA(c)
       when 21 then re = $u.ims(c).to_s
@@ -489,16 +490,16 @@ class IRC
 
 			case mt
 			when /join/i
-				n=-1
+        n=1
       	$u.add(nick,name,ip)
 			when /part|quit|kick/i
-				n=1
+				n=-1
 				$u.del(nick,ip)
      	  puts "all channel nick count : #@count" if rand(10) > 7
 			end
-      $need_Check_code += n if from =~ $botlist_Code
-      $need_say_feed += n if from =~ $botlist_ub_feed
-      $saytitle +=n if from =~ $botlist_title
+      #$need_Check_code -= n if from =~ $botlist_Code
+      #$need_say_feed -= n if from =~ $botlist_ub_feed
+      #$saytitle -=n if from =~ $botlist_title
       #print " need say title: #$saytitle "
 
       @count +=n
@@ -646,7 +647,7 @@ class IRC
       sayDic(21,from,to,$1)
     when /^`tt\s(.*?)$/i  # getGoogle_tran
       sayDic(4,from,to,$1)
-    when /^`?(g|s)\s(.*)$/i #Google | TXT search
+    when /^`?(g|s)\s+(.*)$/i #Google | TXT search
       sayDic($1,from,to,$2)
     when /^`d(ef(ine)?)?\s(.*?)$/#define:
       sayDic(1,from,to,'define:' + $3.to_s.strip)
@@ -782,6 +783,8 @@ class IRC
       when 319
         puts data
         #$needrestart = false if data =~ /#@channel/
+      when 328 #:services. 328 xxxx #Ubuntu-CN :http://www.ubuntu.org.cn
+        puts name.red
       when 396 #nick verifd
         puts '396 verifed '.red
         #joinit
@@ -1018,7 +1021,7 @@ class IRC
           check_dic(s,@nick,@nick)
         end
      else
-        s << " `人机合一说" if $bot_on
+        s << " `人机合一" if $bot_on
         say s
      end
   end
@@ -1047,7 +1050,7 @@ class IRC
       Thread.current[:name]= 'timer min'
       n = 0
       loop do
-        sleep 51
+        sleep rand(20) + 40
         n+=1
         n=0 if n > 9000
         if n % 3 == 0

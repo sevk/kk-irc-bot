@@ -241,7 +241,7 @@ class All_user
   def setrp(index,ip)
     if ip.match(/\w+\/\w+|unaffiliated/)
       p 'RP=30'
-      @RP[2][index] = 50
+      @RP[2][index] = 40
     else
       @RP[2][index] = 0
     end

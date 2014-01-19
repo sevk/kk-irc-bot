@@ -128,10 +128,10 @@ init_dic unless $Lsay
 UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)" unless defined? UserAgent
 CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
-$botlist_title = /alvin_rxg/
-$botlist=/fity|badgirl|pocoyo.?.?|iphone|\^?[Ou]_[ou]|MadGirl/i
-$botlist_Code=/badgirl|\^?[Ou]_[ou]/i
-$botlist_ub_feed=/crazyghost|\^?[Ou]_[ou]/i
+$botlist_title = /^alvin_rxg$/
+$botlist=/^fity|badgirl|pocoyo.?.?|iphone|MadGirl/i
+$botlist_Code=/^badgirl/i
+$botlist_ub_feed=/crazyghost/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
@@ -335,19 +335,14 @@ end
 def gettaobao url
   doc = Nokogiri::HTML(open(url)) 
   doc.encoding = 'utf-8'
-  begin
-    title = doc.css('.tb-detail-hd').first.text.strip
-  rescue NoMethodError
-    return 'good_not_exists'
-  end
 
   case url
   when /taobao/i
+    title = doc.css('.tb-item-title').text.strip
     price = doc.css('em.tb-rmb-num').first.text
   when /tmall/i
+    title = doc.at('.tb-detail-hd').text.strip rescue doc.title
     price = doc.css('.J_originalPrice').first.text.strip
-  else
-    return "not taobao url "
   end
 
   "#{title } 价格:#{price} 元"
@@ -355,10 +350,10 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
-  if not proxy and url =~ /^http:\/\/(detail\.tmall|item\.taobao)\.com\/item\.htm/i
+  if not proxy and url =~ /^http:\/\/detail\.tmall\.com\/item\.htm/i
     return gettaobao url 
   end
-  timeout=5
+  timeout=6
   title = ''
   charset = ''
   flag = 0
@@ -448,14 +443,17 @@ def gettitle(url,proxy=true,mechanize=1)
       end
       return 'err: no title' if title.empty?
       title = title.unescapeHTML
-      auth = page.at('.postauthor').children.children.text rescue nil
+      auth = page.at('.postauthor').text.strip rescue nil
       if auth
-        title << " zz:#{auth} "
+        title << " zz: #{auth} "
       end
-      jg = page.at(".priceLarge") . text rescue nil
-      if jg
-        title << " 价格:#{jg[0,11]} "
-      end
+      [ '.tb-rmb-num' , '.priceLarge' ] .each {|x|
+        jg = page.at(x).text rescue nil
+        if jg
+          title << " 价格:#{jg[0,12]} "
+          break
+        end
+      }
       return title[0,300]
     rescue Exception
       print 'err in get body '
