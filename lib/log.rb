@@ -62,7 +62,11 @@ def log(s=nil)
       else
          return
       end
-   elsif s.empty?
+  elsif s.class != String
+    s=s.inspect
+  end
+
+   if s.empty?
      if $!
        p $!.message
        puts "#{$@.select{|x| x !~/\/lib\/ruby\//i }.join("\n")}"
