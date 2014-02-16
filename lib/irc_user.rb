@@ -6,7 +6,7 @@
 $maxfloodme ||= 87.0 #70
 $maxflood ||= 33.3  #35.0
 $initFlood = 83.0 #83
-$maxNamed = 3*(Time.now.year-2000) + 150
+$maxNamed = 4*(Time.now.year-2000) + 200
 
 class All_user
   attr_accessor :RP, :addr
@@ -69,16 +69,18 @@ class All_user
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     index = getindex(nick)
+    p "index: #{index} "
     if index
       if ip != @ip[index]
         chg_ip(nick,ip)
       end
       return false
     end
+    puts " add nick: #{nick} "
     oldname = @index.key(@pos_write)
     #删除原位置
-    @index.delete(oldname)
-    @addr.delete(oldname) rescue nil
+    @index.delete oldname
+    @addr.delete oldname
 
     @addr[nick]= getaddr_fromip(ip)
 
@@ -101,7 +103,7 @@ class All_user
     @RP[1][@pos_write] = 0
     setrp(@pos_write,ip)
 
-    if @pos_write == $maxNamed
+    if @pos_write >= $maxNamed
       @pos_write = 0
       puts t.to_s.blueb
       puts @index.size
@@ -201,7 +203,7 @@ class All_user
     $timelast6me[index] = $initFlood if ! $timelast6me[index]
     $timelast6me[index] = $initFlood if $timelast6me[index] > $initFlood or $timelast6me[index] < 1
     $timelast6me[index] = $timelast6me[index] / 5 * 4 + 
-      (t-$timelastsayme[index]) +fix + getrp(nick)/10
+      (t-$timelastsayme[index]) + fix + getrp(nick)/12.0
     #p "~me #{nick} #{$timelast6me[index]}"
     $timelastsayme[index] = t
   end
@@ -214,7 +216,7 @@ class All_user
     if @index.include?(nick)
       index = getindex(nick)
     else
-      #puts '#无此用户'
+      puts '#无此用户'
       return add(nick,name,ip)
     end
     #~ puts '21 $timelast6say[index]:  index: ' + index.to_s
@@ -223,7 +225,7 @@ class All_user
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
     $timelast6say[index] = $initFlood if $timelast6say[index] > $initFlood or $timelast6say[index] < 1
     $timelast6say[index] = $timelast6say[index] / 5 * 4 + 
-      (t - $timelastsay[index]) + fix + getrp(nick)/10
+      (t - $timelastsay[index]) + fix + getrp(nick)/11.0
     $timelastsay[index] = t
   end
 
