@@ -1,4 +1,8 @@
-source "http://ruby.taobao.org"
+if ENV.to_a.join("\n").match /zh_cn.*/i
+  source "http://ruby.taobao.org"
+else
+  source 'https://rubygems.org'
+end
 
 gem "mechanize"
 gem "colored"
