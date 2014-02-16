@@ -174,6 +174,7 @@ def saveu
 end
 
 def safe_eval(str)
+  p 'eval ' + str
   if str =~ $eval_black_list
     return eval str
   else
@@ -450,7 +451,7 @@ def gettitle(url,proxy=true,mechanize=1)
       [ '.tb-rmb-num' , '.priceLarge' ] .each {|x|
         jg = page.at(x).text rescue nil
         if jg
-          title << " 价格:#{jg[0,12]} "
+          title << " 价格:#{jg[0,21]} "
           break
         end
       }
@@ -495,7 +496,7 @@ def gettitle(url,proxy=true,mechanize=1)
       }
     rescue Timeout::Error
       sleep timeout
-      return "取标题 #{$!.message}"
+      return "取标题超时 #{$!.message}"
     rescue Exception
       p ' err in URI.open '
       p $!
@@ -632,6 +633,7 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
+  sleep 18 + rand($msg_delay )
   s = Google::Search::Web.new do |s|
     s.query = word
   end
@@ -859,7 +861,7 @@ def hostA(domain,hideip=true)#处理IP 或域名
   if domain=~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/
     tmp = $1
   else
-    print " ip: ",domain ,10.chr
+    #print " ip: ",domain ,10.chr
     tmp = host(domain)
   end
   rtn=" "
@@ -872,16 +874,16 @@ def hostA(domain,hideip=true)#处理IP 或域名
   rtn.gsub(/\s+/,'').to_s + ' '
 end
 
-alias _print print if not defined?_print
-def print(* s)
-	_print s.join rescue nil
-	s.join
-end
+# alias _print print if not defined?_print
+# def print(* s)
+# 	_print s.join rescue nil
+# 	s.join
+# end
 
 #eval
 def evaluate(s)
 	begin
-		return Timeout.timeout(9){
+		return Timeout.timeout(12){
       safe_eval(s)
 		}
 	rescue Timeout::Error
@@ -1097,7 +1099,7 @@ def pr_highlighted(s)
 
     t = Time.now.strftime('%H%M%S')
     sy.force_encoding('utf-8')
-    re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)}#{mt}#{to}#{sy}"
+    re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)} #{mt}#{to}#{sy}"
   else
     re= s.red
   end
