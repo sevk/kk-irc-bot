@@ -18,8 +18,8 @@ require 'fileutils'
 include FileUtils
 require 'platform.rb'
 require 'openssl'
-OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE #unsafe
-I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = true
+#OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE #unsafe
+#I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = true
 include Math
 #require 'timeout'
 require "readline"
@@ -101,13 +101,13 @@ class IRC
 
   def ping
     Thread.new do
-      puts " thread for ping start "
+      #puts " thread for ping start " if $DEBUG
       Thread.current.exit if Time.now - $Lping < 30
       Thread.current[:name]= ' ping '
       $Lping = Time.now
       $needrestart = true
       @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 12
+      sleep 8
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -229,10 +229,10 @@ class IRC
         Thread.current[:name]= 'connect say'
         sleep 400+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
-        @nick = $nick[0]
+        @nick ||= $nick[0]
         @send_nick.call
         sleep rand(30)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.4
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.4 and $bot_on
      end
   end
 
@@ -290,7 +290,6 @@ class IRC
       when 1,/g/i
         re = "http://lmgtfy.com/ " #?q=#{c.strip} "
         re << getgoogleDefine(c)
-        sleep rand $msg_delay
       when 2 then re = getBaidu c
       when 3 then re = googleFinance c
       when 4 then re = getGoogle_tran(c );c=''
@@ -556,6 +555,7 @@ class IRC
       return if from =~ $botlist
       return if url =~ /(\.inputking\.|paste|imagebin\.org\/)/i
     end
+    p url
     $last_url = url.clone
 
     @ti=Thread.new(to,from,url) do |to,from,url|
@@ -596,9 +596,9 @@ class IRC
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s)
         #tmp = tmp.inspect if tmp.class != String
-        msg to,"#{from}:#{tmp}", $msg_delay*4 if not tmp.empty?
+        msg to,"#{from}:#{tmp}", $msg_delay*3 if not tmp.empty?
       }
-      @e.priority = -5
+      @e.priority = -3
     when /^`host\s(.*?)$/i # host
       sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
     when $re_http
@@ -618,9 +618,7 @@ class IRC
     when /^`?deb\s(.*)$/i  #aptitude show
       sayDic('deb',from,to,$1)
     when /^`title\s?(.*?)$/i
-      p $1
-      p $last_url
-      url=$1 || $last_url
+      url = $1.empty? ? $last_url : $1
       tran_url url,from,to,true
     when /^`help$/i #`help
       sayDic(99,from,to,$2)
@@ -784,7 +782,7 @@ class IRC
         puts data
         #$needrestart = false if data =~ /#@channel/
       when 328 #:services. 328 xxxx #Ubuntu-CN :http://www.ubuntu.org.cn
-        puts name.red
+        puts s.green
       when 396 #nick verifd
         puts '396 verifed '.red
         #joinit
@@ -807,14 +805,15 @@ class IRC
       #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
       #:wolfe.freenode.net 433 * [ub] :Nickname is already in use.
       #
-        @nick = $nick[rand $nick.size]
         Thread.new{
+          Thread.current[:name]= '433 change nick'
+          nick = $nick[rand $nick.size]
           sleep 16
           p $nick
           send "PRIVMSG nickserv :ghost #{$nick[0]}"
-          sleep 1
-          send "PRIVMSG nickserv :ghost #{@nick}"
-          #send "NICK #{@nick}"
+          send "PRIVMSG nickserv :ghost #{nick}"
+          send "NICK #{nick}"
+          sleep 500
           @send_nick.call
         }
       when 404
@@ -960,7 +959,7 @@ class IRC
       return if @daily_done
       @daily_done = true
       reload_all rescue nil
-      send "NICK " + $nick[0]
+      send "NICK " + @nick
       saveu
       send 'time'
       joinit
@@ -993,6 +992,8 @@ class IRC
         send "privmsg nickserv :#{$1.strip}"
      when /^\/ms\s+(.*)$/i #发送到memo serv
         send "privmsg memoserv :#{$1.strip}"
+     when /^\/n/ # nicks @channel
+       send "names #@channel"
      when /^\/nick\s+(.*)$/i
         @nick = $1
         send s.gsub(/^[\/]/,'')
@@ -1036,7 +1037,7 @@ class IRC
         begin
           s = Readline.readline("[#@channel]",true)
           iSend s
-          sleep 0.2
+          sleep 0.1
         rescue
           log ''
         end
@@ -1050,10 +1051,10 @@ class IRC
       Thread.current[:name]= 'timer min'
       n = 0
       loop do
-        sleep rand(20) + 40
+        sleep rand(20) + 49
         n+=1
         n=0 if n > 9000
-        if n % 3 == 0
+        if n % 4 == 3
           ping
           sleep 20
         end
