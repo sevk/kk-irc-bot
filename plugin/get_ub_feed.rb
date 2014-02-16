@@ -4,14 +4,15 @@
 require 'timeout'
 require 'rss'
 require 'time'
-#取ubuntu.com.cn的 feed.
-def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
+
+#取ubuntu.com.cn的 新帖.
+def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
   begin
    feed = Timeout.timeout(25) {
-      RSS::Parser.parse(url)
+      RSS::Parser.parse url
     }
   rescue Timeout::Error
-    return if rand < 0.5
+    return if rand < 0.97
     return ' 取新帖 timeout '
   end
   #p 'feed geted'
@@ -39,11 +40,6 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
   $data ||= Hash.new
   $data['old_feed'] ||= Time.now - 800
 
-  #从json转回来，竟然变成了String
-  if $data['old_feed'].class == String
-    $data['old_feed'] = Time.parse $data['old_feed']
-  end
-  #p $data['old_feed']
   if $data['old_feed'] >= @last and $ub
     $ub = " 逛了一下论坛,暂时无新贴."
     p ' is old feed'
@@ -52,7 +48,8 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php',not_re = true)
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
-    return
+    return if rand < 0.993
+    return $ub
   else
     $no_new_feed=0
     $data['old_feed'] = @last
@@ -80,10 +77,11 @@ end
 
 $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
+  Thread.current[:name]= ' get_ub_feed '
   n=80
   sleep n
   loop {
-    sleep 60
+    sleep 70
     force = nil
     force = true if Time.now - $last_say_new > 280
     #n久没人说话再取
@@ -92,5 +90,5 @@ $get_ub_feed=Thread.new do
     end
   }
 end
-$get_ub_feed.priority = -3
+$get_ub_feed.priority = -2
 
