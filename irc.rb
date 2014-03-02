@@ -58,7 +58,8 @@ class IRC
     charset='UTF-8' if charset =~ /utf\-?8/i
     @charset = charset
     @send_nick=Proc.new{
-       send "NICK #{@nick}"
+      send "PRIVMSG nickserv :ghost #{$nick[0]}"
+      send "NICK #{@nick}"
     }
     $channel_lastsay= Time.now
     loadDic
@@ -227,12 +228,12 @@ class IRC
      @cs.kill if @cs
      @cs=Thread.new do
         Thread.current[:name]= 'connect say'
-        sleep 400+rand(500)
+        sleep 200+rand(500)
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
         @nick ||= $nick[0]
         @send_nick.call
-        sleep rand(30)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if rand > 0.4 and $bot_on
+        sleep rand(60)
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on
      end
   end
 
@@ -288,7 +289,7 @@ class IRC
       when 0
         re = c
       when 1,/g/i
-        re = "http://lmgtfy.com/ " #?q=#{c.strip} "
+        re = '' # "http://lmgtfy.com/ " #?q=#{c.strip} "
         re << getgoogleDefine(c)
       when 2 then re = getBaidu c
       when 3 then re = googleFinance c
@@ -590,13 +591,12 @@ class IRC
     s.force_encoding('utf-8').strip!
     #tr_name = s.match($re_tran_head)[0]
     s.sub!($re_tran_head,''); from << " " << $1 if $1
-    case s
-    when /^`?>\s(.+)$/i
+    case s.strip
+    when /^`?>\s+(.+)$/i
       @e=Thread.new($1){|s|
         Thread.current[:name]= 'eval > xxx'
-        tmp = evaluate(s)
-        #tmp = tmp.inspect if tmp.class != String
-        msg to,"#{from}:#{tmp}", $msg_delay*3 if not tmp.empty?
+        tmp = evaluate(s).inspect
+        msg to,"#{from}:#{tmp}", $msg_delay*3
       }
       @e.priority = -3
     when /^`host\s(.*?)$/i # host
@@ -637,7 +637,7 @@ class IRC
       w = $2.strip
       p ' xxx 是啥 '
       return if $1
-      return if w =~ /知道|这|那|的|哪| that/
+      return if w =~ /知道|这|那|的|哪| that|你|,/
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
     when /^`ims\s(.*?)$/i  #IMS查询
@@ -731,7 +731,7 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      #p '<< pong '
+      p s.green
       $lag=Time.now - $Lping
       if $lag > 2
         puts "LAG = #{$lag} sec" 
@@ -808,9 +808,8 @@ class IRC
         Thread.new{
           Thread.current[:name]= '433 change nick'
           nick = $nick[rand $nick.size]
-          sleep 16
+          sleep 12
           p $nick
-          send "PRIVMSG nickserv :ghost #{$nick[0]}"
           send "PRIVMSG nickserv :ghost #{nick}"
           send "NICK #{nick}"
           sleep 500
@@ -929,9 +928,9 @@ class IRC
 
   def mystart
     $data = YAML.load_file "_#{ARGV[0]}.data" rescue Hash.new
-    p $data
 	  conf = "_#{ARGV[0]}.yaml"
     $u = YAML.load_file conf rescue nil
+    File.delete conf if $u.all_nick.size == 0 rescue nil
     $u ||= All_user.new
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red

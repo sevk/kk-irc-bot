@@ -178,6 +178,7 @@ def safe_eval(str)
   if str =~ $eval_black_list
     return eval str
   else
+    return get_eval_in str if RUBY_VERSION > '2.0'
     return Rufus.eval_safely str,4
   end
 end
