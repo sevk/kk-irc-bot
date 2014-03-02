@@ -48,7 +48,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
-    return if rand < 0.993
+    return if rand < 0.999
     return $ub
   else
     $no_new_feed=0

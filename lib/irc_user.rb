@@ -9,7 +9,7 @@ $initFlood = 83.0 #83
 $maxNamed = 4*(Time.now.year-2000) + 200
 
 class All_user
-  attr_accessor :RP, :addr
+  attr_accessor :RP, :addr , :index
 
   def initialize
     @pos_write = 0
@@ -66,7 +66,9 @@ class All_user
 
   #记录nick库
   def add(nick,name,ip)
+    nick.strip!
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
+    print "name:"; p name
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     index = getindex(nick)
     p "index: #{index} "
