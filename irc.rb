@@ -3,9 +3,9 @@
 #需要ruby较新的版本, 比如ruby1.8.7以上 或 ruby1.9.2 以上, 建议使用linux系统.
 
 =begin
-   * Description:
+   * Description: 当时学ruby，写着玩的机器人
    * Author: Sevkme@gmail.com
-   * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://code.google.com/p/kk-irc-bot/ 
+   * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://git.oschina.net/sevkme/kk-irc-bot/ , http://code.google.com/p/kk-irc-bot/ 
 
 =end
 #BEGIN {$VERBOSE = true}
@@ -108,7 +108,7 @@ class IRC
       $Lping = Time.now
       $needrestart = true
       @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 8
+      sleep 13
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -148,7 +148,7 @@ class IRC
       b+=1 while b<s.size and s[a..b].bytesize < size
       send "PRIVMSG #{chan} :#{s[a..b]}"
       while b < s.size
-        sleep i+=0.08
+        sleep i+=0.05
         a=b+1
         b=a+140
         b+=1 while b<s.size and s[a..b].bytesize < size
@@ -200,7 +200,6 @@ class IRC
         tcpsocket = TCPSocket.open(@server, @port)
         if $use_ssl
           ssl_context = OpenSSL::SSL::SSLContext.new()
-          ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
           @@socket = OpenSSL::SSL::SSLSocket.new(tcpsocket, ssl_context)
           @@socket.sync = true
           @@socket.connect
@@ -212,13 +211,12 @@ class IRC
 
      rescue TimeoutError
        log ''
-        p 'sleep ... retry conn'
         sleep 6
         retry
      end
 
-     @send_nick.call
      send "USER #@str_user"
+     @send_nick.call
      go {
         sleep 15
         identify
@@ -232,8 +230,8 @@ class IRC
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
         @nick ||= $nick[0]
         @send_nick.call
-        sleep rand(60)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on
+        sleep rand(900)
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on and rand < 0.2
      end
   end
 
@@ -492,9 +490,11 @@ class IRC
 			when /join/i
         n=1
       	$u.add(nick,name,ip)
+        @nicks << nick
 			when /part|quit|kick/i
 				n=-1
 				$u.del(nick,ip)
+        @nicks.delete nick
      	  puts "all channel nick count : #@count" if rand(10) > 7
 			end
       #$need_Check_code -= n if from =~ $botlist_Code
@@ -505,16 +505,18 @@ class IRC
       @count +=n
       #p n
       #p @count
-      renew_Readline_complete($u.all_nick)
+      renew_Readline_complete
     when /^:(.+?)!(.+?)@(.+?)\sNICK\s:(.+)$/i #Nick_chg
       #:ikk-test!n=Sevk@125.124.130.81 NICK :ikk-new
       nick=$1;name=$2;ip=$3;new=$4
       if $u.chg_nick(nick,new) ==1
         $u.add(new,name,ip)
       end
+      @nicks.delete nick
+      @nicks << new
       $need_Check_code -= 1 if new =~ $botlist_Code
       $need_say_feed -= 1 if new =~ $botlist_ub_feed
-      renew_Readline_complete($u.all_nick)
+      renew_Readline_complete
 
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
@@ -731,10 +733,9 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      p s.green
       $lag=Time.now - $Lping
-      if $lag > 2
-        puts "LAG = #{$lag} sec" 
+      if $lag > 1.3
+        puts "LAG = #{$lag} sec".green
       end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
@@ -794,7 +795,7 @@ class IRC
         @count = @nicks.count
         puts "nick list: #{ @nicks.join(' ') } , #@count ".red
 
-        renew_Readline_complete(@nicks.to_a)
+        renew_Readline_complete
         Readline.completion_append_character = ', '
 
         puts "$need_Check_code= #{$need_Check_code}"
@@ -921,16 +922,18 @@ class IRC
   end
 
   #自动补全
-  def renew_Readline_complete(w)
-    Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
-    Readline.completion_case_fold=false
+  def renew_Readline_complete
+    Readline.completion_case_fold=true
+    Readline.completion_proc = proc { |s|
+      @nicks.grep(/^#{Regexp.escape(s)}/i)
+    }
   end
 
   def mystart
     $data = YAML.load_file "_#{ARGV[0]}.data" rescue Hash.new
 	  conf = "_#{ARGV[0]}.yaml"
     $u = YAML.load_file conf rescue nil
-    File.delete conf if $u.all_nick.size == 0 rescue nil
+    File.delete conf if $u.index.size == 0 rescue log
     $u ||= All_user.new
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
@@ -1009,7 +1012,7 @@ class IRC
            send s1
         end
      when /^`/ #直接执行
-        if s[1..-1] =~ />\s(.*)/
+        if s[1..-1] =~ />\s+(.*)/
            p s
            begin
               tmp=eval($1.to_s)
@@ -1053,7 +1056,7 @@ class IRC
         sleep rand(20) + 49
         n+=1
         n=0 if n > 9000
-        if n % 4 == 3
+        if n % 5 == 3
           ping
           sleep 20
         end
