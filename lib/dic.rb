@@ -12,7 +12,6 @@ load 'irc_user.rb'
 load 'color.rb'
 load 'plugin.rb' rescue log
 require 'google-search'
-require 'rufus/eval' if not defined? Rufus
 
 def nil.empty?
   true
@@ -173,13 +172,26 @@ def saveu
   puts ' save u ok'.red
 end
 
+require "shikashi"
+include Shikashi
+$s=Sandbox.new
+$priv = Privileges.new
+[:p ,:print ,:puts].each {|x| $priv.allow_method x }
+a = [Math,Fixnum,String,Array,Hash,Time,Enumerator]
+a.flatten.inject([]){|x,y| x | y.methods | y.instance_methods } .each{|x|
+  $priv.allow_method x
+}
+a.inject([]){|x,y| x | [y] | y.constants} .each{|x|
+  $priv.allow_const_read x
+}
+
 def safe_eval(str)
   p 'eval ' + str
   if str =~ $eval_black_list
     return eval str
   else
-    return get_eval_in str if RUBY_VERSION > '2.0'
-    return Rufus.eval_safely str,4
+    p ' shikashi ' + str
+    return $s.run($priv, str ) rescue $!.message # get_eval_in(str)
   end
 end
 
@@ -416,7 +428,7 @@ def gettitle(url,proxy=true,mechanize=1)
         return if re =~ /length=\d\D/i
         return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
       end
-    rescue Exception
+    rescue
       print 'err in get head '
       p $!
       case $!
@@ -449,7 +461,7 @@ def gettitle(url,proxy=true,mechanize=1)
       if auth
         title << " zz: #{auth} "
       end
-      [ '.tb-rmb-num' , '.priceLarge' ] .each {|x|
+      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price'] .each {|x|
         jg = page.at(x).text rescue nil
         if jg
           title << " 价格:#{jg[0,21]} "
@@ -457,7 +469,7 @@ def gettitle(url,proxy=true,mechanize=1)
         end
       }
       return title[0,300]
-    rescue Exception
+    rescue
       print 'err in get body '
       p $!
       case $!
@@ -498,7 +510,7 @@ def gettitle(url,proxy=true,mechanize=1)
     rescue Timeout::Error
       sleep timeout
       return "取标题超时 #{$!.message}"
-    rescue Exception
+    rescue
       p ' err in URI.open '
       p $!
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
@@ -622,8 +634,8 @@ def geturl(url,type=1)
   #agent.cookies
   begin
     page = agent.get_file(url)
-  rescue Exception => e
-    return e.message[0,60] + ' . IN geturl.'
+  rescue
+    return $!.message[0,60] + ' . IN geturl.'
   end
   puts page
   s = page.force_encoding('utf-8').match(/您是不是要找.*?<strong>(.*?)<\/strong>/im)[1]
@@ -940,8 +952,8 @@ def osod
   url = "http://ppcbook.hongen.com/eng/daily/sentence/#{m}#{d}sent.htm"
   begin
     page = agent.get_file(url)
-  rescue Exception => e
-    return e.message[0,60] + ' . IN osod'
+  rescue
+    return $!.message[0,60] + ' . IN osod'
   end
   s = page.match(/span class="e2">(.*?)<select name='selectmonth'>/mi)[1]
   s = s.gsub!(/\s+/,' ')
@@ -952,7 +964,7 @@ end
         #re="#$3".gsub(/~/,'')
         # gsub(/xxx/){$&.upcase; gsub(/xxx/,'\2,\1')}
 #get deb info
-def ge name
+def aptw name
   agent = Mechanize.new
   agent.user_agent_alias = 'Linux Mozilla'
   agent.max_history = 0
@@ -965,9 +977,9 @@ def ge name
     #page = agent.get(url)
     page = agent.get_file(url)
     #return nil if page.class != Mechanize::Page
-  rescue Exception => e
+  rescue
     #p e.message
-    return e.message[0,60] + ' . IN getdeb'
+    return $!.message[0,60] + ' . IN getdeb'
   end
   s = page.split(/<\/h2>/im)[1]
   s = s.match(/.*resultlink".+?:(.+?)<br>(.+?): .*<h2>/mi)[1..2].join ','
@@ -975,7 +987,7 @@ def ge name
   s.gsub!(/<.*?>/,'')
   s.unescapeHTML
 end
-alias get_deb_info ge
+alias get_deb_info aptw
 
 #公告
 def gg
@@ -1109,6 +1121,7 @@ def pr_highlighted(s)
   else
      puts re
   end
+  Readline.refresh_line
   savelog re if need_savelog
 end
 

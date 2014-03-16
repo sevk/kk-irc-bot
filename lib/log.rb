@@ -79,7 +79,7 @@ def log(s=nil)
    if $!
      p $!.message
       f= Myname + '-err.log'
-      p f
+      #p f
       f = Logger::LogDevice.new(File.join($logDir,f))
       le = Logger.new(f ,shift_age=30,shift_size = 1200000)
       le.datetime_format = "%m-%d %H:%M:%S"
@@ -87,7 +87,7 @@ def log(s=nil)
       le.close
    else
       f= Myname + '.log'
-      p f
+      #p f
       f = Logger::LogDevice.new(File.join($logDir,f))
       if $zip_log
          l = Logger.new(f , 'daily' )

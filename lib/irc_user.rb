@@ -43,16 +43,13 @@ class All_user
   end
 
   def getindex(nick)
-    if @index.include?(nick)
-      return @index[nick]
-    else
-      #puts 'getindex 未找到nick: ' + nick
-      return nil
-    end
+    @index[nick]
   end
 
   #解析网页登录的IP
   def ip_from_webname(name)
+    p ' ip_from_webname '
+    p name
     name.scan(/../).map{|x| x.hex}.join('.')
   end
 
@@ -66,12 +63,12 @@ class All_user
 
   #记录nick库
   def add(nick,name,ip)
+    p ' add '
     nick.strip!
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     print "name:"; p name
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     index = getindex(nick)
-    p "index: #{index} "
     if index
       if ip != @ip[index]
         chg_ip(nick,ip)

@@ -108,7 +108,7 @@ class IRC
       $Lping = Time.now
       $needrestart = true
       @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 8
+      sleep 13
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -190,35 +190,32 @@ class IRC
   end
 
   #连接irc
-  def connect()
+  def connect
     p 'irc.conn'
     trap(:INT){myexit 'Ctrl-c'}
     return if @exit
     $need_reconn = false
     begin
-      Timeout.timeout(7){
+      Timeout.timeout(9){
         tcpsocket = TCPSocket.open(@server, @port)
         if $use_ssl
-          ssl_context = OpenSSL::SSL::SSLContext.new()
-          ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
-          @@socket = OpenSSL::SSL::SSLSocket.new(tcpsocket, ssl_context)
-          @@socket.sync = true
-          @@socket.connect
-          @irc = @@socket
+          ssl_context = OpenSSL::SSL::SSLContext.new
+          #ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
+          socket = OpenSSL::SSL::SSLSocket.new(tcpsocket, ssl_context)
+          #socket.sync = true
+          socket.connect
+          @irc = socket
         else
           @irc = tcpsocket
         end
       }
-
      rescue TimeoutError
        log ''
-        p 'sleep ... retry conn'
-        sleep 6
-        retry
+       return
      end
 
-     @send_nick.call
      send "USER #@str_user"
+     @send_nick.call
      go {
         sleep 15
         identify
@@ -232,8 +229,8 @@ class IRC
         #send("privmsg #{@channel} :\001ACTION #{osod} #{1.chr} ")
         @nick ||= $nick[0]
         @send_nick.call
-        sleep rand(60)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on
+        sleep rand(900)
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on and rand < 0.2
      end
   end
 
@@ -382,6 +379,7 @@ class IRC
 
       #bot功能是否打开
       unless $bot_on
+        p ' $u.add '
         $u.add(nick,name,ip)
         return 
       end
@@ -519,7 +517,6 @@ class IRC
     when /^(.+?)Notice(.+)$/i  #Notice
       #:ChanServ!ChanServ@services. NOTICE ikk-bot :[#sevk] "此频道目前主要用于BOT测试."
       puts s
-
     else
       puts s
       return 1 # not match
@@ -596,7 +593,7 @@ class IRC
       @e=Thread.new($1){|s|
         Thread.current[:name]= 'eval > xxx'
         tmp = evaluate(s).inspect
-        msg to,"#{from}:#{tmp}", $msg_delay*3
+        msg to,"#{from}: #{tmp}", $msg_delay*3
       }
       @e.priority = -3
     when /^`host\s(.*?)$/i # host
@@ -731,10 +728,9 @@ class IRC
     #:barjavel.freenode.net PONG barjavel.freenode.net :LAG1982067890
     when /\sPONG\s(.+)$/i
       $needrestart = false
-      p s.green
       $lag=Time.now - $Lping
-      if $lag > 2
-        puts "LAG = #{$lag} sec" 
+      if $lag > 1.2
+        puts "LAG = #{$lag} sec".green
       end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
@@ -922,8 +918,10 @@ class IRC
 
   #自动补全
   def renew_Readline_complete(w)
-    Readline.completion_proc = proc {|word| w.grep(/^#{Regexp.quote word}/) }
-    Readline.completion_case_fold=false
+    Readline.completion_case_fold=true
+    Readline.completion_proc =proc { |s|
+        w.grep(/^#{Regexp.escape(s)}/i)
+    }
   end
 
   def mystart
@@ -942,7 +940,7 @@ class IRC
 
   #自定义退出
   def myexit(exit_msg = 'optimize')
-    @exit = true
+    $exit = @exit = true
     send( 'quit ' + exit_msg) rescue nil
     Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
     saveu
@@ -1053,7 +1051,7 @@ class IRC
         sleep rand(20) + 49
         n+=1
         n=0 if n > 9000
-        if n % 4 == 3
+        if n % 5 == 3
           ping
           sleep 20
         end
@@ -1128,8 +1126,8 @@ if not defined? $u
 
   irc.input_start if $client
   Thread.current[:name]= 'main'
+  check_proxy_status
   loop do
-    check_proxy_status
     begin
       exit if @exit
       irc.connect
