@@ -12,7 +12,6 @@ load 'irc_user.rb'
 load 'color.rb'
 load 'plugin.rb' rescue log
 require 'google-search'
-require 'rufus/eval' if not defined? Rufus
 
 def nil.empty?
   true
@@ -153,7 +152,7 @@ def reload_all
   load 'dic.rb' rescue log('')
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
-rescue Exception
+rescue
   log
 end
 
@@ -173,13 +172,27 @@ def saveu
   puts ' save u ok'.red
 end
 
+require "shikashi"
+include Shikashi
+$s=Sandbox.new
+$priv = Privileges.new
+[:p ,:print ,:puts].each {|x| $priv.allow_method x }
+a = [Math,Fixnum,String,Array,Hash,Time]
+a.flatten.inject([]){|x,y| x | y.methods | y.instance_methods } .each{|x|
+    $priv.allow_method x
+} 
+a.inject([]){|x,y| x | [y] | y.constants} .each{|x|
+    $priv.allow_const_read x 
+} 
+
 def safe_eval(str)
+  str.strip!
   p 'eval ' + str
   if str =~ $eval_black_list
     return eval str
   else
-    return get_eval_in str if RUBY_VERSION > '2.0'
-    return Rufus.eval_safely str,4
+    #return get_eval_in str if RUBY_VERSION > '2.0'
+    return $s.run($priv, str )
   end
 end
 
@@ -416,7 +429,7 @@ def gettitle(url,proxy=true,mechanize=1)
         return if re =~ /length=\d\D/i
         return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
       end
-    rescue Exception
+    rescue
       print 'err in get head '
       p $!
       case $!
@@ -449,7 +462,7 @@ def gettitle(url,proxy=true,mechanize=1)
       if auth
         title << " zz: #{auth} "
       end
-      [ '.tb-rmb-num' , '.priceLarge' ] .each {|x|
+      [ '.tb-rmb-num' , '.priceLarge', '.tm-price' ] .each {|x|
         jg = page.at(x).text rescue nil
         if jg
           title << " 价格:#{jg[0,21]} "
@@ -457,7 +470,7 @@ def gettitle(url,proxy=true,mechanize=1)
         end
       }
       return title[0,300]
-    rescue Exception
+    rescue
       print 'err in get body '
       p $!
       case $!
@@ -498,7 +511,7 @@ def gettitle(url,proxy=true,mechanize=1)
     rescue Timeout::Error
       sleep timeout
       return "取标题超时 #{$!.message}"
-    rescue Exception
+    rescue
       p ' err in URI.open '
       p $!
       if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
@@ -622,8 +635,8 @@ def geturl(url,type=1)
   #agent.cookies
   begin
     page = agent.get_file(url)
-  rescue Exception => e
-    return e.message[0,60] + ' . IN geturl.'
+  rescue
+    return $!.message[0,60] + ' . IN geturl.'
   end
   puts page
   s = page.force_encoding('utf-8').match(/您是不是要找.*?<strong>(.*?)<\/strong>/im)[1]
@@ -634,7 +647,7 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
-  sleep 18 + rand($msg_delay )
+  sleep $msg_delay * 2
   s = Google::Search::Web.new do |s|
     s.query = word
   end
@@ -889,7 +902,7 @@ def evaluate(s)
 		}
 	rescue Timeout::Error
 		return ' Timeout, 超时。。'
-  rescue Exception
+  rescue
     return $!.message[0,88]# + $@.join(' ')
 	end
 end
@@ -940,8 +953,8 @@ def osod
   url = "http://ppcbook.hongen.com/eng/daily/sentence/#{m}#{d}sent.htm"
   begin
     page = agent.get_file(url)
-  rescue Exception => e
-    return e.message[0,60] + ' . IN osod'
+  rescue
+    return $!.message[0,60] + ' . IN osod'
   end
   s = page.match(/span class="e2">(.*?)<select name='selectmonth'>/mi)[1]
   s = s.gsub!(/\s+/,' ')
@@ -965,9 +978,9 @@ def ge name
     #page = agent.get(url)
     page = agent.get_file(url)
     #return nil if page.class != Mechanize::Page
-  rescue Exception => e
+  rescue
     #p e.message
-    return e.message[0,60] + ' . IN getdeb'
+    return $!.message[0,60] + ' . IN getdeb'
   end
   s = page.split(/<\/h2>/im)[1]
   s = s.match(/.*resultlink".+?:(.+?)<br>(.+?): .*<h2>/mi)[1..2].join ','
@@ -1075,7 +1088,8 @@ def pr_highlighted(s)
   need_savelog = false
   case s
   when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+?)\s:)?(.+)$/i
-    from=$1.strip;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+    from=$1 || ''
+    name=$2;ip=$3;mt=$4;to=$6;sy=$7
     return if $ignore_action =~ /#{Regexp::escape mt}/i
     case mt
     when /privmsg/i
@@ -1099,7 +1113,7 @@ def pr_highlighted(s)
     end
 
     t = Time.now.strftime('%H%M%S')
-    sy.force_encoding('utf-8')
+    sy.force_encoding('utf-8') rescue sy
     re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)} #{mt}#{to}#{sy}"
   else
     re= s.red
@@ -1109,6 +1123,8 @@ def pr_highlighted(s)
   else
      puts re
   end
+  #Readline.redisplay
+  Readline.refresh_line
   savelog re if need_savelog
 end
 
@@ -1118,7 +1134,7 @@ def savelog(s)
 
 	fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
 	File.open( fn,'ab'){ |x|
-		x.puts s.clear_color
+    x.puts s.clear_color rescue s
 	}
 end
 
