@@ -152,7 +152,7 @@ def reload_all
   load 'dic.rb' rescue log('')
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
-rescue Exception
+rescue
   log
 end
 
@@ -186,12 +186,14 @@ a.inject([]){|x,y| x | [y] | y.constants} .each{|x|
 }
 
 def safe_eval(str)
+  str.strip!
   p 'eval ' + str
   if str =~ $eval_black_list
     return eval str
   else
     p ' shikashi ' + str
     return $s.run($priv, str ) rescue $!.message # get_eval_in(str)
+    #return get_eval_in str if RUBY_VERSION > '2.0'
   end
 end
 
@@ -646,7 +648,7 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
-  sleep 18 + rand($msg_delay )
+  sleep $msg_delay * 2
   s = Google::Search::Web.new do |s|
     s.query = word
   end
@@ -901,7 +903,7 @@ def evaluate(s)
 		}
 	rescue Timeout::Error
 		return ' Timeout, 超时。。'
-  rescue Exception
+  rescue
     return $!.message[0,88]# + $@.join(' ')
 	end
 end
@@ -1087,7 +1089,8 @@ def pr_highlighted(s)
   need_savelog = false
   case s
   when /^:(.+?)!(.+?)@(.+?)\s(.+?)\s((.+?)\s:)?(.+)$/i
-    from=$1.strip;name=$2;ip=$3;mt=$4;to=$6;sy=$7
+    from=$1 || ''
+    name=$2;ip=$3;mt=$4;to=$6;sy=$7
     return if $ignore_action =~ /#{Regexp::escape mt}/i
     case mt
     when /privmsg/i
@@ -1111,7 +1114,7 @@ def pr_highlighted(s)
     end
 
     t = Time.now.strftime('%H%M%S')
-    sy.force_encoding('utf-8')
+    sy.force_encoding('utf-8') rescue sy
     re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)} #{mt}#{to}#{sy}"
   else
     re= s.red
@@ -1131,7 +1134,7 @@ def savelog(s)
 
 	fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
 	File.open( fn,'ab'){ |x|
-		x.puts s.clear_color
+    x.puts s.clear_color rescue s
 	}
 end
 

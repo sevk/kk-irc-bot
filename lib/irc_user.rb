@@ -42,10 +42,6 @@ class All_user
     @index.include?(nick)
   end
 
-  def getindex(nick)
-    @index[nick]
-  end
-
   #解析网页登录的IP
   def ip_from_webname(name)
     p ' ip_from_webname '
@@ -55,7 +51,7 @@ class All_user
 
   #get 人品
   def getrp(nick)
-    index = getindex(nick)
+    index = @index[nick]
     return 0 unless index
     @RP[2][index]=0 if not @RP[2][index]
     return @RP[2][index]
@@ -68,7 +64,8 @@ class All_user
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     print "name:"; p name
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
-    index = getindex(nick)
+    index = @index[nick]
+    p "index: #{index} "
     if index
       if ip != @ip[index]
         chg_ip(nick,ip)
@@ -113,7 +110,7 @@ class All_user
   end
 
   def isBlocked?(nick)
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     $timelastsayme[index] = Time.now - 20 if ! $timelastsayme[index]
     return Time.now - $timelastsayme[index] < 5 #10秒之内就Block
@@ -123,13 +120,13 @@ class All_user
   end
 
   def set_ban_time(nick)
-    $ban_time[getindex(nick)] = Time.now
+    $ban_time[@index[nick]] = Time.now
   end
   def get_ban_time(nick)
-    $ban_time[getindex(nick)] ||= Time.now - 3600
+    $ban_time[@index[nick]] ||= Time.now - 3600
   end
   def setLastSay(nick,w)
-    i=getindex(nick)
+    i=@index[nick]
     i ||= add(nick)
     if w == $lastsay[i]
       @RP[1][i] +=1
@@ -146,7 +143,7 @@ class All_user
 
   #rep?
   def rep(nick)
-    i=getindex(nick)
+    i=@index[nick]
     if @RP[1][i] > 2
       #print nick , ' 重复 rep . ' , @RP[1][i] , getLastSay(nick), 10.chr
       @RP[1][i]=0
@@ -155,21 +152,21 @@ class All_user
   end
 
   def getLastSay(nick)
-    $lastsay[getindex(nick)]
+    $lastsay[@index[nick]]
   end
   
   def floodreset(nick)
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     $timelast6say[index] = $initFlood
   end
   def floodmereset(nick)
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     $timelast6me[index] = $initFlood
   end
   def check_flood_me(nick)#更严格
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     $timelast6me[index] = $initFlood * 2 if ! $timelast6me[index]
     p "~me #{$timelast6me[index]}" if $timelast6me[index] < $maxflood+10
@@ -177,7 +174,7 @@ class All_user
   end
 
   def check_flood(nick)
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     if ! $timelast6say[index]
       $timelast6say[index] = $initFlood 
@@ -193,7 +190,7 @@ class All_user
       return add(nick,name,ip)
     end
     if @index.include?(nick)
-      index = getindex(nick)
+      index = @index[nick]
     else
       return add(nick,name,ip)
     end
@@ -213,7 +210,7 @@ class All_user
       return add(nick,name,ip)
     end
     if @index.include?(nick)
-      index = getindex(nick)
+      index = @index[nick]
     else
       puts '#无此用户'
       return add(nick,name,ip)
@@ -249,7 +246,7 @@ class All_user
   end
 
   def chg_ip(nick,ip)
-    index = getindex(nick)
+    index = @index[nick]
     if index == nil #未记录的用户名
       return 1
     end
@@ -261,7 +258,7 @@ class All_user
   end
 
   def chg_nick(old,new)
-    index = getindex(old)
+    index = @index[old]
     if index == nil #未记录的用户名
       return 1
     end
@@ -273,11 +270,11 @@ class All_user
   def del(nick,ip)
     return #if ip != '59.36.101.19'
     #return floodreset(nick)
-    #index = getindex(nick)
+    #index = @index[nick]
     #@index.delete(nick)
   end
   def getname(nick)
-    return @name[getindex(nick)]
+    return @name[@index[nick]]
   end
   def all_nick
     @index.keys.map{|x| x.delete '@'}
@@ -297,7 +294,7 @@ class All_user
     return "#{tmp.count}位 #{tmp.join(' ')}"
   end
   def setip(nick,name,ip)
-    index = getindex(nick)
+    index = @index[nick]
     return add(nick,name,ip) unless index
     @ip[index]=ip
     @addr[nick]=getaddr_fromip(ip)
@@ -308,7 +305,7 @@ class All_user
   end
 
   def getip(nick)#记忆的IP
-    index = getindex(nick)
+    index = @index[nick]
     return unless index
     return @ip[index].to_s
   end
