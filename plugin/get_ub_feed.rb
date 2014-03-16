@@ -44,7 +44,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     $ub = " 逛了一下论坛,暂时无新贴."
     p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 53
+    if $no_new_feed > 49
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
