@@ -197,21 +197,22 @@ class IRC
     $need_reconn = false
     begin
       Timeout.timeout(9){
-        tcpsocket = TCPSocket.open(@server, @port)
+        @tcp = TCPSocket.open(@server, @port)
         if $use_ssl
           ssl_context = OpenSSL::SSL::SSLContext.new
-          @socket = OpenSSL::SSL::SSLSocket.new(tcpsocket, ssl_context)
+          @socket = OpenSSL::SSL::SSLSocket.new(@tcp , ssl_context)
           @socket.sync = true
           @socket.connect
           @irc = @socket
         else
-          @irc = tcpsocket
+          @irc = @tcp
         end
       }
      rescue TimeoutError
        log ''
        sleep 3
-       return
+       retry
+       #return
      end
 
      send "USER #@str_user"
@@ -230,7 +231,7 @@ class IRC
         @nick ||= $nick[0]
         @send_nick.call
         sleep rand(900)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} \x01") if $bot_on and rand < 0.2
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida rescue '' } \x01") if $bot_on and rand < 0.2
      end
   end
 
@@ -379,7 +380,6 @@ class IRC
 
       #bot功能是否打开
       unless $bot_on
-        p ' $u.add '
         $u.add(nick,name,ip)
         return 
       end
@@ -596,8 +596,9 @@ class IRC
     when /^`?>\s+(.+)$/i
       @e=Thread.new($1){|s|
         Thread.current[:name]= 'eval > xxx'
-        tmp = evaluate(s).inspect
-        msg to,"#{from}: #{tmp}", $msg_delay*3
+        r = evaluate(s)
+        r = r.inspect if r.class != String
+        msg to,"#{from}: #{r}", $msg_delay*3
       }
       @e.priority = -3
     when /^`host\s(.*?)$/i # host
@@ -787,9 +788,9 @@ class IRC
         puts '396 verifed '.red
         #joinit
       when 353
-        p 'all nick:' + tmp
         @nicks |= tmp.split(/ /)
         @nicks.flatten!
+        p 'all nick:' , @nicks
       when 366#End of /NAMES list.
         @count = @nicks.count
         puts "nick list: #{ @nicks.join(' ') } , #@count ".red
@@ -871,7 +872,6 @@ class IRC
     return if check_irc_event(s) #服务器消息
     return if check_code(s) #乱码
     pr_highlighted(s) rescue log #if not $client #简单显示消息
-    return unless $bot_on #bot 功能
     check_msg s rescue log '' #1 not matched 字典消息
   end
 
@@ -993,11 +993,11 @@ class IRC
         send "privmsg nickserv :#{$1.strip}"
      when /^\/ms\s+(.*)$/i #发送到memo serv
         send "privmsg memoserv :#{$1.strip}"
-     when /^\/n/ # nicks @channel
-       send "names #@channel"
      when /^\/nick\s+(.*)$/i
         @nick = $1
         send s.gsub(/^[\/]/,'')
+     when /^\/n$/ # nicks @channel
+       send "names #@channel"
      when /^\/(.+)/ # /发送 RAW命令
         s1=$1
         if s1 =~ /^me/i
@@ -1139,13 +1139,14 @@ if not defined? $u
       p ' main_loop end'
     rescue
       break if irc.exited?
-      log
+      log ''
+      sleep 2
     end
     break if irc.exited?
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep 60 + rand($msg_delay*3)
+    sleep 1+rand($msg_delay*4)
   end
 end
 
