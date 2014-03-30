@@ -71,7 +71,7 @@ begin
   require 'rchardet19'
 rescue LoadError
   s="载入库错误,命令: 请看README"
-  s = s.utf8_to_gb if win_platform?
+  s = s.utf8_to_gb if Gem.win_platform?
   puts s
   puts $!.message + $@[0]
 end

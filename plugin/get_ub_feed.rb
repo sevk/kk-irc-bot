@@ -8,7 +8,7 @@ require 'time'
 #取ubuntu.com.cn的 新帖.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
   begin
-   feed = Timeout.timeout(25) {
+   feed = Timeout.timeout(19) {
       RSS::Parser.parse url
     }
   rescue Timeout::Error
