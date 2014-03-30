@@ -177,7 +177,7 @@ include Shikashi
 $s=Sandbox.new
 $priv = Privileges.new
 [:p ,:print ,:puts].each {|x| $priv.allow_method x }
-a = [Math,Fixnum,String,Array,Hash,Time,Enumerator]
+a = [Math,Fixnum,Bignum,String,Array,Hash,Time,Enumerator,NilClass,Float,Random,Regexp,Complex,TrueClass,FalseClass,SecureRandom,YAML,JSON,Allowa]
 a.flatten.inject([]){|x,y| x | y.methods | y.instance_methods } .each{|x|
   $priv.allow_method x
 }
@@ -364,10 +364,24 @@ def gettaobao url
   "#{title } 价格:#{price} 元"
 end
 
+def getjd_price url
+  uri = URI.parse(url)
+  uri.open(
+    #'Accept'=>'text/html , application/*',
+    'Range' => 'bytes=0-8999',
+    #'Cookie' => cookie,
+  ){ |f|
+    return JSON.parse(f.read[0,8800])[0]['p'] rescue log('')
+  }
+end
+
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
   if not proxy and url =~ /^http:\/\/detail\.tmall\.com\/item\.htm/i
     return gettaobao url 
+  end
+  if not proxy and url =~ /^http:\/\/item\.jd\.com\/(\d+)\.html/i
+    jg = getjd_price "http://p.3.cn/prices/mgets?skuIds=J_#{$1}&type=1"
   end
   timeout=6
   title = ''
@@ -464,12 +478,12 @@ def gettitle(url,proxy=true,mechanize=1)
         title << " zz: #{auth} "
       end
       [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price'] .each {|x|
+        break if jg
         jg = page.at(x).text rescue nil
-        if jg
-          title << " 价格:#{jg[0,21]} "
-          break
-        end
       }
+      if jg
+        title << " 价格:#{jg[0,22]} "
+      end
       return title[0,300]
     rescue
       print 'err in get body '
@@ -1047,21 +1061,22 @@ def hello_replay(sSay)
    #不用显示倒计时
 	if tmp < 0 or tmp > Oneday*39 or rand(9) < 2
 		return sSay if sSay =~ /\s$/
-		return "#{sSay} \0039 #{chr_hour} \017"
+		return "#{sSay} \0039 #{chr_hour} "
 	end
 
+  a=''
 	case tmp
-	when 61..3600
-		tmp="#{tmp/60}分钟"
-	when 3601..86400
-		tmp="#{tmp/60/60}小时"
 	when 0..60
-		tmp="#{tmp}秒"
+		a.prepend "#{tmp}秒 "
+	when 61..3600
+		a.prepend "#{tmp/60}分钟 "
+	when 3601..86400
+		a.prepend "#{tmp/60/60}小时 "
 	else
-		tmp="#{tmp/60/60/24}天"
+		a.prepend "#{tmp/60/60/24}天 "
 	end
-	tmp.sub!(/([\.?\d]+)/){ "%.3f" % $1}
-	"#{sSay} #{chr_hour} \0039新年快乐 : #{tmp}\017"
+	a.gsub!(/([\.?\d]+)/){ "%.3f" % $1}
+	"#{sSay} #{chr_hour} \0039新年快乐 : #{a}\017"
 end
 
 def update_proxy_rule
@@ -1151,23 +1166,32 @@ def auto_set_ch_baud(ch)
 	@ch_baud[ch]['last']=Time.now
 end
 
-begin
-  require 'bfrb'
-rescue LoadError
-end
-def bf(s='.')
-  $last_bf=''
-  BfRb::Interpreter.new.run s
-  $last_bf
+class Numeric
+  def duration
+    rest, secs = self.divmod( 60 )  # self is the time difference t2 - t1
+    rest, mins = rest.divmod( 60 )
+    days, hours = rest.divmod( 24 )
+    # the above can be factored out as:
+    # days, hours, mins, secs = self.duration_as_arr
+    #
+    # this is not so great, because it could include zero values:
+    # self.duration_as_arr.zip ['Days','Hours','Minutes','Seconds']).flatten.join ' '
+    result = []
+    result << "#{days} Days" if days > 0
+    result << "#{hours} Hours" if hours > 0
+    result << "#{mins} Minutes" if mins > 0
+    result << "#{secs} Seconds" if secs > 0
+    return result.join(' ')
+  end
 end
 
 #.rvm/gems/ruby-1.9.2-p180/gems/bfrb-0.1.5/lib/bfrb/interpreter.rb
 # print value in memory$
 #when "."$
-  #@output_stream.print current_memory.chr
-  #$last_bf << current_memory.chr rescue nil
+#@output_stream.print current_memory.chr
+#$last_bf << current_memory.chr rescue nil
 
 if __FILE__ == $0
-   p rand_do
+  p rand_do
 end
 
