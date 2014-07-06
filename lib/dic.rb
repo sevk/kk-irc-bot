@@ -482,7 +482,7 @@ def gettitle(url,proxy=true,mechanize=1)
         jg = page.at(x).text rescue nil
       }
       if jg
-        title << " 价格:#{jg[0,22]} "
+        title << " 价格:#{jg[0,24]} "
       end
       return title[0,300]
     rescue

@@ -25,7 +25,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     #p ti
     next if ti =~ /Re:/i and not_re
     #p ti
-    link = i.link.href.gsub(/&p=\d+#p\d+$/i,'')
+    link = i.link.href.gsub(/&p=\d+#p\d+$/im,'')
     des = i.content.to_s[0, 2*($fun||500)]
     date = i.updated.content
     @last = date
@@ -55,8 +55,8 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     $data['old_feed'] = @last
   end
 
-  $ub.gsub!(/\s+/,' ')
-  n = $ub.gsub(/<.+?>/,' ').unescapeHTML.gsub(/<.+?>/,' ')
+  $ub.gsub!(/\s+/m,' ')
+  n = $ub.gsub(/<.+?>/m,' ').unescapeHTML.gsub(/<.+?>/m,' ')
     .unescapeHTML
   #puts n
   n

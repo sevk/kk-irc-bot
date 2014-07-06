@@ -135,7 +135,7 @@ class IRC
   #发送到频道$channel
   #$fun 为true时，分行发送
   def say(s,chan=@channel)
-    s.gsub!(/\s+/,' ')
+    s.gsub!(/\s+/m,' ')
     s.strip!
     size = Max - "PRIVMSG #{chan} :".bytesize
     if $fun and s.bytesize > size
@@ -165,7 +165,7 @@ class IRC
     #print "s:"
     #p s
     #p s.bytesize
-    s.gsub!(/\s+/,' ')
+    s.gsub!(/\s+/m,' ')
     if s.bytesize > Max + 13
       s.slice_u!(size..-1)
       if @charset == 'UTF-8'
@@ -1146,7 +1146,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep 1+rand($msg_delay*4)
+    sleep 2+rand($msg_delay*4)
   end
 end
 
