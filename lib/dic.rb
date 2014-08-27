@@ -192,8 +192,8 @@ def safe_eval(str)
     return eval str
   else
     p ' shikashi ' + str
-    return $s.run($priv, str ) rescue $!.message # get_eval_in(str)
-    #return get_eval_in str if RUBY_VERSION > '2.0'
+    #return $s.run($priv, str ) rescue $!.message # get_eval_in(str)
+    return get_eval_in str
   end
 end
 
