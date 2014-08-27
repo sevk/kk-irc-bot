@@ -231,7 +231,7 @@ class IRC
         @nick ||= $nick[0]
         @send_nick.call
         sleep rand(900)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida rescue '' } \x01") if $bot_on and rand < 0.2
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida rescue '' } \x01") if $bot_on and rand < 0.1
      end
   end
 

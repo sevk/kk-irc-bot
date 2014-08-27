@@ -26,7 +26,7 @@ class String
 
   def uri_decode
       URI.decode self
-   end
+  end
    def uri_encode
       URI.encode self
    end
@@ -327,7 +327,6 @@ def dictcn(word)
   url = 'http://dict.cn/mini.php?q=' + word
   url = URI.escape(url)
   uri = URI.parse(url)
-  res = nil
   uri.open(
   'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
   'Accept'=>'text/html',
@@ -386,7 +385,6 @@ def gettitle(url,proxy=true,mechanize=1)
   timeout=6
   title = ''
   charset = ''
-  flag = 0
   istxthtml = false
   if url.b =~ CN_re
     url = URI.encode(url)
@@ -534,7 +532,7 @@ def gettitle(url,proxy=true,mechanize=1)
 				return
       end
       sleep timeout
-      return "取标题 #{$!.message}"
+      return "取标题 #{$!.message[0,210] }"
     end
 
     return unless istxthtml
@@ -621,10 +619,9 @@ end
 
 def google_py(word)
   p 'google_py'
-    re=''
     url = 'http://www.google.com/search?hl=zh-CN&oe=UTF-8&q=' + word.strip
     url = encodeurl(url)
-    url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
+    #url_mini = encodeurl('http://www.google.com/search?q=' + word.strip)
 
     open(url,
     'Referer'=> url,
@@ -663,8 +660,8 @@ end
 
 def getgoogleDefine(word)
   sleep $msg_delay * 2
-  s = Google::Search::Web.new do |s|
-    s.query = word
+  s = Google::Search::Web.new do |a|
+    a.query = word
   end
   #s.find.each{|x| return x.content.gsub!(/<.*?>/,'|') }
   return s.find.each{|x| break x.content }.gsub(/<.*?>/,'|')
@@ -722,7 +719,7 @@ def getGoogle(word,flg=0)
         if matched or html =~ /搜索用时(.*?)搜索结果<\/h2>(.*?)网页快照/i
           if !matched
             tmp =$2.gsub(/<cite>.+<\/cite>/,' ' + url_mini)
-            tmp1=$1
+            #tmp1=$1
           end
           tmp.gsub!(/(.+?)您的广告/,'')
           if tmp=~/赞助商链接/

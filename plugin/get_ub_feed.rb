@@ -42,7 +42,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
 
   if $data['old_feed'] >= @last and $ub
     $ub = " 逛了一下论坛,暂时无新贴."
-    p ' is old feed'
+    #p ' is old feed'
     $no_new_feed+=1
     if $no_new_feed > 49
       $no_new_feed=0
@@ -69,7 +69,7 @@ def say_new to
   $last_say_new=Time.now
   return unless $need_say_feed > 0
   return unless Time.now.hour.between? 8,22
-   @say_new=Thread.new(to) { |to|
+   @say_new=Thread.new {
       Thread.current[:name]= 'say_new'
       $irc.msg(to, get_feed ,0)
    }

@@ -29,8 +29,7 @@ end
 
 class String
   @@last_area ||={}
-  @@last_area_size ||= $maxNamed * 2
-  @@last_area_size ||= Time.now.year/3
+  @@last_area_size ||= Time.now.year-1514
   def area
     @@last_area.clear if @@last_area.size > @@last_area_size
     unless @@last_area.has_key? self
