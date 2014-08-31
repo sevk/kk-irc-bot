@@ -12,30 +12,30 @@ irc-bot , like a human
 windows : http://tiny.cc/install_ruby_win (可能需要翻墙)
 
 linux下面建议用 rvm或rbenv 安装ruby :
-*rbenv: http://ruby-china.org/wiki/rbenv-guide
+* rbenv: http://ruby-china.org/wiki/rbenv-guide
 rbenv install 2.1.0-dev
-*rvm: https://rvm.io/rvm/install/
+* rvm: https://rvm.io/rvm/install/
 
 如果不是rvm或rbenv安装的ruby,需要额外安装ruby 头文件：
 * ruby-dev    - Header files for compiling extension modules for Ruby (default version)
 
 装完ruby后升级 gem, 
-*先把gem 服务器改成淘宝的 http://ruby.taobao.org/
-*然后命令: gem update --system
-*然后安装库, cd 到bot 目录 : gem install bundler && bundle
+* 先把gem 服务器改成淘宝的 http://ruby.taobao.org/
+* 然后命令: gem update --system
+* 然后安装库, cd 到bot 目录 : gem install bundler && bundle
 
-* 开始运行:
-命令行cd到程序目录执行： ruby irc.rb 或 ./irc.rb 
+* 运行:
+ruby irc.rb 或 ./irc.rb 
 
 直接双击 irc.rb 也行，但出错后，cmd窗口会消失，看不到出错信息。
 
 配置文件是 default.conf
 
-* 指定配置文件运行：  irc.rb xx.conf
+* 指定其他配置文件运行：
 cp default.conf xx.conf
 修改 xx.conf
-
-命令行执行 ./irc.rb xx.conf
+ruby irc.rb xx.conf
+或 ./irc.rb xx.conf
 
 * Core Team Members
  sevk
