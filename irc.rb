@@ -8,7 +8,8 @@
    * 源代码: http://github.com/sevk/kk-irc-bot/ 或 http://git.oschina.net/sevkme/kk-irc-bot/ , http://code.google.com/p/kk-irc-bot/ 
 
 =end
-#BEGIN {$VERBOSE = true}
+
+BEGIN {$VERBOSE = true}
 
 require 'socket'
 Socket.do_not_reverse_lookup = true
@@ -86,16 +87,16 @@ class IRC
       x.puts "mode #{chan} -#{mode} #{s}"
     }
 
-    Thread.new(f,time) do |f,time|
+    Thread.new(f,time) do |f1,tim|
       Thread.current[:name]= 'autoban del file'
-      sleep time + 200
-      File.delete f
+      sleep tim + 200
+      File.delete f1
     end
 
     $u.set_ban_time(nick)
-    Thread.new(time) do |time|
+    Thread.new(time) do |tim|
       Thread.current[:name]= 'autoban'
-      sleep time
+      sleep tim
       send "mode #{chan} -#{mode} #{s}"
     end
   end
@@ -208,12 +209,12 @@ class IRC
           @irc = @tcp
         end
       }
-     rescue TimeoutError
+    rescue TimeoutError
        log ''
        sleep 3
        retry
        #return
-     end
+    end
 
      send "USER #@str_user"
      @send_nick.call
@@ -231,7 +232,7 @@ class IRC
         @nick ||= $nick[0]
         @send_nick.call
         sleep rand(900)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida rescue '' } \x01") if $bot_on and rand < 0.1
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida if rand < 0.1 } \x01") if $bot_on and rand < 0.4
      end
   end
 
@@ -350,7 +351,7 @@ class IRC
       #p s
       #需要提示
       if s =~ /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s:(.*)$/i
-        from=b1=$1;name=b2=$2;ip=b3=$3;to=b4=$4;sSay=$5.to_s.untaint
+        from=$1;to=b4=$4;sSay=$5.to_s.untaint
         send "PRIVMSG #{((b4==@nick)? from: to)} :#{from} say: #{sSay} in #{tmp} ? We use #{@charset} !"
         send "Notice #{from} :请使用 #{@charset} 字符编码".utf8_to_gb
         return 'matched err charset'
@@ -367,7 +368,7 @@ class IRC
     case s
     #channel 消息
     when /^:(.+?)!(.+?)@(.+?)\sPRIVMSG\s(.+?)\s?:(.+)$/i
-      nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=a4=$4;sSay=a5=$5
+      nick=from=a1=$1;name=a2=$2;ip=a3=$3;ch=to=$4;sSay=$5
       return if from =~ /^freenode-connect|#{Regexp::escape @nick}$/i
 
       #priv msg me
@@ -594,11 +595,11 @@ class IRC
     s.sub!($re_tran_head,''); from << " " << $1 if $1
     case s.strip
     when /^`?>\s+(.+)$/i
-      @e=Thread.new($1){|s|
+      @e=Thread.new($1){|x|
         Thread.current[:name]= 'eval > xxx'
-        r = evaluate(s)
+        r = evaluate(x)
         r = r.inspect if r.class != String
-        msg to,"#{from}: #{r}", $msg_delay*3
+        msg to,"#{from}: #{r}", $msg_delay*1.1
       }
       @e.priority = -3
     when /^`host\s(.*?)$/i # host
@@ -739,7 +740,7 @@ class IRC
       end
 
     when /^(:.+?)!(.+?)@(.+?)\s(.+?)\s.+\s:(.+)$/i #all mesg from nick
-      from=$1;name=$2;ip=$3;to=$4;sSay=$5
+      from=$1;name=$2;ip=$3;sSay=$5
       if from =~ $re_ignore_nick
         return '$re_ignore_nick'
       end
@@ -1095,8 +1096,8 @@ class IRC
           #log ' x.empty, may be lose conn '
           return
         end
-        x.each_line {|s|
-          handle_server_input(s) rescue log('')
+        x.each_line {|i|
+          handle_server_input(i) rescue log('')
         }
       end
     }

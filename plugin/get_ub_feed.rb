@@ -69,9 +69,9 @@ def say_new to
   $last_say_new=Time.now
   return unless $need_say_feed > 0
   return unless Time.now.hour.between? 8,22
-   @say_new=Thread.new {
+   @say_new=Thread.new(to) { |to1|
       Thread.current[:name]= 'say_new'
-      $irc.msg(to, get_feed ,0)
+      $irc.msg(to1, get_feed ,0)
    }
 end
 

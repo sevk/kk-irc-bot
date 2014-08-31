@@ -56,7 +56,7 @@ log_init
 # log "aa" => 写入 "aa" 到log文件
 # log '' => 不写入log文件
 def log(s=nil)
-   if not s
+  if not s
       if $!
          s = "#{$!.message} && #{$@.join("\n")}"
       else

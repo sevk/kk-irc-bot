@@ -163,7 +163,7 @@ end
 
 #保存缓存的users
 def saveu
-  return if Time.now - $last_save < 120 rescue nil
+  return if Time.now - $last_save < 120
   $last_save = Time.now
   a=File.open("_#{ARGV[0]}.yaml","w")
   a.write $u.to_yaml
@@ -172,27 +172,15 @@ def saveu
   puts ' save u ok'.red
 end
 
-require "shikashi"
-include Shikashi
-$s=Sandbox.new
-$priv = Privileges.new
-[:p ,:print ,:puts].each {|x| $priv.allow_method x }
-a = [Math,Fixnum,Bignum,String,Array,Hash,Time,Enumerator,NilClass,Float,Random,Regexp,Complex,TrueClass,FalseClass,SecureRandom,YAML,JSON,Allowa]
-a.flatten.inject([]){|x,y| x | y.methods | y.instance_methods } .each{|x|
-  $priv.allow_method x
-}
-a.inject([]){|x,y| x | [y] | y.constants} .each{|x|
-  $priv.allow_const_read x
-}
-
 def safe_eval(str)
   str.strip!
   p 'eval ' + str
   if str =~ $eval_black_list
     return eval str
   else
-    p ' shikashi ' + str
-    #return $s.run($priv, str ) rescue $!.message # get_eval_in(str)
+    print "eval: "
+    p str
+    #return get_sandbox str rescue $!.message
     return get_eval_in str
   end
 end

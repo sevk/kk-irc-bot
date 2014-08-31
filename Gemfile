@@ -12,7 +12,7 @@ gem "qqwry"
 gem "filesize"
 gem 'google-search'
 gem 'ansi' #console color
-gem 'shikashi'
+#gem 'shikashi' #使用 eval.in 代替
 # gem 'certified' #if ssl cert not match server hostname
 #gem 'pry'
 #gem "image_size"
