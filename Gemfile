@@ -1,5 +1,6 @@
 if ENV.to_a.join("\n").match(/zh_cn.*/i )
-  source "http://ruby.taobao.org"
+  #source "http://ruby.taobao.org"
+  source "http://ruby.sdutlinux.org"
 else
   source 'https://rubygems.org'
 end
