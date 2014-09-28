@@ -2,7 +2,8 @@ require 'mechanize'
 
 def get_eval_in code
   if code !~ /print|puts/
-    code = "def a;#{code};end;p a"
+    #code = "def a;#{code};end;p a"
+    code = "p(lambda do #{code} end.call)"
   end
   log ' eval: ' + code
   a=Mechanize.new
@@ -15,6 +16,6 @@ def get_eval_in code
   s = a.submit s.forms[0]
   r = s.body.match(/ output.*?<pre>(.*?)</im)[1]
   r << '  =>  ' << s.uri.to_s
-  r.unescapeHTML
+  r.unescapeHTML.unescapeHTML
 end
 

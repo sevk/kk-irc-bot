@@ -11,6 +11,8 @@
 
 BEGIN {$VERBOSE = true}
 
+$not_savelog = nil
+
 require 'socket'
 Socket.do_not_reverse_lookup = true
 require 'rubygems'
@@ -109,7 +111,7 @@ class IRC
       $Lping = Time.now
       $needrestart = true
       @irc.puts "PING #{Time.now.to_i}" rescue log
-      sleep 13
+      sleep 14
       if $needrestart
         print '$needrestart: true && $need_reconn' , "\n"
         $need_reconn = true
@@ -232,7 +234,7 @@ class IRC
         @nick ||= $nick[0]
         @send_nick.call
         sleep rand(900)
-        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida if rand < 0.1 } \x01") if $bot_on and rand < 0.4
+        send("privmsg #{@channel} :\001ACTION #{`uname -rv`} #{`lsb_release -d `rescue '' } #{RUBY_DESCRIPTION} #{get_solida if rand < 0.1 } \x01") if $bot_on and rand < 0.3
      end
   end
 
@@ -846,10 +848,11 @@ class IRC
 
       #QUIT name :niven.freenode.net irc.freenode.net
       #Netsplit hubbard.freenode.net <-> irc.freenode.net
-    when /^:(.+?)\sMODE\s(.+?)([\+\-])(.+?)\s(.+)$/i#mode
-      from=$1;chan=$2;type=$3;mode=$4;nick=$5
+    when /^:(.+?)\sMODE\s(.+?)\s([\+\-])(.+?)\s(.+)$/i#mode
+      from=$1;chan=$2;mode=$3;nick=$4
       #:services. MODE ikk-bot :+e
       #:ChanServ!ChanServ@services. MODE #sevk +o ikk-bot
+      #:a!~a@a.org MODE #ubuntu-cn +v hamo
 
       puts s.yellow
       log s
@@ -932,8 +935,8 @@ class IRC
   def mystart
     $data = YAML.load_file "_#{ARGV[0]}.data" rescue Hash.new
 	  conf = "_#{ARGV[0]}.yaml"
-    $u = YAML.load_file conf rescue nil
-    File.delete conf if $u.index.size == 0 rescue log
+    $u = YAML.load_file conf rescue All_user.new
+    File.delete conf if $u.index.size == 0 rescue true
     $u ||= All_user.new
     $u.init_pp
     puts "#{$u.all_nick.size} nicks loaded from yaml file.".red
@@ -1056,9 +1059,8 @@ class IRC
         sleep rand(20) + 49
         n+=1
         n=0 if n > 9000
-        if n % 5 == 3
+        if n % 4 == 1
           ping
-          sleep 20
         end
         if n % 20 == 0
           check_proxy_status rescue log

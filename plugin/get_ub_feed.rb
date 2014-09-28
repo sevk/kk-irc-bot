@@ -90,5 +90,5 @@ $get_ub_feed=Thread.new do
     end
   }
 end
-$get_ub_feed.priority = -2
+$get_ub_feed.priority = -4
 

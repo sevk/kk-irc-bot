@@ -8,7 +8,7 @@ a.each { |e|
   next if e =~ /^_/
   begin
     load e
-  rescue
+  rescue Exception
     log ''
     puts 'err: plugin: ' + e.to_s.red
     next

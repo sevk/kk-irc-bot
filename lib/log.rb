@@ -6,7 +6,10 @@ require 'logger'
 require 'fileutils'
 include FileUtils
 
-$logDir ||= $log_dir # $logDir如果是nil就赋值一下
+unless defined? $log_dir
+  $log_dir = nil
+end
+$logDir = $log_dir # $logDir如果是nil就赋值一下
 $logDir ||= File.join(Dir.pwd , 'log')
 mkdir_p $logDir
 
