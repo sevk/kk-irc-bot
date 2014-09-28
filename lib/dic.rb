@@ -149,7 +149,7 @@ def guess_charset(str)
 end
 
 def reload_all
-  load 'dic.rb' rescue log('')
+  load 'dic.rb'
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 rescue
@@ -174,12 +174,10 @@ end
 
 def safe_eval(str)
   str.strip!
-  p 'eval ' + str
+  log 'eval: ' + str
   if str =~ $eval_black_list
     return eval str
   else
-    print "eval: "
-    p str
     #return get_sandbox str rescue $!.message
     return get_eval_in str
   end
@@ -463,7 +461,7 @@ def gettitle(url,proxy=true,mechanize=1)
       if auth
         title << " zz: #{auth} "
       end
-      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price'] .each {|x|
+      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.notranslate', '.price' ] .each {|x|
         break if jg
         jg = page.at(x).text rescue nil
       }
@@ -559,7 +557,7 @@ def gettitleA(url,from="_",proxy=true)
 
   ti=nil
   begin
-    ti=Timeout.timeout(13){gettitle(url,proxy)}
+    ti=Timeout.timeout(19){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
     p 'get title Time out '
@@ -897,7 +895,7 @@ end
 #eval
 def evaluate(s)
 	begin
-		return Timeout.timeout(12){
+		return Timeout.timeout(23){
       safe_eval(s)
 		}
 	rescue Timeout::Error
