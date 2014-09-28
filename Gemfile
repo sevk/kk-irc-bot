@@ -1,4 +1,4 @@
-if ENV.to_a.join("\n").match /zh_cn.*/i
+if ENV.to_a.join("\n").match(/zh_cn.*/i )
   source "http://ruby.taobao.org"
 else
   source 'https://rubygems.org'
@@ -16,5 +16,6 @@ gem 'ansi' #console color
 # gem 'certified' #if ssl cert not match server hostname
 #gem 'pry'
 #gem "image_size"
+gem 'sinatra' if $need_listen_http_port
 
 
