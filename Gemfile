@@ -1,6 +1,6 @@
 if ENV.to_a.join("\n").match(/zh_cn.*/i )
-  #source "http://ruby.taobao.org"
-  source "http://ruby.sdutlinux.org"
+  source "http://ruby.taobao.org"
+  #source "http://ruby.sdutlinux.org"
 else
   source 'https://rubygems.org'
 end
@@ -13,10 +13,8 @@ gem "qqwry"
 gem "filesize"
 gem 'google-search'
 gem 'ansi' #console color
-#gem 'shikashi' #使用 eval.in 代替
-# gem 'certified' #if ssl cert not match server hostname
+gem 'sinatra'
 #gem 'pry'
 #gem "image_size"
-gem 'sinatra' if $need_listen_http_port
 
 
