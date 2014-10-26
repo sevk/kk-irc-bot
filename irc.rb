@@ -715,7 +715,7 @@ class IRC
   def check_irc_event(s)
     #:NickServ!NickServ@services. NOTICE ^k^ :You are now identified for [ub].
     #:NickServ!NickServ@services. NOTICE kk :You have 30 seconds to identify to your nickname before it is changed.
-    #This nickname is registered
+    #:NickServ!NickServ@services. NOTICE ^k^ :This nickname is registered. Please choose a different nickname, or identify via /msg NickServ identify <password>.
     #p s.strip
     notices_head = Notices_head + "#{@nick}\s?:"
     case s.strip

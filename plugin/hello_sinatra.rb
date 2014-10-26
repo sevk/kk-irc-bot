@@ -4,6 +4,7 @@ require "sinatra"
 configure do
   mime_type :text, 'text/plain'
   set :port , 8080
+  set :bind , '0.0.0.0'
 end
 
 get "/" do

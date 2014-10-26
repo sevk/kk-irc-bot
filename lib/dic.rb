@@ -461,7 +461,7 @@ def gettitle(url,proxy=true,mechanize=1)
       if auth
         title << " zz: #{auth} "
       end
-      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.notranslate', '.price' ] .each {|x|
+      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price' ] .each {|x|
         break if jg
         jg = page.at(x).text rescue nil
       }
