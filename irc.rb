@@ -9,7 +9,7 @@
 
 =end
 
-BEGIN {$VERBOSE = true}
+#BEGIN {$VERBOSE = true}
 
 $not_savelog = nil
 

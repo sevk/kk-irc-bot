@@ -1,10 +1,21 @@
-#!/bin/bash -e
+#!/usr/bin/env ruby
 
-echo run kk-irc-bot and proxy in screen
+puts "run kk-irc-bot and proxy in screen "
 
 #git clone --depth 1 git://github.com/phus/goagent.git
-sudo -u kk -i bash -c "cd /home/kk/dev/goagent/local ; screen -dm python ./proxy.py "
-sudo -u kk -i bash -c "cd /home/kk/dev/kk-irc-bot ; screen -dm ./irc.rb ub.conf & "
+#sudo -u kk -i bash -c "cd /home/kk/dev/goagent/local ; screen -dm python ./proxy.py "
+#sudo -u kk -i bash -c "cd /home/kk/dev/kk-irc-bot ; screen -dm tmux -c \" ./irc.rb ub.conf \" "
 #sudo -ukk -i bash -c "cd /home/kk/dev/kk-irc-bot;screen -d -m ./irc.rb avplayer.conf &"
 
 
+def tt
+  Thread.new {yield}
+end
+p ENV['PATH']
+
+s = `ps -e f | grep ub.con[f] -i `
+if s.size ==0 
+  p ' run ub.conf '
+  tt {`screen -dm tmux -c "PATH=\"/home/kk/ruby/bin:$PATH\" && cd /home/kk/dev/kk-irc-bot/ && ruby irc.rb ub.conf " ` }
+end
+tt {`screen -dm tmux -c "cd /home/kk/dev/goagent/local && python ./proxy.py " ` }
