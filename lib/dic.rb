@@ -95,7 +95,6 @@ require 'digest'
 require 'resolv'
 require 'yaml'
 require 'pp'
-#require 'mathn'
 load 'do_as_rb19.rb'
 
 #todo http://www.sharej.com/ 下载查询
@@ -112,8 +111,8 @@ def help
 end
 
 
-$re_http=/(....s?)(:\/\/.+)\s?$/iu#类似 http:// https:// ed2k://
-# /....s?:\/\/\S*?[^\s<>\\\[\]\{\}\^\`\~\|#"：]/i
+#类似 http:// https:// ed2k://
+$re_http= %r'(....s?)(://.+)\s?$'iu
 
 def init_dic
   a=Time.at 0
@@ -334,7 +333,7 @@ rescue
 end
 
 def gettaobao url
-  doc = Nokogiri::HTML(open(url)) 
+  doc = Nokogiri::HTML(open(url))
   doc.encoding = 'utf-8'
 
   case url
@@ -362,16 +361,16 @@ end
 
 #取标题,参数是url.
 def gettitle(url,proxy=true,mechanize=1)
-  if not proxy and url =~ /^http:\/\/detail\.tmall\.com\/item\.htm/i
+  if not proxy and url =~  %r'^http://detail\.tmall\.com/item\.htm'i 
     return gettaobao url 
   end
-  if not proxy and url =~ /^http:\/\/item\.jd\.com\/(\d+)\.html/i
+  jg = nil
+  if not proxy and url =~ %r'^http://item\.jd\.com/(\d+)\.html'i
     jg = getjd_price "http://p.3.cn/prices/mgets?skuIds=J_#{$1}&type=1"
   end
   timeout=6
   title = ''
   charset = ''
-  istxthtml = false
   if url.b =~ CN_re
     url = URI.encode(url)
   end
@@ -386,110 +385,116 @@ def gettitle(url,proxy=true,mechanize=1)
   mechanize = true if proxy
   print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
 
+  return gettitle_openURI url if not mechanize
+
   #用代理加快速度
-  if mechanize
-    if url =~ /^https/i
-      agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
-      #agent = Mechanize.new
+  if url =~ /^https/i
+    agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
+    #agent = Mechanize.new
+  else
+    agent = Mechanize.new
+  end
+
+  if proxy
+    if $proxy_status_ok
+      agent.set_proxy($proxy_addr2,$proxy_port2)
     else
-      agent = Mechanize.new
+      agent.set_proxy($proxy_addr,$proxy_port)
     end
+  end
+  agent.user_agent_alias = 'Linux Mozilla'
+  agent.max_history = 0
+  agent.open_timeout = timeout
+  agent.read_timeout = timeout
+  #agent.cookies
+  #agent.auth('^k^', 'password')
 
-    if proxy 
-      if $proxy_status_ok
-        agent.set_proxy($proxy_addr2,$proxy_port2)
-      else
-        p ' set proxy 2 '
-        agent.set_proxy($proxy_addr,$proxy_port)
-      end
+  begin
+    page = agent.head(url)
+    #File.new('/tmp/h.x','wb').puts page.header
+    type = page.header['content-type']
+    #print 'get head ok: '
+    if type =~ /image\/./i
+      showpic(url)
+      return type
     end
-    agent.user_agent_alias = 'Linux Mozilla'
-    agent.max_history = 0
-    agent.open_timeout = timeout
-    agent.read_timeout = timeout
-    #agent.cookies
-    #agent.auth('^k^', 'password')
-
-    begin
-      page = agent.head(url)
-      #File.new('/tmp/h.x','wb').puts page.header
-      type = page.header['content-type']
-      #print 'get head ok: '
-      if type =~ /image\/./i
-        showpic(url)
-        return type
-      end
-      if type and type !~ /^$|text\/html/i
-        re = page.response.select{|x| x=~/^conten/i }
-          .map{|x,y| "#{x}=#{y}" }.join(" ; ")
-          .gsub(/content-/i,'')
-
-        p re
-        return if re =~ /length=\d\D/i
-        return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
-      end
-    rescue
-      print 'err in get head '
-      p $!
-      case $!
-      when Mechanize::ResponseCodeError
-        if $!.message !~ /^403/ and proxy and $proxy_status_ok
-          sleep timeout
-          return $!.message + 'in get head'
-        end
-      end
+    if type and type !~ /^$|text\/html/i
+      re = page.response.select{|x| x=~/^conten/i }
+        .map{|x,y| "#{x}=#{y}" }.join(" ; ")
+        .gsub(/content-/i,'')
+      p re
+      return if re =~ /length=\d\D/i
+      return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
     end
-
-    begin
-      page = agent.get(url)
-      #File.new('/tmp/a.x','wb').puts page.title
-      #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
-      if page.class != Mechanize::Page
-        p 'no page'
-        return
-      end
-      title = page.title
-      charset= guess_charset(title)
-      charset='GB18030' if charset =~ /^IBM855|windows-1252/i
-
-      if charset and charset !~ /#@charset/i
-        title = title.code_a2b(charset,@charset) rescue title
-      end
-      return 'err: no title' if title.empty?
-      title = title.unescapeHTML
-      auth = page.at('.postauthor').text.strip rescue nil
-      if auth
-        title << " zz: #{auth} "
-      end
-      [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price' ] .each {|x|
-        break if jg
-        jg = page.at(x).text rescue nil
-      }
-      if jg
-        title << " 价格:#{jg[0,24]} "
-      end
-      return title[0,300]
-    rescue
-      print 'err in get body '
-      p $!
-      case $!
-      when Mechanize::ResponseCodeError
+  rescue
+    print 'err in get head '
+    p $!
+    case $!
+    when Mechanize::ResponseCodeError
+      if $!.message !~ /^403/ and proxy and $proxy_status_ok
         sleep timeout
-        return $!.message + 'in get body' if $!.message !~ /^403/
+        return $!.message + 'in get head'
       end
-      log '' if $DEBUG
     end
   end
 
+  begin
+    page = agent.get(url)
+    #File.new('/tmp/a.x','wb').puts page.title
+    #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
+    if page.class != Mechanize::Page
+      p 'no page'
+      return
+    end
+    title = page.title
+    charset= guess_charset(title)
+    charset='GB18030' if charset =~ /^IBM855|windows-1252/i
+
+    if charset and charset !~ /#@charset/i
+      title = title.code_a2b(charset,@charset) rescue title
+    end
+    return 'err: no title' if title.empty?
+    title = title.unescapeHTML
+    auth = page.at('.postauthor').text.strip rescue nil
+    title << " zz: #{auth} " if auth
+    [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price' ] .each {|x|
+      break if jg
+      jg = page.at(x).text rescue nil
+    }
+    jg = nil if url =~ /\.douban\.com/i
+    if jg
+      title << " 价格:#{jg[0,24]} "
+    end
+    return title[0,300]
+  rescue
+    log ''
+    case $!
+    when Mechanize::ResponseCodeError
+      sleep timeout
+      return $!.message + 'in get body' if $!.message !~ /^403/
+    end
+  end
+
+  gettitle_openURI url
+rescue Exception
+  log ''
+  $!.message
+end
+
+def gettitle_openURI url
   #puts URI.split url
-  p 'err in mechanize ' 
-  tmp = begin #加入错误处理
+  p ' use URI.open '
+
+  istxthtml = false
+  charset = nil
+  tmp =
+    begin #加入错误处理
       Timeout.timeout(timeout) {
         $uri = URI.parse(url)
         $uri.open(
-					#'Accept'=>'text/html , application/*',
+          #'Accept'=>'text/html , application/*',
           'Range' => 'bytes=0-8999',
-					#'Cookie' => cookie,
+          #'Cookie' => cookie,
         ){ |f|
           case f.content_type
           when /application\/octet-stream/i
@@ -499,7 +504,7 @@ def gettitle(url,proxy=true,mechanize=1)
             istxthtml = false
           when /text\/html|application\//i
             p f.content_type
-            istxthtml= true 
+            istxthtml= true
           end
 
           return f.content_type unless istxthtml
@@ -521,36 +526,35 @@ def gettitle(url,proxy=true,mechanize=1)
       return "取标题 #{$!.message[0,210] }"
     end
 
-    return unless istxthtml
+  return unless istxthtml
 
-    title = tmp.match(/<title.*?>(.*?)<\/title>/i)[1] rescue nil
+  title = tmp.match(/<title.*?>(.*?)<\/title>/i)[1] rescue ''
 
-    if title.empty?
-      p tmp
-      if tmp.match(/meta\shttp-equiv="refresh(.*?)url=(.*?)">/i)
-        p 'refresh..'
-        return Timeout.timeout(timeout){
-          url = $2
-          url = "http://#{$uri.host}/#{$2}" if url !~ /^http/i
-          gettitle(url)
-        }
-      end
+  if title.empty?
+    p tmp
+    if tmp.match(/meta\shttp-equiv="refresh(?:.*?)url=(.*?)">/i)
+      p 'refresh..'
+      return Timeout.timeout(timeout){
+        url = $1
+        url = "http://#{$uri.host}/#{url}" if url !~ /^http/i
+        gettitle(url)
+      }
     end
+  end
 
-    #return if title =~ /index of/i
+  #return if title =~ /index of/i
+  charset= guess_charset(title)
+  charset='GB18030' if charset =~ /^IBM855|windows-1252/i
 
-    if tmp =~ /<meta.*?charset=(.+?)["']/i
-      charset=$1 if $1
-    end
+  if charset !~ /#@charset/i
+    title = title.code_a2b(charset,@charset) rescue title
+  end
 
-    if charset != 'UTF-8'
-      #charset='GB18030' if charset =~ /^gb|iso-8859-/i
-      title = title.code_a2b(charset,'UTF-8') rescue title
-    end
-    return 'err: no title' if title.empty?
-    title = title.unescapeHTML rescue title
-    title
+  return 'err: no title' if title.empty?
+  title = title.unescapeHTML rescue title
+  title
 end
+
 
 def gettitleA(url,from="_",proxy=true)
   $last_url = url
@@ -568,13 +572,13 @@ def gettitleA(url,from="_",proxy=true)
 
   #检测是否有其它取标题机器人
   #
-    return "#{from}: ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
-    #登录 • Ubuntu中文论坛
-    if ti
-      ti.gsub!(/登录 •/, '水区水贴? ')
-      return " \x033⇪ t: #{ti}\x030" if proxy
-      return " \x033⇪ ti: #{ti}\x030"
-    end
+  return "#{from}: ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+  #登录 • Ubuntu中文论坛
+  if ti
+    ti.gsub!(/登录 •/, '水区水贴? ')
+    return " \x033⇪ t: #{ti}\x030" if proxy
+    return " \x033⇪ ti: #{ti}\x030"
+  end
 end
 
 def getPY(c)
@@ -645,7 +649,7 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
-  sleep $msg_delay * 2
+  sleep $msg_delay
   s = Google::Search::Web.new do |a|
     a.query = word
   end
@@ -713,12 +717,10 @@ def getGoogle(word,flg=0)
           end
           tmp.gsub!(/更多有关货币兑换的信息。/,"")
           tmp.gsub!(/<br>/i," ")
-          #puts tmp + "\n"
           tmp.gsub!(/(.*秒）)|\s+/i,' ')
           if tmp.bytesize > 30 || word =~ /^.?13.{9}$/ || tmp =~ /小提示/ then
             re=tmp
           else
-            #puts "tmp.bytesize=#{tmp.bytesize} => 是普通搜索"
             do1=true
           end
         else
@@ -1073,7 +1075,7 @@ def read_proxy_rule
   $proxy_rule = File.read('gfwlist.txt').unbase64.split(/\n/)
 end
 
-#调用 alice 
+#调用 alice
 def botsay(s)
   return if s.empty?
   s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
@@ -1131,7 +1133,7 @@ def savelog(s)
   return if $not_savelog
 
 	fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
-	File.open( fn,'ab'){ |x|
+	File.open( fn,'a'){ |x|
     x.puts s.clear_color rescue s
 	}
 end

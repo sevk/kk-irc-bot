@@ -8,7 +8,7 @@ require 'time'
 #取ubuntu.com.cn的 新帖.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
   begin
-   feed = Timeout.timeout(19) {
+   feed = Timeout.timeout(11) {
       RSS::Parser.parse url
     }
   rescue Timeout::Error
@@ -33,7 +33,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     $ub = "新 #{ti} #{link} #{des}"
     break
   }
-  p ' all re ,no new' if $ub.empty?
+  #p ' all re ,no new' if $ub.empty?
   return if $ub.empty?
 
   $no_new_feed ||=0
@@ -77,6 +77,7 @@ end
 
 $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
+  $get_ub_feed.priority = -4
   Thread.current[:name]= ' get_ub_feed '
   n=80
   sleep n
@@ -90,5 +91,4 @@ $get_ub_feed=Thread.new do
     end
   }
 end
-$get_ub_feed.priority = -4
 

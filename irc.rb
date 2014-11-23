@@ -605,7 +605,7 @@ class IRC
       }
       @e.priority = -3
     when /^`host\s(.*?)$/i # host
-      sayDic(10,from,to,$1.gsub(/http:\/\//i,''))
+      sayDic(10,from,to,$1.gsub( %r{http://}i ,''))
     when $re_http
       url = $1+$2
       case $1
@@ -1108,7 +1108,7 @@ end
 
 def restart #Hard Reset
   send 'quit lag' rescue nil
-  sleep $msg_delay + rand($msg_delay*10)
+  sleep $msg_delay
   p "exec #{$0} #$argv0"
   exec "#{$0} #$argv0"
 end
@@ -1149,7 +1149,7 @@ if not defined? $u
     #restart rescue log
     p $need_reconn
     p Time.now
-    sleep 2+rand($msg_delay*4)
+    sleep 2+rand($msg_delay*3)
   end
 end
 
