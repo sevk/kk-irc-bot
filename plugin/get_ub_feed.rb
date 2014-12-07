@@ -12,7 +12,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
       RSS::Parser.parse url
     }
   rescue Timeout::Error
-    return if rand < 0.97
+    return if rand < 0.98
     return ' 取新帖 timeout '
   end
   #p 'feed geted'
@@ -44,7 +44,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 49
+    if $no_new_feed > 49 #大约49分钟
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
@@ -65,7 +65,7 @@ end
 $last_say_new ||= Time.at 0
 #自动说新帖
 def say_new to
-  return if Time.now - $last_say_new < 59
+  return if Time.now - $last_say_new < 58
   $last_say_new=Time.now
   return unless $need_say_feed > 0
   return unless Time.now.hour.between? 8,22
@@ -79,12 +79,12 @@ $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
   $get_ub_feed.priority = -4
   Thread.current[:name]= ' get_ub_feed '
-  n=80
+  n=80 #n分钟没人说话
   sleep n
   loop {
-    sleep 70
+    sleep 50
     force = nil
-    force = true if Time.now - $last_say_new > 280
+    force = true if Time.now - $last_say_new > 270
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''

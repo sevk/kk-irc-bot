@@ -342,7 +342,7 @@ def gettaobao url
     price = doc.css('em.tb-rmb-num').first.text
   when /tmall/i
     title = doc.at('.tb-detail-hd').text.strip rescue doc.title
-    price = doc.css('.J_originalPrice').first.text.strip
+    price = doc.css('.J_originalPrice').first.text.strip rescue ''
   end
 
   "#{title } 价格:#{price} 元"
@@ -485,6 +485,7 @@ def gettitle_openURI url
   #puts URI.split url
   p ' use URI.open '
 
+  timeout = 6
   istxthtml = false
   charset = nil
   tmp =
@@ -1034,7 +1035,7 @@ def rand_do
 		$my_s
 	when 131..180
 		''
-	when 200..400
+	when 300..400
 		"..休息一下.. #$my_s"
 	else
 		''
@@ -1078,7 +1079,9 @@ end
 #调用 alice
 def botsay(s)
   return if s.empty?
-  s.zh2en.alice_say.en2zh rescue ( '.. 休息一下 ..')
+  s.zh2en.alice_say.en2zh
+rescue
+  '.. 休息一下 ..' if rand < 0.3
 end
 
 #高亮打印消息

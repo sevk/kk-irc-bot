@@ -545,7 +545,7 @@ class IRC
       #没到下次说话时间，就不处理botsay
       return if Time.now < $min_next_say
       $otherbot_said=false
-      t{ do_after_sec(nick,"#{nick}, #{botsay(s)}",10,$msg_delay*3+29) }
+      t{ do_after_sec(nick,"#{nick}, #{botsay(s)}",10,$msg_delay*2+29) }
     end
   end
 
@@ -1029,6 +1029,7 @@ class IRC
      else
         s << " `人机合一" if $bot_on
         say s
+        isaid 300
      end
   end
 
