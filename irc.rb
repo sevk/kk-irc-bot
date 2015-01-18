@@ -194,7 +194,7 @@ class IRC
 
   #连接irc
   def connect
-    p 'irc.conn'
+    p ' irc.conn'
     trap(:INT){myexit 'Ctrl-c'}
     return if @exit
     $need_reconn = false
@@ -1082,10 +1082,10 @@ class IRC
   end
 
   #主循环
-  def main_loop()
-    loop {
-      return if @exit
-      return if $need_reconn
+  def main_loop
+    loop do
+      break if @exit
+      break if $need_reconn
       ready = select([@irc], nil, nil, 0.1)
       next unless ready
       ready[0].each do |s|
@@ -1103,7 +1103,7 @@ class IRC
           handle_server_input(i) rescue log('')
         }
       end
-    }
+    end
   end
 end
 

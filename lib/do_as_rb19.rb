@@ -30,4 +30,23 @@ if RUBY_VERSION < '1.9'
       self
     end
   end
+
+elsif RUBY_VERSION < '2.0'
+  class String
+    def b
+      self.force_encoding 'ascii-8bit'
+    end
+  end
+
+elsif RUBY_VERSION > '2.2'
+  class Time
+    class << self
+      alias parse_ parse
+      def parse s
+        Time.parse_(s).localtime
+      end
+    end
+  end
 end
+
+

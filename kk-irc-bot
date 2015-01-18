@@ -12,13 +12,14 @@ def tt
   Thread.new {yield}
 end
 p ENV['PATH']
-s = `ps -e f | grep ub.con[f] -i `
+s = `ps -e f | grep -E 'ub.con[f]' -i `
+p s
 if s.size ==0 
   p ' run ub.conf '
   #p `bundle update `
   tt {`screen -S ircUb -dm tmux -c "PATH=\"/home/kk/ruby/bin:$PATH\" && cd /home/kk/dev/kk-irc-bot/ && ruby irc.rb ub.conf " ` }
 end
-p ' run goagent '
-tt {`screen -S goagent -dm tmux -c "cd /home/kk/dev/goagent/local && python ./proxy.py " ` }
+#p ' run goagent '
+#tt {`screen -S goagent -dm tmux -c "cd /home/kk/dev/goagent/local && python ./proxy.py " ` }
 
 sleep 0.2

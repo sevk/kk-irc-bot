@@ -15,11 +15,8 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     return if rand < 0.98
     return ' 取新帖 timeout '
   end
-  #p 'feed geted'
 
   $ub=nil
-  p feed if feed.class != RSS::Atom::Feed
-  #p feed.items.size
   feed.items.each { |i|
     ti = i.title.content.to_s
     #p ti
@@ -34,13 +31,15 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     break
   }
   #p ' all re ,no new' if $ub.empty?
+  return if not $ub
   return if $ub.empty?
 
   $no_new_feed ||=0
   $data ||= Hash.new
   $data['old_feed'] ||= Time.now - 800
+  $data['old_title'] ||= ''
 
-  if $data['old_feed'] >= @last and $ub
+  if $data['old_feed'] >= @last or $data['old_title'] == $ub
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
@@ -60,6 +59,8 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     .unescapeHTML
   #puts n
   n
+rescue Exception
+  log
 end
 
 $last_say_new ||= Time.at 0
@@ -79,12 +80,12 @@ $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
   $get_ub_feed.priority = -4
   Thread.current[:name]= ' get_ub_feed '
-  n=80 #n分钟没人说话
+  n=90 #n分钟没人说话
   sleep n
   loop {
     sleep 50
     force = nil
-    force = true if Time.now - $last_say_new > 270
+    force = true if Time.now - $last_say_new > 400
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''
