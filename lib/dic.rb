@@ -577,7 +577,7 @@ def gettitleA(url,from="_",proxy=true)
   #登录 • Ubuntu中文论坛
   if ti
     ti.gsub!(/登录 •/, '水区水贴? ')
-    return " \x033⇪ t: #{ti}\x030" if proxy
+    return " \x033⇪ fw: #{ti}\x030" if proxy
     return " \x033⇪ ti: #{ti}\x030"
   end
 end
@@ -1002,21 +1002,20 @@ alias 公告 gg
 #简单检测代理是否可用
 def check_proxy_status
   Thread.new do
+    a=true
     Thread.current[:name]= 'check proxy stat'
     begin
-      Timeout.timeout(8){
+      Timeout.timeout(4){
         a=TCPSocket.open($proxy_addr2,$proxy_port2)
         a.close
       }
-    rescue Timeout::Error
+    rescue Exception
       print $proxy_addr2,':',$proxy_port2,' ',false,"\n"
-      $proxy_status_ok = false
-      break
+      a=false
     end
-    #print $proxy_addr2,':',$proxy_port2,' ',true,"\n"
-    $proxy_status_ok = true
+    print $proxy_addr2,':',$proxy_port2,' ',a ,"\n"
+    $proxy_status_ok = a
   end
-  true
 end
 
 def addTimCh
@@ -1043,9 +1042,10 @@ def rand_do
 end
 
 def hello_replay(sSay)
-	tmp = Time.parse('2014-01-31')-Time.now #春节
-   #不用显示倒计时
-	if tmp < 0 or tmp > Oneday*39 or rand(9) < 2
+	tmp = Time.parse('2015-02-18')-Time.now #除夕
+
+  #不用显示倒计时
+  if tmp < 0 or tmp > Oneday*60 or rand < 0.16
 		return sSay if sSay =~ /\s$/
 		return "#{sSay} \0039 #{chr_hour} "
 	end
@@ -1061,7 +1061,7 @@ def hello_replay(sSay)
 	else
 		a.prepend "#{tmp/60/60/24}天 "
 	end
-	a.gsub!(/([\.?\d]+)/){ "%.3f" % $1}
+	a.gsub!(/([\.?\d]+)/){ "%.2f" % $1}
 	"#{sSay} #{chr_hour} \0039新年快乐 : #{a}\017"
 end
 
