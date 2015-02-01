@@ -552,7 +552,7 @@ class IRC
   def tran_url(url,from,to,force=true)
     url=$last_url if url.empty?
     return if url.empty?
-    url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~#"]|，|：).*$/,'')
+    url.gsub!(/([^\x0-\x7f].*$|[\s<>\\\[\]\^\`\{\}\|\~"]|，|：).*$/,'')
     unless force
       return if url == $last_url
       $last_url = url.clone

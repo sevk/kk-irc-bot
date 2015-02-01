@@ -41,7 +41,9 @@ elsif RUBY_VERSION < '2.0'
 elsif RUBY_VERSION > '2.2'
   class Time
     class << self
-      alias parse_ parse
+      unless defined?Time.parse_
+        alias parse_ parse
+      end
       def parse s
         Time.parse_(s).localtime
       end

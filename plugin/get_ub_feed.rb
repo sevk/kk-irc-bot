@@ -80,12 +80,12 @@ $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
   $get_ub_feed.priority = -4
   Thread.current[:name]= ' get_ub_feed '
-  n=90 #n分钟没人说话
+  n=80 #n分钟没人说话
   sleep n
   loop {
     sleep 50
     force = nil
-    force = true if Time.now - $last_say_new > 400
+    force = true if Time.now - $last_say_new > 300
     #n久没人说话再取
     if force or Time.now - $channel_lastsay > n
       say_new $channel rescue log ''
