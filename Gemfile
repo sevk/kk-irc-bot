@@ -14,6 +14,9 @@ gem "filesize"
 gem 'google-search'
 gem 'ansi' #console color
 gem 'sinatra'
+group :test do
+  gem "test-unit"
+end
 #gem 'pry'
 #gem "image_size"
 

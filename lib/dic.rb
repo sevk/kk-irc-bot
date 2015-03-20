@@ -265,7 +265,6 @@ def g_tr(word,flg)
   uri = URI.parse(url)
   uri.open(
 	 'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-	 'Accept'=>'text/html',
 	 'Referer'=> URI.escape(url)
 	 ){ |f|
 			return f.read.match(/"trans":"(.*?)","/)[1]
@@ -318,7 +317,7 @@ def dictcn(word)
   'Referer'=> URI.escape(url),
   'Accept-Language'=>'zh-cn',
   #'Cookie' => cookie,
-  'Range' => 'bytes=0-9000',
+  'Range' => 'bytes=0-8000',
   'User-Agent'=> UserAgent
   ){ |f|
     re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
@@ -388,12 +387,7 @@ def gettitle(url,proxy=true,mechanize=1)
   return gettitle_openURI url if not mechanize
 
   #用代理加快速度
-  if url =~ /^https/i
-    agent = Mechanize.new{|a| a.ssl_version, a.verify_mode= 'SSLv3', OpenSSL::SSL::VERIFY_NONE}
-    #agent = Mechanize.new
-  else
-    agent = Mechanize.new
-  end
+  agent = Mechanize.new
 
   if proxy
     if $proxy_status_ok
@@ -483,7 +477,7 @@ end
 
 def gettitle_openURI url
   #puts URI.split url
-  p ' use URI.open '
+  #  p ' use URI.open '
 
   timeout = 6
   istxthtml = false
@@ -504,7 +498,7 @@ def gettitle_openURI url
             showpic(url)
             istxthtml = false
           when /text\/html|application\//i
-            p f.content_type
+            #p f.content_type
             istxthtml= true
           end
 
@@ -877,7 +871,7 @@ def hostA(domain,hideip=true)#处理IP 或域名
     tmp = $1
   else
     #print " ip: ",domain ,10.chr
-    tmp = host(domain)
+    tmp = domain.host
   end
   rtn=" "
   rtn.prepend tmp unless hideip

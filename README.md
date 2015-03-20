@@ -24,6 +24,7 @@ irc-bot , like a human
 * 然后命令: gem update --system
 * 然后安装库, cd 到bot 目录 : gem install bundler && bundle
 
+
 ## 运行:
 
 ruby irc.rb 或 ./irc.rb 
@@ -44,4 +45,8 @@ ruby irc.rb 或 ./irc.rb
 License
 -------
 MIT
+
+
+* 包括测试库:  ▶ bundle install --standalone test
+* 执行测试: ▶ ruby test/test.rb
 
