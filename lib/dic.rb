@@ -365,9 +365,10 @@ def gettitle(url,proxy=true,mechanize=1)
   end
   jg = nil
   if not proxy and url =~ %r'^http://item\.jd\.com/(\d+)\.html'i
-    jg = getjd_price "http://p.3.cn/prices/mgets?skuIds=J_#{$1}&type=1"
+    sjd = "http://p.3.cn/prices/get?skuid=J_#{$1}&type=1"
+    jg = getjd_price sjd
   end
-  timeout=6
+  timeout=7
   title = ''
   charset = ''
   if url.b =~ CN_re
@@ -389,7 +390,8 @@ def gettitle(url,proxy=true,mechanize=1)
   #用代理加快速度
   agent = Mechanize.new
 
-  if proxy
+  print ' proxy:' , proxy
+  if proxy and url !~ /\.jetbrains\./i
     if $proxy_status_ok
       agent.set_proxy($proxy_addr2,$proxy_port2)
     else
@@ -421,13 +423,13 @@ def gettitle(url,proxy=true,mechanize=1)
       return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
     end
   rescue
-    print 'err in get head '
+    print 'err in get head: '
     p $!
     case $!
     when Mechanize::ResponseCodeError
       if $!.message !~ /^403/ and proxy and $proxy_status_ok
-        sleep timeout
-        return $!.message + 'in get head'
+        #sleep timeout
+        #return $!.message + 'in get head'
       end
     end
   end
@@ -441,31 +443,32 @@ def gettitle(url,proxy=true,mechanize=1)
       return
     end
     title = page.title
+    title = nil if title.empty?
     charset= guess_charset(title)
     charset='GB18030' if charset =~ /^IBM855|windows-1252/i
 
     if charset and charset !~ /#@charset/i
       title = title.code_a2b(charset,@charset) rescue title
     end
-    return 'err: no title' if title.empty?
     title = title.unescapeHTML
     auth = page.at('.postauthor').text.strip rescue nil
     title << " zz: #{auth} " if auth
     [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price' ] .each {|x|
       break if jg
-      jg = page.at(x).text rescue nil
+      jg = page.at(x).text.strip rescue nil
     }
     jg = nil if url =~ /\.douban\.com/i
-    if jg
-      title << " 价格:#{jg[0,24]} "
+    if jg and jg != ''
+      title << " pp: #{jg[0,24]} "
     end
-    return title[0,300]
+    return title[0,300] if title
   rescue
+    print " err in get url:"
     log ''
     case $!
     when Mechanize::ResponseCodeError
       sleep timeout
-      return $!.message + 'in get body' if $!.message !~ /^403/
+      return $!.message if $!.message !~ /^403/
     end
   end
 
@@ -476,10 +479,11 @@ rescue Exception
 end
 
 def gettitle_openURI url
+  print 'U'
   #puts URI.split url
   #  p ' use URI.open '
 
-  timeout = 6
+  timeout = 7
   istxthtml = false
   charset = nil
   tmp =
@@ -504,7 +508,7 @@ def gettitle_openURI url
 
           return f.content_type unless istxthtml
           charset= f.charset          # "iso-8859-1"
-          f.read[0,8800].gsub(/\s+/,' ')
+          f.read[0,9800].gsub(/\s+/,' ')
         }
       }
     rescue Timeout::Error
@@ -545,7 +549,7 @@ def gettitle_openURI url
     title = title.code_a2b(charset,@charset) rescue title
   end
 
-  return 'err: no title' if title.empty?
+  return '取标题: no title' if title.empty?
   title = title.unescapeHTML rescue title
   title
 end
@@ -559,7 +563,7 @@ def gettitleA(url,from="_",proxy=true)
     ti=Timeout.timeout(19){gettitle(url,proxy)}
   rescue Timeout::Error
     Thread.pass
-    p 'get title Time out '
+    p 'get title Time out'
     return
   end
 
@@ -644,7 +648,6 @@ def geturl(url,type=1)
 end
 
 def getgoogleDefine(word)
-  sleep $msg_delay
   s = Google::Search::Web.new do |a|
     a.query = word
   end
@@ -774,7 +777,7 @@ def getBaidu(word)
   end
   p url
   open(url,
-  'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+  'Accept'=> '*/*',
   'Referer'=> url,
   'Accept-Language'=>'zh-cn',
   'Accept-Encoding'=>'deflate',
@@ -798,7 +801,7 @@ def getBaidu_tran(word,en=true)
       url = URI.encode(url)
     end
     open(url,
-    'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
+    'Accept'=> '*/*',
     'Referer'=> url,
     'Accept-Language'=>'zh-cn',
     'Accept-Encoding'=>'deflate',

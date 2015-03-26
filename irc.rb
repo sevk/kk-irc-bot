@@ -21,8 +21,6 @@ require 'fileutils'
 include FileUtils
 require 'platform.rb'
 require 'openssl'
-#OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE #unsafe
-#I_KNOW_THAT_OPENSSL_VERIFY_PEER_EQUALS_VERIFY_NONE_IS_WRONG = true
 include Math
 #require 'timeout'
 require "readline"
@@ -76,10 +74,10 @@ class IRC
 
   #/mode #ubuntu-cn +q *!*@1.1.1.0
   def autoban(chan,nick,time=55,mode='q',ch=@channel)
-    if $lag and $lag > 4
+    if $lag and $lag > 5
       msg(nick,"#{nick}:. .., 有刷屏嫌疑 , 或我的网络有延迟.",0)
       sleep 0.1
-      restart if $lag > 6
+      restart if $lag > 7
       return
     end
     s="#{nick}!*@*"
@@ -737,7 +735,7 @@ class IRC
     when /\sPONG\s(.+)$/i
       $needrestart = false
       $lag=Time.now - $Lping
-      if $lag > 1.3
+      if $lag > 2.1
         puts "LAG = #{$lag} sec".green
       end
 
@@ -1021,7 +1019,7 @@ class IRC
               tmp=eval($1.to_s)
               say tmp if tmp.class == String
            rescue Exception
-              p $!.message
+             log ''
            end
         else
           check_dic(s,@nick,@nick)

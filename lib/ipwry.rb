@@ -37,12 +37,21 @@ class String
     end
     @@last_area[self]
   end
+  #域名转化为IP
+  def host
+    domain = self
+    return 'IPV6' if domain =~ /^([\da-f]{1,4}(:|::)){1,6}[\da-f]{1,4}$/i
+    return self if domain =~ /(\d{1,3}\.){3}\d{1,3}/
+    domain = domain.gsub(/\/.*/i,'')
+    return domain unless domain.include?('.')
+    return Resolv.getaddress(domain) rescue domain
+  end
 end
 
 
 if __FILE__ == $0
   if ARGV[0]
-    p IpLocationSeeker.new.seek ARGV[0]
+    p IpLocationSeeker.new.seek ARGV[0].host
   else
     p IpLocationSeeker.new.seek '8.8.8.8'
   end
