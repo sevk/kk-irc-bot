@@ -14,7 +14,7 @@ irc-bot , like a human
 
 #### linux下面随意 :
 
-* 系统软件包管理器，自己编译， rbenv等
+* 系统软件包管理器，自己编译， rbenv , rvm 等
 
 * 比如 :apt-get install ruby ruby-dev
 
@@ -29,7 +29,7 @@ irc-bot , like a human
 
 ruby irc.rb 或 ./irc.rb 
 
-直接双击 irc.rb 也行，但出错后，cmd窗口会消失，看不到出错信息。
+直接双击 irc.rb 也行.
 
 配置文件是 default.conf
 
@@ -39,14 +39,12 @@ ruby irc.rb 或 ./irc.rb
       修改 xx.conf ,
       运行: ruby irc.rb xx.conf  或 ./irc.rb xx.conf
 
-* Core Team Members
- sevk
-
 License
 -------
 MIT
 
 
+## PS:
 * 包括测试库:  ▶ bundle install --standalone test
 * 执行测试: ▶ ruby test/test.rb
 
