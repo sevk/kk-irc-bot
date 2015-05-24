@@ -104,7 +104,7 @@ $_time=0 if not defined?$_time
 $kick_info = "别刷屏，超过6行 大段文字 请贴至paste.ubuntu.com"
 
 Ver='v0.53' unless defined? Ver
-Help = "我是 kk-irc-bot Ver:#{Ver} ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译 `t 词典 > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 . 末尾加入|重定向,如 g ubuntu | nick" unless defined? Help
+Help = "我是 kk-irc-bot Ver:#{Ver} ㉿ s 新手资料 g google d define `new 取论坛新贴 `deb 包查询 tt 翻译  > s 计算s的值 > gg 公告 > b 服务器状态 `address 查某人地址 `host 查域名 . 末尾加入|重定向,如 g ubuntu | nick" unless defined? Help
 
 def help
   Help
@@ -123,11 +123,10 @@ def init_dic
   $proxy_status_ok = false
 end
 init_dic unless $Lsay
-UserAgent="(X11; U; Linux i686; en-US; rv:1.9.1.2) Gecko/20090810 Ubuntu/#{`lsb_release -r`.split(/\s/)[1] rescue ''} (ub)" unless defined? UserAgent
-CN_re = /(?:\xe4[\xb8-\xbf][\x80-\xbf]|[\xe5-\xe8][\x80-\xbf][\x80-\xbf]|\xe9[\x80-\xbd][\x80-\xbf]|\xe9\xbe[\x80-\xa5])+/n unless defined? CN_re
+require 'global.rb'
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist_title = /^alvin_rxg$/
-$botlist=/^fity|badgirl|pocoyo.?.?|iphone|MadGirl/i
+$botlist=/^\^k\^|fity|badgirl|pocoyo.?.?|iphone|MadGirl/i
 $botlist_Code=/^badgirl/i
 $botlist_ub_feed=/crazyghost/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
@@ -135,17 +134,6 @@ $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
 $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 $my_s= '我的源码: http://git.oschina.net/sevkme/kk-irc-bot'
-
-#字符串编码集猜测
-def guess_charset(str)
-  return if str.empty?
-   s=str.gsub(/[\x0-\x7f]/,'') rescue str.clone
-  return if s.bytesize < 6
-  while s.bytesize < 25
-    s << s
-  end
-  return guess(s) rescue nil
-end
 
 def reload_all
   load 'dic.rb'
@@ -175,6 +163,7 @@ def safe_eval(str)
   str.strip!
   log 'eval: ' + str
   if str =~ $eval_black_list
+    a=1
     return eval str
   else
     #return get_sandbox str rescue $!.message
@@ -222,7 +211,7 @@ class String
     #page          = agent.submit(form)
     page = agent.post(url,{"input"=> self } )
     #File.new('a.txt','wb').puts page.body
-    page.body.match(/<em>.+:(.+)<input type/m)[1].gsub(/alice/i,' kk ')
+    page.body.match(/<em>.+:(.+)<input type/m)[1]
       .gsub!(/<.*?>/i,'') rescue '休息一下..'
   end
 
@@ -305,32 +294,6 @@ def getGoogle_tran(word)
   #}
 end
 
-#dict.cn
-def dictcn(word)
-  word = word.utf8_to_gb
-  url = 'http://dict.cn/mini.php?q=' + word
-  url = URI.escape(url)
-  uri = URI.parse(url)
-  uri.open(
-  'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-  'Accept'=>'text/html',
-  'Referer'=> URI.escape(url),
-  'Accept-Language'=>'zh-cn',
-  #'Cookie' => cookie,
-  'Range' => 'bytes=0-8000',
-  'User-Agent'=> UserAgent
-  ){ |f|
-    re = f.read[0,5059].force_encoding('utf-8').gsub(/\s+/,' ').gb_to_utf8
-    re.gsub!(/<script.*?<\/script>/i,'')
-    re.gsub!(/<.*?>/i,'')
-    re.gsub!(/.*?Define /i,'')
-    re.gsub!(/加入生词本.*/,'')
-    return re.unescapeHTML + ' << Dict.cn'
-  }
-rescue
-  return $!.message
-end
-
 def gettaobao url
   doc = Nokogiri::HTML(open(url))
   doc.encoding = 'utf-8'
@@ -358,203 +321,6 @@ def getjd_price url
   }
 end
 
-#取标题,参数是url.
-def gettitle(url,proxy=true,mechanize=1)
-  if not proxy and url =~  %r'^http://detail\.tmall\.com/item\.htm'i 
-    return gettaobao url 
-  end
-  jg = nil
-  if not proxy and url =~ %r'^http://item\.jd\.com/(\d+)\.html'i
-    sjd = "http://p.3.cn/prices/get?skuid=J_#{$1}&type=1"
-    jg = getjd_price sjd
-  end
-  timeout=7
-  title = ''
-  charset = ''
-  if url.b =~ CN_re
-    url = URI.encode(url)
-  end
-
-  if mechanize == 1
-    mechanize = false if url =~ $urlNoMechanize
-  else
-    mechanize = true
-  end
-  mechanize = true if url =~ /www\.google\.com/i
-  mechanize = true if url =~ $urlProxy
-  mechanize = true if proxy
-  print ' mechanize:' , mechanize , ' ' , url ,10.chr unless mechanize
-
-  return gettitle_openURI url if not mechanize
-
-  #用代理加快速度
-  agent = Mechanize.new
-
-  print ' proxy:' , proxy
-  if proxy and url !~ /\.jetbrains\./i
-    if $proxy_status_ok
-      agent.set_proxy($proxy_addr2,$proxy_port2)
-    else
-      agent.set_proxy($proxy_addr,$proxy_port)
-    end
-  end
-  agent.user_agent_alias = 'Linux Mozilla'
-  agent.max_history = 0
-  agent.open_timeout = timeout
-  agent.read_timeout = timeout
-  #agent.cookies
-  #agent.auth('^k^', 'password')
-
-  begin
-    page = agent.head(url)
-    #File.new('/tmp/h.x','wb').puts page.header
-    type = page.header['content-type']
-    #print 'get head ok: '
-    if type =~ /image\/./i
-      showpic(url)
-      return type
-    end
-    if type and type !~ /^$|text\/html/i
-      re = page.response.select{|x| x=~/^conten/i }
-        .map{|x,y| "#{x}=#{y}" }.join(" ; ")
-        .gsub(/content-/i,'')
-      p re
-      return if re =~ /length=\d\D/i
-      return re.gsub(/(length=)(\d+)/i){ "长度="+Filesize.from($2+'b').pretty }
-    end
-  rescue
-    print 'err in get head: '
-    p $!
-    case $!
-    when Mechanize::ResponseCodeError
-      if $!.message !~ /^403/ and proxy and $proxy_status_ok
-        #sleep timeout
-        #return $!.message + 'in get head'
-      end
-    end
-  end
-
-  begin
-    page = agent.get(url)
-    #File.new('/tmp/a.x','wb').puts page.title
-    #File.new('/tmp/b.x','wb').puts Mechanize.new.get_file url
-    if page.class != Mechanize::Page
-      p 'no page'
-      return
-    end
-    title = page.title
-    title = nil if title.empty?
-    charset= guess_charset(title)
-    charset='GB18030' if charset =~ /^IBM855|windows-1252/i
-
-    if charset and charset !~ /#@charset/i
-      title = title.code_a2b(charset,@charset) rescue title
-    end
-    title = title.unescapeHTML
-    auth = page.at('.postauthor').text.strip rescue nil
-    title << " zz: #{auth} " if auth
-    [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price' ] .each {|x|
-      break if jg
-      jg = page.at(x).text.strip rescue nil
-    }
-    jg = nil if url =~ /\.douban\.com/i
-    if jg and jg != ''
-      title << " pp: #{jg[0,24]} "
-    end
-    return title[0,300] if title
-  rescue
-    print " err in get url:"
-    log ''
-    case $!
-    when Mechanize::ResponseCodeError
-      sleep timeout
-      return $!.message if $!.message !~ /^403/
-    end
-  end
-
-  gettitle_openURI url
-rescue Exception
-  log ''
-  $!.message
-end
-
-def gettitle_openURI url
-  print 'U'
-  #puts URI.split url
-  #  p ' use URI.open '
-
-  timeout = 7
-  istxthtml = false
-  charset = nil
-  tmp =
-    begin #加入错误处理
-      Timeout.timeout(timeout) {
-        $uri = URI.parse(url)
-        $uri.open(
-          #'Accept'=>'text/html , application/*',
-          'Range' => 'bytes=0-8999',
-          #'Cookie' => cookie,
-        ){ |f|
-          case f.content_type
-          when /application\/octet-stream/i
-            istxthtml = false
-          when /image\/./i
-            showpic(url)
-            istxthtml = false
-          when /text\/html|application\//i
-            #p f.content_type
-            istxthtml= true
-          end
-
-          return f.content_type unless istxthtml
-          charset= f.charset          # "iso-8859-1"
-          f.read[0,9800].gsub(/\s+/,' ')
-        }
-      }
-    rescue Timeout::Error
-      sleep timeout
-      return "取标题超时 #{$!.message}"
-    rescue
-      p ' err in URI.open '
-      p $!
-      if $!.message =~ /Connection reset by peer/ && $proxy_status_ok
-				p ' need pass wall '
-				return
-      end
-      sleep timeout
-      return "取标题 #{$!.message[0,210] }"
-    end
-
-  return unless istxthtml
-
-  title = tmp.match(/<title.*?>(.*?)<\/title>/i)[1] rescue ''
-
-  if title.empty?
-    p tmp
-    if tmp.match(/meta\shttp-equiv="refresh(?:.*?)url=(.*?)">/i)
-      p 'refresh..'
-      return Timeout.timeout(timeout){
-        url = $1
-        url = "http://#{$uri.host}/#{url}" if url !~ /^http/i
-        gettitle(url)
-      }
-    end
-  end
-
-  #return if title =~ /index of/i
-  charset= guess_charset(title)
-  charset='GB18030' if charset =~ /^IBM855|windows-1252/i
-
-  if charset !~ /#@charset/i
-    title = title.code_a2b(charset,@charset) rescue title
-  end
-
-  return '取标题: no title' if title.empty?
-  title = title.unescapeHTML rescue title
-  title
-end
-
-
 def gettitleA(url,from="_",proxy=true)
   $last_url = url
 
@@ -571,13 +337,13 @@ def gettitleA(url,from="_",proxy=true)
 
   #检测是否有其它取标题机器人
   #
-  return "#{from}: ⇪ #{ti} "  if ti !~ $tiList and url !~ $urlList
+  return "#{from}: ⇪ #{ti.iblue } " if ti !~ $tiList and url !~ $urlList 
   #登录 • Ubuntu中文论坛
-  if ti
+  if ti 
     ti.gsub!(/登录 •/, '水区水贴? ')
-    return " \x033⇪ fw: #{ti}\x030" if proxy
-    return " \x033⇪ ti: #{ti}\x030"
-  end
+    return " ⇪ f: #{ti.iblue}" if proxy
+    return " ⇪ t: #{ti.iblue}"
+  end   
 end
 
 def getPY(c)
@@ -935,6 +701,9 @@ end
 def b
   `uptime`
 end
+def uname(*a)
+  `uname -a`
+end
 
 #每日一句英语学习
 def osod
@@ -1002,9 +771,9 @@ def check_proxy_status
     a=true
     Thread.current[:name]= 'check proxy stat'
     begin
-      Timeout.timeout(4){
-        a=TCPSocket.open($proxy_addr2,$proxy_port2)
-        a.close
+      Timeout.timeout(5){
+        b=TCPSocket.open($proxy_addr2,$proxy_port2)
+        b.close
       }
     rescue Exception
       print $proxy_addr2,':',$proxy_port2,' ',false,"\n"
@@ -1126,14 +895,19 @@ def pr_highlighted(s)
   end
   Readline.refresh_line
   savelog re if need_savelog
+rescue Exception
+  p s.encoding
+  p from.encoding
+  p ' '.encoding
+  p ip.getaddr_fromip.underline.encoding
 end
 
 #写入聊天记录
 def savelog(s)
   return if $not_savelog
 
-	fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
-	File.open( fn,'a'){ |x|
+  fn= "irclogs/#{@channel[1..-1]}/" + Time.now.strftime("%y%m%d.txt")
+  File.open( fn,'a'){ |x|
     x.puts s.clear_color rescue s
 	}
 end
