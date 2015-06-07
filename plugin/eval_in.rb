@@ -12,7 +12,7 @@ def get_eval_in code
   s = a.get url
   #code = URI.encode(code)
   s.forms[0].code = code
-  s.forms[0].lang = "ruby/mri-2.1"
+  s.forms[0].lang = "ruby/mri-2.2" # << RUBY_VERSION[0..2]
   s = a.submit s.forms[0]
   r = s.body.match(/ output.*?<pre>(.*?)</im)[1]
   r << '  =>  ' << s.uri.to_s

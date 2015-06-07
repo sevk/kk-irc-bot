@@ -1,6 +1,6 @@
 
 #run sh 30 sec
-def sh30
+def sh30 s
   Timeout.timeout(30){
     Thread.new { system s }
   }

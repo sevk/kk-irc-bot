@@ -79,6 +79,17 @@ def guess(s)
   CharDet.detect(s)['encoding'].upcase
 end
 
+#字符串编码集猜测
+def guess_charset(str)
+  return if str.empty?
+   s=str.gsub(/[\x0-\x7f]/,'') rescue str.clone
+  return if s.bytesize < 6
+  while s.bytesize < 25
+    s << s
+  end
+  return guess(s) rescue nil
+end
+
 if $0 == __FILE__
    puts '中文'.togbk
 end
