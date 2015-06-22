@@ -20,9 +20,7 @@ irc-bot , like a human
 
 ## 装完ruby后升级 gem :
 
-* 先把gem 服务器改成淘宝的 http://ruby.taobao.org/
-* 然后命令: gem update --system
-* 然后安装库, cd 到bot 目录 : gem install bundler && bundle
+* 安装gem : cd 到bot 目录 : gem install bundler && bundle
 
 
 ## 运行:
