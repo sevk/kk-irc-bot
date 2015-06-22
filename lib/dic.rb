@@ -126,7 +126,6 @@ init_dic unless $Lsay
 require 'global.rb'
 ChFreePlay=/\-ot|arch|fire/i unless defined? ChFreePlay
 $botlist_title = /^alvin_rxg$/
-$botlist=/^\^k\^|fity|badgirl|pocoyo.?.?|iphone|MadGirl/i
 $botlist_Code=/^badgirl/i
 $botlist_ub_feed=/crazyghost/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
@@ -136,7 +135,7 @@ $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 $my_s= '我的源码: http://git.oschina.net/sevkme/kk-irc-bot'
 
 def reload_all
-  load 'dic.rb'
+  load 'libirc.rb'
 	loadDic
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 rescue
@@ -272,8 +271,7 @@ def getGoogle_tran(word)
   url = "http://translate.google.com/translate_a/t?client=firefox-a&text=#{word}&langpair=#{flg}&ie=UTF-8&oe=UTF-8"
   uri = URI.parse(url)
   uri.open(
-           'Accept'=>'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*',
-           'Accept'=>'text/html',
+           'Accept'=>'text/html, */*',
            'Referer'=> URI.escape(url)
            #'Accept-Language'=>'zh-cn',
            #'Cookie' => cookie,
@@ -776,10 +774,10 @@ def check_proxy_status
         b.close
       }
     rescue Exception
-      print $proxy_addr2,':',$proxy_port2,' ',false,"\n"
+      #print $proxy_addr2,':',$proxy_port2,' ',false,"\n"
       a=false
     end
-    print $proxy_addr2,':',$proxy_port2,' ',a ,"\n"
+    #print $proxy_addr2,':',$proxy_port2,' ',a ,"\n"
     $proxy_status_ok = a
   end
 end
