@@ -14,6 +14,7 @@ require 'thread'
 require 'open-uri'
 require 'log.rb'
 load 'dic.rb'
+require 'mprint.rb'
 
 #放入线程运行
 def go (tim=50)
@@ -664,11 +665,9 @@ class IRC
       sayDic(23,from,to,$1)
     when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      sleep(5+rand(20))
-      do_after_sec(to,from + ':点点点.',10,$msg_delay*3 )
+      do_after_sec(to,from + ':点点点.',10,$msg_delay*4 )
     when /^\s*((有人.?(吗|么|不|否))|test|测试).?$/i #有人吗?
       $otherbot_said=false
-      sleep(5+rand(20))
       do_after_sec(to,from + ':点点点.',10,$msg_delay/3 )
     when $re_flood
       $proc_flood.call rescue nil
@@ -834,7 +833,6 @@ class IRC
       when 376 #end of /motd
          #send time , send join #sevk
         send 'time'
-        sleep 1
         send "JOIN #$channel_o"
         $min_next_say = Time.now
       when 482

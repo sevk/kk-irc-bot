@@ -63,7 +63,6 @@ class All_user
     name.gsub!(/[in]=|~|^\+|^\@/i,'') #删除nick 开头的@ + V
     ip=ip_from_webname(name) if ip =~ /^gateway\/web\/freenode/i
     index = @index[nick]
-    print "index: #{index}  \t"
     if index
       if ip != @ip[index]
         chg_ip(nick,ip)
@@ -142,7 +141,7 @@ class All_user
   #rep?
   def rep(nick)
     i=@index[nick]
-    if @RP[1][i] > 2
+    if @RP[1][i] > 4
       #print nick , ' 重复 rep . ' , @RP[1][i] , getLastSay(nick), 10.chr
       @RP[1][i]=0
       return true
@@ -213,7 +212,6 @@ class All_user
       puts '#无此用户'
       return add(nick,name,ip)
     end
-    #~ puts '21 $timelast6say[index]:  index: ' + index.to_s
     t = Time.now
     $timelastsay[index] = t if ! $timelastsay[index]
     $timelast6say[index] = $initFlood if ! $timelast6say[index]
@@ -224,6 +222,7 @@ class All_user
   end
 
   def saidAndCheckFlood(nick,name,ip,w)
+    return if $skip_check_flood
     said(nick,name,ip)
     setLastSay(nick,w)
     return check_flood(nick)
