@@ -106,7 +106,7 @@ def gettitle(url,proxy=true,mechanize=1)
     auth = page.at('.postauthor').text.strip rescue nil
     title << " zz: #{auth} " if auth
     [ '.tb-rmb-num' , '.priceLarge' ,'.tm-price', '.price',
-      '.mainprice'
+      '.mainprice','.real-price'
     ] .each {|x|
       break if jg
       jg = page.at(x).text.strip rescue nil

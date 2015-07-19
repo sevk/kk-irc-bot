@@ -11,7 +11,7 @@ require 'utf.rb'
 
 module Allowa
   def joke(n=nil)
-    sleep $msg_delay / 3
+    sleep $msg_delay / 3.0
     n ||= rand(39986)
     url="http://xiaohua.zol.com.cn/detail1/#{n}.html"
     puts url
@@ -23,7 +23,11 @@ module Allowa
       if text.gsub(/\s+/,'').empty?
         img = s.image_with(:src => /xiaohua\./).src
         s= " #{img} #{ti}"
-        s.prepend "竟然是图片" if rand < 0.3
+        if rand < 0.3
+          s.prepend "竟然是图片"
+        else
+          return joke
+        end
       else
         s= " #{ti} :#{text}"
         s.prepend url if rand < 0.16
@@ -42,9 +46,9 @@ module Allowa
       s.gsub!(x,y)
     }
 
-    puts s
     $fun ||= 800
     if s.bytesize > $fun
+      puts " joke size > $fun "
       sleep 0.05
       s=joke
     end
