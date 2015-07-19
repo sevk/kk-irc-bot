@@ -15,9 +15,10 @@ p s
 if s.size ==0 
   p ' run ub.conf '
   #p `bundle update `
+  #`rm Gemfile.lock`
   tt {`screen -S ircUb -dm sh -c "PATH=\"/home/kk/ruby/bin:$PATH\" && cd /home/kk/dev/kk-irc-bot/ && ruby irc.rb ub.conf ; sleep 100 " ` }
 end
 #p ' run goagent '
 #tt { `screen -dm python2 /home/kk/dev/goagent/local/proxy.py `}
 
-sleep 0.2
+sleep 0.1 while Thread.list.size > 1

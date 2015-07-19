@@ -6,7 +6,8 @@ $: << '.'
 $: << 'lib'
 $LOAD_PATH.uniq!
 require 'filesize'
-load 'log.rb'
+require 'log.rb'
+require 'mprint.rb'
 load 'utf.rb'
 load 'irc_user.rb'
 load 'color.rb'
@@ -131,8 +132,8 @@ $botlist_ub_feed=/crazyghost/i
 $urlList = $tiList = /ubunt|linux|unix|debi|kernel|redhat|suse|gentoo|fedora|java|c\+\+|python|ruby|perl|Haskell|lisp|flash|vim|emacs|github|gnome|kde|x11|gtk|qt|xorg|wine|sql|wikipedia|source|android|xterm|progra|google|devel|sed|awk|regex|solaris|\.org\/|编译/i
 $urlProxy=/.|\.ubuntu\.(org|com)\.cn|\.archive\.org|linux\.org|ubuntuforums\.org|\.wikipedia\.org|\.twitter\.com|\.youtube\.com|\.haskell\.org/i
 $urlNoMechanize=/.|google|\.cnbeta\.com|combatsim\.bbs\.net\/bbs|wikipedia\.org|wiki\.ubuntu/i
-$my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 $my_s= '我的源码: http://git.oschina.net/sevkme/kk-irc-bot'
+$my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 
 def reload_all
   load 'libirc.rb'
