@@ -4,11 +4,12 @@
 require 'timeout'
 require 'rss'
 require 'time'
+require 'color.rb'
 
 #取ubuntu.com.cn的 新帖.
 def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
   begin
-   feed = Timeout.timeout(11) {
+   feed = Timeout.timeout(12) {
       RSS::Parser.parse url
     }
   rescue Timeout::Error
@@ -27,7 +28,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     date = i.updated.content
     @last = date
     #p date
-    $ub = "新 #{ti} #{link} #{des}"
+    $ub = "新 #{ti.iblue } #{link.icolor(link.sum) } #{des}"
     break
   }
   #p ' all re ,no new' if $ub.empty?
@@ -43,7 +44,7 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
     $ub = " 逛了一下论坛,暂时无新贴."
     #p ' is old feed'
     $no_new_feed+=1
-    if $no_new_feed > 49 #大约49分钟
+    if $no_new_feed > 79 #大约49分钟
       $no_new_feed=0
       return "暂无新帖 讲个笑话吧: #{joke}"
     end
@@ -52,17 +53,20 @@ def get_feed (url= 'http://forum.ubuntu.org.cn/feed.php' ,not_re = true)
   else
     $no_new_feed=0
     $data['old_feed'] = @last
+    $data['old_title'] = $ub
   end
 
   $ub.gsub!(/\s+/m,' ')
   n = $ub.gsub(/<.+?>/m,' ').unescapeHTML.gsub(/<.+?>/m,' ')
     .unescapeHTML
+  n.gsub!(/统计信息:.*由/,' zz: ')
   #puts n
   n
 rescue Exception
-  log
+  log ''
 end
 
+$need_say_feed ||= -1
 $last_say_new ||= Time.at 0
 #自动说新帖
 def say_new to
@@ -74,22 +78,17 @@ def say_new to
       Thread.current[:name]= 'say_new'
       $irc.msg(to1, get_feed ,0)
    }
+rescue Exception
+  log ''
 end
 
 $get_ub_feed.kill rescue nil
 $get_ub_feed=Thread.new do
-  $get_ub_feed.priority = -4
   Thread.current[:name]= ' get_ub_feed '
-  n=80 #n分钟没人说话
-  sleep n
   loop {
-    sleep 50
-    force = nil
-    force = true if Time.now - $last_say_new > 300
-    #n久没人说话再取
-    if force or Time.now - $channel_lastsay > n
-      say_new $channel rescue log ''
-    end
+    sleep 40
+    sleep rand(20)
+    say_new $channel
   }
 end
 
