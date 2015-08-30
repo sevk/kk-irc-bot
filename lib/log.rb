@@ -57,51 +57,52 @@ log_init
 
 # log => 写入 $!.message
 # log "aa" => 写入 "aa" 到log文件
-# log '' => 不写入log文件
-def log(s=nil)
-  if not s
-      if $!
-         s = "#{$!.message} && #{$@.join("\n")}"
-      else
-         return
-      end
-  elsif s.class != String
-    s=s.inspect
+# log '' => 不写入log文件, 只打印
+def log(s=nil ,*a)
+  log_init
+  
+  if a.size != 0
+    p ' log(a,b) not support '
+  end
+    
+  if $!
+    puts "#{$!.message} \n#{$@.select{|x|
+      x !~/\/lib\/ruby\//i 
+    }[0,8].join("\n").gsub(/\.rb/i,'.cc') }"
+  end
+  return if s == ''
+
+  if ! s
+    if $!
+      s = "#{$!.message} \n#{$@.select{|x|
+        x !~/\/lib\/ruby\//i 
+      }[0,8].join("\n").gsub(/\.rb/i,'.cc') }"
+    end
+  end
+  return if ! s
+
+  if s.class != String
+    s= "#{s.inspect}"
   end
 
-   if s.empty?
-     if $!
-       p $!.message
-       puts "#{$@.select{|x| x !~/\/lib\/ruby\//i }.join("\n")}"
-     end
-     return
-   else
-     s=s.inspect if s.class != String
-   end
+  p s[0,510]
 
    if $!
-     p $!.message
       f= Myname + '-err.log'
-      #p f
-      f = Logger::LogDevice.new(File.join($logDir,f))
-      le = Logger.new(f ,shift_age=30,shift_size = 1200000)
+      le = Logger.new(File.join($logDir,f) ,shift_age=24,shift_size = 1000000)
       le.datetime_format = "%m-%d %H:%M:%S"
       le.debug s
       le.close
    else
       f= Myname + '.log'
       #p f
-      f = Logger::LogDevice.new(File.join($logDir,f))
       if $zip_log
-         l = Logger.new(f , 'daily' )
+         l = Logger.new(File.join($logDir,f), 'daily' )
       else
-         l = Logger.new(f ,shift_age =33, shift_size = 1200000)
+         l = Logger.new(File.join($logDir,f),shift_age =28, shift_size = 1000000)
       end
       l.datetime_format = "%m-%d %H:%M:%S"
       l.info s
       l.close
    end
-   nil
 end
-
-

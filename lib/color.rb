@@ -62,7 +62,7 @@ class String
 
   #irc color
   def icolor(n=rand(99))
-    "\x03#{n%16}#{self}\x030"
+    "\x03#{n%16} #{self}\x030"
   end
   def iblack
     icolor(1)
@@ -71,7 +71,7 @@ class String
     icolor(2)
   end
   def iblue
-    "\x033#{self}\x030"
+    "\x033 #{self}\x030"
   end
   def ired
     icolor 4

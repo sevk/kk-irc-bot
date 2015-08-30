@@ -17,6 +17,7 @@ Socket.do_not_reverse_lookup = true
 require 'rubygems'
 $: << '.'
 $: << 'lib'
+require 'plugin.rb'
 load 'libirc.rb'
 
 def restart #Hard Reset

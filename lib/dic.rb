@@ -11,8 +11,8 @@ require 'mprint.rb'
 load 'utf.rb'
 load 'irc_user.rb'
 load 'color.rb'
-load 'plugin.rb' rescue log
 require 'google-search'
+require 'plugin.rb'
 
 def nil.empty?
   true
@@ -138,6 +138,7 @@ $my_s= '我的源码: http://github.com/sevk/kk-irc-bot/ '
 def reload_all
   load 'libirc.rb'
 	loadDic
+  load_all_plugin
 	Thread.list.each {|x| puts "#{x.inspect}: #{x[:name]}" }
 rescue
   log
@@ -326,10 +327,10 @@ def gettitleA(url,from="_",proxy=true)
   ti=nil
   begin
     ti=Timeout.timeout(19){gettitle(url,proxy)}
-  rescue Timeout::Error
-    Thread.pass
-    p 'get title Time out'
-    return
+  rescue Exception
+    p $!.message
+    sleep 19
+    return $!.message
   end
 
   return if ti.empty?
@@ -883,7 +884,7 @@ def pr_highlighted(s)
 
     t = Time.now.strftime('%H%M%S')
     sy.force_encoding('utf-8') rescue sy
-    re= "#{t}#{ (( from+':').rjust(13)).c_rand(name.sum)} #{mt}#{to}#{sy}"
+    re= "#{t.green_on_white}#{ (( from+':').rjust(13)).c_rand(name.sum)} #{mt}#{to}#{sy}"
   else
     re= s.red
   end

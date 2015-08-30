@@ -39,10 +39,6 @@ ruby irc.rb 或 ./irc.rb
 
 License
 -------
-MIT
+This content is released under the (http://opensource.org/licenses/MIT) MIT License.
 
-
-## PS:
-* 包括测试库:  ▶ bundle install --standalone test
-* 执行测试: ▶ ruby test/test.rb
 
