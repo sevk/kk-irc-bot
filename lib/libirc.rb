@@ -638,7 +638,7 @@ class IRC
     when /^`?(什么是|what\sis)(.+[^。！.!])(呢|呀|啊)?(\?|？)$/i #什么是
       #http://rmmseg-cpp.rubyforge.org/
       w=$2.to_s.strip
-      return if w =~/这|那|哪| that | this /
+      return if w =~/，|。|这|那|哪| that | this |什么问题/
       #w.gsub!(/.*?的/,'')
       return if w.empty?
       sayDic(1,from,to,"define:#{w}")
@@ -663,10 +663,10 @@ class IRC
       sayDic(22,from,to,$1)
     when /^`f\s(.*?)$/ #查老乡
       sayDic(23,from,to,$1)
-    when /^`?(大家好.?.?.?|hi(.all)?.?|hello)$/i
+    when /^`?((有人.?(吗|么|不|否))|大家好.?.?.?|hi(.all)?.?|hello)$/i
       $otherbot_said=false
-      do_after_sec(to,from + ':点点点.',10,$msg_delay*4 )
-    when /^\s*((有人.?(吗|么|不|否))|test|测试).?$/i #有人吗?
+      do_after_sec(to,from + ':点点点.',10,$msg_delay*4+7 )
+    when /^\s*(test|测试).?$/i #有人吗?
       $otherbot_said=false
       do_after_sec(to,from + ':点点点.',10,$msg_delay/3 )
     when $re_flood
@@ -774,14 +774,18 @@ class IRC
       #:niven.freenode.net 437 * ^k^ :Nick/channel is temporarily unavailable
       #
       pos=$2.to_i;name,ch=$3.split ;data=tmp=$4.to_s
-      if @charset != $local_charset
-         puts s.code_a2b( @charset,$local_charset)
+      case pos
+      when 353 #不打印raw
       else
-         puts s
-      end
-      if pos == 391#对时
-        $_time=Time.now - Time.parse(tmp)
-        puts Time.now.to_s.green
+        if @charset != $local_charset
+           puts s.code_a2b( @charset,$local_charset)
+        else
+           puts s
+        end
+        if pos == 391#对时
+          $_time=Time.now - Time.parse(tmp)
+          puts Time.now.to_s.green
+        end
       end
 
       case pos
@@ -796,12 +800,13 @@ class IRC
         puts '396 verifed '.red
         #joinit
       when 353
-        @nicks |= tmp.split(/ /)
+        @nicks |= tmp.split(/\s+/)
         @nicks.flatten!
-        p 'all nick:' , @nicks
       when 366#End of /NAMES list.
         @count = @nicks.count
-        puts "nick list: #{ @nicks.join(' ') } , #@count ".red
+        print "nick list: "
+        p @nicks
+        puts "count: #@count ".red
 
         renew_Readline_complete
         Readline.completion_append_character = ', '
@@ -835,6 +840,7 @@ class IRC
         send 'time'
         send "JOIN #$channel_o"
         $min_next_say = Time.now
+        load_all_plugin
       when 482
         #:pratchett.freenode.net 482 kk-bot #sevk :You're not a channel operator
         #p " * need operator for #{data} ? "
@@ -945,6 +951,7 @@ class IRC
 
   def mystart
     $data = YAML.load_file "_#{ARGV[0]}.data" rescue Hash.new
+    $data ||= Hash.new
 	  conf = "_#{ARGV[0]}.yaml"
     $u = YAML.load_file conf rescue All_user.new
     File.delete conf if $u.index.size == 0 rescue true
